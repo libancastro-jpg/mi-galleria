@@ -28,7 +28,7 @@ export default function TabLayout() {
         tabBarActiveTintColor: COLORS.gold,
         tabBarInactiveTintColor: COLORS.grayLight,
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: '600',
         },
       }}
@@ -52,11 +52,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="cruces"
+        name="cuido"
         options={{
-          title: 'Cruces',
+          title: 'Cuido',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="git-merge" size={size} color={color} />
+            <Ionicons name="timer" size={size} color={color} />
           ),
         }}
       />
@@ -79,9 +79,9 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="cuido"
+        name="cruces"
         options={{
-          href: null, // Hidden but accessible
+          href: null,
         }}
       />
     </Tabs>
