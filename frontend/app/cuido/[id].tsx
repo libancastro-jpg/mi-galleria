@@ -66,7 +66,7 @@ const COLORS = {
   grayMedium: '#2a2a2a',
   grayLight: '#6b7280',
   white: '#ffffff',
-  background: '#0a0a0a',
+  background: '#1a1a1a',
   green: '#22c55e',
 };
 

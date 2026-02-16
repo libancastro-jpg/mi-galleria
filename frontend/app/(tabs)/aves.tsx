@@ -238,7 +238,7 @@ export default function AvesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0a0a',
+    backgroundColor: '#1a1a1a',
   },
   header: {
     flexDirection: 'row',

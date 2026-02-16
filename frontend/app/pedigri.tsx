@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { api } from '../src/services/api';
 
 const COLORS = {
-  background: '#0a0a0a',
+  background: '#1a1a1a',
   gold: '#d4a017',
   goldLight: 'rgba(212, 160, 23, 0.15)',
   grayDark: '#141414',
