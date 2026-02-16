@@ -73,6 +73,8 @@ export default function AveFormScreen() {
     notas: '',
     padre_id: '',
     madre_id: '',
+    padre_externo: '',  // Placa de padre externo (otra gallería)
+    madre_externo: '',  // Placa de madre externo (otra gallería)
     marcaje_qr: '',
     castado_por: '',
   });
