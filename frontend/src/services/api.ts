@@ -1,10 +1,17 @@
 const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://gallera-manager.preview.emergentagent.com';
 
+// Callback para manejar logout cuando hay error 401
+let onUnauthorized: (() => void) | null = null;
+
 class ApiService {
   private token: string | null = null;
 
   setToken(token: string | null) {
     this.token = token;
+  }
+
+  setOnUnauthorized(callback: () => void) {
+    onUnauthorized = callback;
   }
 
   private async request(endpoint: string, options: RequestInit = {}) {
@@ -24,6 +31,15 @@ class ApiService {
         ...options,
         headers,
       });
+
+      // Si es 401 Unauthorized, forzar logout
+      if (response.status === 401) {
+        console.log('Token inválido, forzando logout...');
+        if (onUnauthorized) {
+          onUnauthorized();
+        }
+        throw new Error('Sesión expirada');
+      }
 
       const data = await response.json();
 
