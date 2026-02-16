@@ -704,4 +704,35 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#fff',
   },
+  colorGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+    backgroundColor: '#141414',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
+  },
+  colorOption: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: '#2a2a2a',
+    borderWidth: 1,
+    borderColor: '#3a3a3a',
+  },
+  colorOptionActive: {
+    backgroundColor: '#f59e0b',
+    borderColor: '#f59e0b',
+  },
+  colorOptionText: {
+    fontSize: 14,
+    color: '#9ca3af',
+  },
+  colorOptionTextActive: {
+    color: '#000',
+    fontWeight: '600',
+  },
 });
