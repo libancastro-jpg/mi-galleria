@@ -358,7 +358,7 @@ export default function DashboardScreen() {
               onPress={() => router.push('/pelea/new')}
             >
               <View style={[styles.actionIcon, { backgroundColor: COLORS.goldLight }]}>
-                <Ionicons name="trophy" size={26} color={COLORS.gold} />
+                <TrophyIcon size={26} color={COLORS.gold} />
               </View>
               <Text style={styles.actionText}>Nueva Pelea</Text>
             </TouchableOpacity>
@@ -376,7 +376,7 @@ export default function DashboardScreen() {
               onPress={() => router.push('/cruce/new')}
             >
               <View style={[styles.actionIcon, { backgroundColor: COLORS.goldLight }]}>
-                <Ionicons name="git-merge" size={26} color={COLORS.gold} />
+                <GeneticsIcon size={26} color={COLORS.gold} />
               </View>
               <Text style={styles.actionText}>Nuevo Cruce</Text>
             </TouchableOpacity>
