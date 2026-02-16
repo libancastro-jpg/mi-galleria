@@ -152,9 +152,9 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        {/* Rooster Icon Banner */}
+        {/* Rooster Icon Banner - Contenedor cuadrado 80x80 */}
         <View style={styles.roosterBanner}>
-          <RoosterIcon size={64} color={COLORS.gold} />
+          <RoosterIcon size={72} color={COLORS.gold} />
         </View>
 
         {/* Alertas Section */}
