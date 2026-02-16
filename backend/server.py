@@ -85,6 +85,7 @@ class AveBase(BaseModel):
     foto_principal: Optional[str] = None  # base64
     fecha_nacimiento: Optional[str] = None
     color: Optional[str] = None
+    cresta: Optional[str] = None  # Tipo de cresta
     linea: Optional[str] = None
     castado_por: Optional[str] = None  # Nombre del castador
     estado: str = "activo"  # activo | vendido | muerto | retirado
@@ -105,6 +106,7 @@ class AveUpdate(BaseModel):
     foto_principal: Optional[str] = None
     fecha_nacimiento: Optional[str] = None
     color: Optional[str] = None
+    cresta: Optional[str] = None
     linea: Optional[str] = None
     castado_por: Optional[str] = None
     estado: Optional[str] = None
