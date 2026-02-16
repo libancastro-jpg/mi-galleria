@@ -7,7 +7,7 @@ import { View, Image } from 'react-native';
  * Archivo: rooster-logo.png
  * 
  * Con círculo amarillo de fondo
- * Logo ocupa 85-90% del círculo
+ * Logo aumentado para compensar transparencia
  */
 
 const roosterLogo = require('../../assets/rooster-logo.png');
@@ -17,8 +17,8 @@ interface RoosterLogoProps {
 }
 
 export function RoosterLogo({ size = 72 }: RoosterLogoProps) {
-  // Logo ocupa 90% del círculo
-  const imageSize = size * 0.9;
+  // Logo 115% del círculo para compensar transparencia del PNG
+  const imageSize = size * 1.15;
   
   return (
     <View style={{
