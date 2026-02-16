@@ -97,7 +97,7 @@ export default function DashboardScreen() {
             <Text style={styles.subtitle}>Resumen de tu criadero</Text>
           </View>
           <View style={styles.logoSmall}>
-            <Ionicons name="fitness" size={32} color="#f59e0b" />
+            <RoosterIcon size={32} color="#f59e0b" />
           </View>
         </View>
 
@@ -107,12 +107,18 @@ export default function DashboardScreen() {
             style={[styles.statCard, styles.statCardPrimary]}
             onPress={() => router.push('/(tabs)/aves')}
           >
-            <Ionicons name="fitness" size={28} color="#f59e0b" />
+            <RoosterIcon size={28} color="#f59e0b" />
             <Text style={styles.statNumber}>{data?.aves.total_activas || 0}</Text>
             <Text style={styles.statLabel}>Aves Activas</Text>
             <View style={styles.statSubRow}>
-              <Text style={styles.statSub}>{data?.aves.gallos || 0} gallos</Text>
-              <Text style={styles.statSub}>{data?.aves.gallinas || 0} gallinas</Text>
+              <View style={styles.statSubItem}>
+                <RoosterIcon size={14} color="#3b82f6" />
+                <Text style={styles.statSub}>{data?.aves.gallos || 0}</Text>
+              </View>
+              <View style={styles.statSubItem}>
+                <HenIcon size={14} color="#ec4899" />
+                <Text style={styles.statSub}>{data?.aves.gallinas || 0}</Text>
+              </View>
             </View>
           </TouchableOpacity>
 
