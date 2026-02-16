@@ -96,6 +96,8 @@ export default function CruceFormScreen() {
       setFormData({
         padre_id: cruce.padre_id || '',
         madre_id: cruce.madre_id || '',
+        padre_externo: cruce.padre_externo || '',
+        madre_externo: cruce.madre_externo || '',
         fecha: cruce.fecha || '',
         objetivo: cruce.objetivo || '',
         notas: cruce.notas || '',
