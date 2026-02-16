@@ -308,12 +308,12 @@ export default function DashboardScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.actionButton}
-              onPress={() => router.push('/pelea/new')}
+              onPress={() => router.push('/pedigri')}
             >
               <View style={[styles.actionIcon, { backgroundColor: COLORS.goldLight }]}>
-                <TrophyIcon size={26} color={COLORS.gold} />
+                <PedigreeIcon size={26} color={COLORS.gold} />
               </View>
-              <Text style={styles.actionText}>Nueva Pelea</Text>
+              <Text style={styles.actionText}>Pedigrí</Text>
             </TouchableOpacity>
           </View>
         </View>
