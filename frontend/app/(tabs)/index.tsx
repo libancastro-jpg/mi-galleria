@@ -262,7 +262,7 @@ export default function DashboardScreen() {
           </TouchableOpacity>
 
           {/* Camadas */}
-          <TouchableOpacity style={styles.statCard}>
+          <TouchableOpacity style={styles.statCard} onPress={() => router.push('/camadas')}>
             <View style={styles.statHeader}>
               <EggIcon size={24} color={COLORS.gold} />
               <Text style={styles.statTitle}>Camadas</Text>
