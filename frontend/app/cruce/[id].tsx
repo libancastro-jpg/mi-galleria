@@ -219,7 +219,7 @@ export default function CruceFormScreen() {
             {/* Padre */}
             <View style={styles.parentBox}>
               <View style={styles.parentIcon}>
-                <Ionicons name="fitness" size={24} color="#3b82f6" />
+                <Ionicons name="male" size={24} color="#3b82f6" />
               </View>
               <Text style={styles.parentLabel}>Padre (Gallo)</Text>
               <TouchableOpacity
@@ -227,11 +227,13 @@ export default function CruceFormScreen() {
                 onPress={() => setShowPadreList(!showPadreList)}
               >
                 <Text style={styles.parentSelectText}>
-                  {formData.padre_id
-                    ? gallos.find((g) => g.id === formData.padre_id)?.codigo || 'Seleccionado'
-                    : 'Seleccionar'}
+                  {formData.padre_externo
+                    ? `Externo: ${formData.padre_externo.split(' (')[0]}`
+                    : formData.padre_id
+                      ? gallos.find((g) => g.id === formData.padre_id)?.codigo || 'Seleccionado'
+                      : 'Seleccionar'}
                 </Text>
-                <Ionicons name="chevron-down" size={16} color="#9ca3af" />
+                <Ionicons name="chevron-down" size={16} color="#a0a0a0" />
               </TouchableOpacity>
             </View>
 
@@ -242,7 +244,7 @@ export default function CruceFormScreen() {
             {/* Madre */}
             <View style={styles.parentBox}>
               <View style={[styles.parentIcon, styles.parentIconMadre]}>
-                <Ionicons name="egg" size={24} color="#ec4899" />
+                <Ionicons name="female" size={24} color="#ec4899" />
               </View>
               <Text style={styles.parentLabel}>Madre (Gallina)</Text>
               <TouchableOpacity
@@ -250,11 +252,13 @@ export default function CruceFormScreen() {
                 onPress={() => setShowMadreList(!showMadreList)}
               >
                 <Text style={styles.parentSelectText}>
-                  {formData.madre_id
-                    ? gallinas.find((g) => g.id === formData.madre_id)?.codigo || 'Seleccionada'
-                    : 'Seleccionar'}
+                  {formData.madre_externo
+                    ? `Externa: ${formData.madre_externo.split(' (')[0]}`
+                    : formData.madre_id
+                      ? gallinas.find((g) => g.id === formData.madre_id)?.codigo || 'Seleccionada'
+                      : 'Seleccionar'}
                 </Text>
-                <Ionicons name="chevron-down" size={16} color="#9ca3af" />
+                <Ionicons name="chevron-down" size={16} color="#a0a0a0" />
               </TouchableOpacity>
             </View>
           </View>
@@ -262,7 +266,66 @@ export default function CruceFormScreen() {
           {/* Padre List */}
           {showPadreList && (
             <View style={styles.selectList}>
-              {gallos.length === 0 ? (
+              {/* Opción Agregar Padre Externo */}
+              <TouchableOpacity
+                style={[styles.selectItem, styles.addExternalOption]}
+                onPress={() => setShowPadreExterno(!showPadreExterno)}
+              >
+                <View style={styles.addExternalRow}>
+                  <Ionicons name="add-circle" size={20} color="#f59e0b" />
+                  <Text style={styles.addExternalText}>Agregar Padre</Text>
+                </View>
+                <Text style={styles.addExternalSubtext}>De otra gallería</Text>
+              </TouchableOpacity>
+
+              {showPadreExterno && (
+                <View style={styles.externalForm}>
+                  <TextInput
+                    style={styles.externalInput}
+                    value={formData.padre_externo.split(' (')[0]}
+                    onChangeText={(text) => setFormData({ ...formData, padre_externo: text, padre_id: '' })}
+                    placeholder="Placa del padre"
+                    placeholderTextColor="#707070"
+                  />
+                  <TextInput
+                    style={styles.externalInput}
+                    value={padreGalleria}
+                    onChangeText={setPadreGalleria}
+                    placeholder="Gallería / Castador (opcional)"
+                    placeholderTextColor="#707070"
+                  />
+                  <TouchableOpacity
+                    style={styles.confirmExternalButton}
+                    onPress={() => {
+                      if (formData.padre_externo) {
+                        const placaConGalleria = padreGalleria
+                          ? `${formData.padre_externo} (${padreGalleria})`
+                          : formData.padre_externo;
+                        setFormData({ ...formData, padre_externo: placaConGalleria, padre_id: '' });
+                      }
+                      setShowPadreList(false);
+                      setShowPadreExterno(false);
+                    }}
+                  >
+                    <Text style={styles.confirmExternalText}>Confirmar</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* Limpiar */}
+              <TouchableOpacity
+                style={styles.selectItem}
+                onPress={() => {
+                  setFormData({ ...formData, padre_id: '', padre_externo: '' });
+                  setPadreGalleria('');
+                  setShowPadreList(false);
+                  setShowPadreExterno(false);
+                }}
+              >
+                <Text style={[styles.selectItemText, { color: '#a0a0a0' }]}>Ninguno / Quitar</Text>
+              </TouchableOpacity>
+
+              {gallos.length === 0 && !showPadreExterno ? (
                 <Text style={styles.noAvesText}>No hay gallos registrados</Text>
               ) : (
                 gallos.map((gallo) => (
@@ -273,8 +336,10 @@ export default function CruceFormScreen() {
                       formData.padre_id === gallo.id && styles.selectItemActive,
                     ]}
                     onPress={() => {
-                      setFormData({ ...formData, padre_id: gallo.id });
+                      setFormData({ ...formData, padre_id: gallo.id, padre_externo: '' });
+                      setPadreGalleria('');
                       setShowPadreList(false);
+                      setShowPadreExterno(false);
                     }}
                   >
                     <Text style={styles.selectItemText}>
@@ -292,7 +357,66 @@ export default function CruceFormScreen() {
           {/* Madre List */}
           {showMadreList && (
             <View style={styles.selectList}>
-              {gallinas.length === 0 ? (
+              {/* Opción Agregar Madre Externa */}
+              <TouchableOpacity
+                style={[styles.selectItem, styles.addExternalOptionMadre]}
+                onPress={() => setShowMadreExterno(!showMadreExterno)}
+              >
+                <View style={styles.addExternalRow}>
+                  <Ionicons name="add-circle" size={20} color="#ec4899" />
+                  <Text style={[styles.addExternalText, { color: '#ec4899' }]}>Agregar Madre</Text>
+                </View>
+                <Text style={styles.addExternalSubtext}>De otra gallería</Text>
+              </TouchableOpacity>
+
+              {showMadreExterno && (
+                <View style={styles.externalForm}>
+                  <TextInput
+                    style={styles.externalInput}
+                    value={formData.madre_externo.split(' (')[0]}
+                    onChangeText={(text) => setFormData({ ...formData, madre_externo: text, madre_id: '' })}
+                    placeholder="Placa de la madre"
+                    placeholderTextColor="#707070"
+                  />
+                  <TextInput
+                    style={styles.externalInput}
+                    value={madreGalleria}
+                    onChangeText={setMadreGalleria}
+                    placeholder="Gallería / Castador (opcional)"
+                    placeholderTextColor="#707070"
+                  />
+                  <TouchableOpacity
+                    style={[styles.confirmExternalButton, { backgroundColor: '#ec4899' }]}
+                    onPress={() => {
+                      if (formData.madre_externo) {
+                        const placaConGalleria = madreGalleria
+                          ? `${formData.madre_externo} (${madreGalleria})`
+                          : formData.madre_externo;
+                        setFormData({ ...formData, madre_externo: placaConGalleria, madre_id: '' });
+                      }
+                      setShowMadreList(false);
+                      setShowMadreExterno(false);
+                    }}
+                  >
+                    <Text style={styles.confirmExternalText}>Confirmar</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* Limpiar */}
+              <TouchableOpacity
+                style={styles.selectItem}
+                onPress={() => {
+                  setFormData({ ...formData, madre_id: '', madre_externo: '' });
+                  setMadreGalleria('');
+                  setShowMadreList(false);
+                  setShowMadreExterno(false);
+                }}
+              >
+                <Text style={[styles.selectItemText, { color: '#a0a0a0' }]}>Ninguna / Quitar</Text>
+              </TouchableOpacity>
+
+              {gallinas.length === 0 && !showMadreExterno ? (
                 <Text style={styles.noAvesText}>No hay gallinas registradas</Text>
               ) : (
                 gallinas.map((gallina) => (
@@ -303,8 +427,10 @@ export default function CruceFormScreen() {
                       formData.madre_id === gallina.id && styles.selectItemActive,
                     ]}
                     onPress={() => {
-                      setFormData({ ...formData, madre_id: gallina.id });
+                      setFormData({ ...formData, madre_id: gallina.id, madre_externo: '' });
+                      setMadreGalleria('');
                       setShowMadreList(false);
+                      setShowMadreExterno(false);
                     }}
                   >
                     <Text style={styles.selectItemText}>
