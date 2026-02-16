@@ -467,6 +467,41 @@ export function RoosterTabIcon({ size = 24, color = '#F5A623' }: IconProps) {
   );
 }
 
+// ============================================
+// ICONO DE AVE REALISTA PARA NAVEGACIÓN
+// Silueta más definida y profesional
+// ============================================
+export function BirdNavIcon({ size = 24, color = '#F5A623' }: IconProps) {
+  return (
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={size} height={size} viewBox="0 0 24 24" preserveAspectRatio="xMidYMid meet">
+        {/* Cresta */}
+        <Path
+          d="M15.5 2c-.8 0-1.5.5-1.8 1.2-.3-.3-.8-.5-1.2-.5-.7 0-1.3.4-1.5 1-.3-.2-.6-.3-1-.3-.8 0-1.5.7-1.5 1.5 0 .3.1.5.2.7"
+          fill={color}
+        />
+        {/* Cabeza y cuerpo */}
+        <Path
+          d="M18 7c0-1.7-1.3-3-3-3h-.5c-.3-.6-1-1-1.7-1-.4 0-.7.1-1 .3-.2-.6-.8-1-1.5-1-.4 0-.8.2-1.1.5-.5-.3-1-.5-1.7-.5C6 2.3 4.8 3.5 4.5 5c-.3-.1-.6-.2-1-.2C2.7 4.8 2 5.5 2 6.5c0 .8.5 1.4 1.2 1.7C3.1 8.4 3 8.7 3 9c0 1.3.8 2.4 2 2.8V13c0 1.5.8 2.8 2 3.5V20c0 .6.4 1 1 1s1-.4 1-1v-2h2v2c0 .6.4 1 1 1s1-.4 1-1v-3.5c1.2-.7 2-2 2-3.5v-1c.6 0 1.2-.2 1.7-.5.5.3 1 .5 1.5.5 1.4 0 2.5-1.1 2.5-2.5.2-1.1-.7-2-1.7-2.5z"
+          fill={color}
+        />
+        {/* Pico */}
+        <Path
+          d="M20 8.5l2-1-2-1c.3.6.3 1.4 0 2z"
+          fill={color}
+        />
+        {/* Ojo */}
+        <Circle cx="16" cy="6.5" r="0.8" fill="#1a1a1a" />
+        {/* Barbilla */}
+        <Path
+          d="M17 8.5c0 .5-.2 1-.5 1.3-.3-.3-.8-.5-1.2-.5.2-.3.3-.5.3-.8 0-.3-.1-.5-.2-.7.4-.2.9-.3 1.3-.1.2.2.3.5.3.8z"
+          fill={color}
+        />
+      </Svg>
+    </View>
+  );
+}
+
 // Estado - Victoria
 export function WinIcon({ size = 24, color = '#22c55e' }: IconProps) {
   return (
