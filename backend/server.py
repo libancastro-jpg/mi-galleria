@@ -389,24 +389,38 @@ async def login(credentials: UserLogin):
 async def get_me(current_user: dict = Depends(get_current_user)):
     return UserResponse(**current_user)
 
+class ProfileUpdate(BaseModel):
+    email: Optional[str] = None
+    nombre: Optional[str] = None
+
 @api_router.put("/auth/profile")
 async def update_profile(
-    email: Optional[str] = None,
-    nombre: Optional[str] = None,
+    data: ProfileUpdate,
     current_user: dict = Depends(get_current_user)
 ):
     update_data = {"updated_at": datetime.utcnow()}
-    if email is not None:
-        update_data["email"] = email
-    if nombre is not None:
-        update_data["nombre"] = nombre
+    if data.email is not None:
+        update_data["email"] = data.email
+    if data.nombre is not None:
+        update_data["nombre"] = data.nombre
     
     await db.users.update_one(
         {"_id": ObjectId(current_user["id"])},
         {"$set": update_data}
     )
     
-    return {"message": "Perfil actualizado"}
+    # Return updated user data
+    updated_user = await db.users.find_one({"_id": ObjectId(current_user["id"])})
+    return {
+        "message": "Perfil actualizado",
+        "user": {
+            "id": str(updated_user["_id"]),
+            "telefono": updated_user["telefono"],
+            "email": updated_user.get("email"),
+            "nombre": updated_user.get("nombre"),
+            "created_at": updated_user["created_at"]
+        }
+    }
 
 # ============== AVES ROUTES ==============
 
