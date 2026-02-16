@@ -453,7 +453,11 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   roosterBanner: {
+    width: 80,
+    height: 80,
     alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
     marginBottom: 16,
   },
   // Alerts
