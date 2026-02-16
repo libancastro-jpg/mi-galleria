@@ -61,7 +61,6 @@ export default function AveDetailScreen() {
   const [madre, setMadre] = useState<Ave | null>(null);
 
   const tabs = [
-    { key: 'datos', label: 'Datos', icon: 'information-circle' },
     { key: 'pedigri', label: 'Pedigrí', icon: 'git-branch' },
     { key: 'peleas', label: 'Peleas', icon: 'trophy' },
     { key: 'salud', label: 'Salud', icon: 'medical' },
