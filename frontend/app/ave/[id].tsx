@@ -308,13 +308,13 @@ export default function AveFormScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Código */}
-          <Text style={styles.label}>Código *</Text>
+          {/* Número de Placa */}
+          <Text style={styles.label}>Número de Placa *</Text>
           <TextInput
             style={styles.input}
             value={formData.codigo}
             onChangeText={(text) => setFormData({ ...formData, codigo: text })}
-            placeholder="Ej: MD-12, AB-001"
+            placeholder="Ej: 12, 001, A-15"
             placeholderTextColor="#6b7280"
           />
 
