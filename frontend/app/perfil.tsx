@@ -25,7 +25,7 @@ const COLORS = {
   redDeep: '#ef4444',
   redLight: 'rgba(239, 68, 68, 0.15)',
   grayDark: '#1a1a1a',
-  grayMedium: '#2a2a2a',
+  grayMedium: '#333333',
   grayLight: '#6b7280',
   white: '#ffffff',
   background: '#1a1a1a',

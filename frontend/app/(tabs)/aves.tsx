@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: '#2a2a2a',
+    borderColor: '#333333',
   },
   searchIcon: {
     marginRight: 8,
@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#2a2a2a',
+    borderColor: '#333333',
   },
   aveImageContainer: {
     position: 'relative',
@@ -359,7 +359,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 12,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: '#333333',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -403,7 +403,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 6,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: '#333333',
   },
   detailText: {
     fontSize: 12,

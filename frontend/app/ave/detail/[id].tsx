@@ -561,7 +561,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#2a2a2a',
+    borderBottomColor: '#333333',
   },
   backButton: {
     width: 40,
@@ -591,7 +591,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 24,
     borderBottomWidth: 1,
-    borderBottomColor: '#2a2a2a',
+    borderBottomColor: '#333333',
   },
   profilePhoto: {
     width: 100,
@@ -631,7 +631,7 @@ const styles = StyleSheet.create({
   },
   tabsContainer: {
     borderBottomWidth: 1,
-    borderBottomColor: '#2a2a2a',
+    borderBottomColor: '#333333',
   },
   tab: {
     flexDirection: 'row',
@@ -660,7 +660,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#2a2a2a',
+    borderColor: '#333333',
   },
   infoRow: {
     flexDirection: 'row',
@@ -668,7 +668,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#2a2a2a',
+    borderBottomColor: '#333333',
   },
   infoLabel: {
     fontSize: 14,
@@ -710,7 +710,7 @@ const styles = StyleSheet.create({
     padding: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#2a2a2a',
+    borderColor: '#333333',
   },
   parentIcon: {
     width: 48,
@@ -735,7 +735,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#2a2a2a',
+    borderColor: '#333333',
   },
   notesText: {
     fontSize: 14,
@@ -759,7 +759,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#2a2a2a',
+    borderColor: '#333333',
     marginBottom: 4,
   },
   pedigriCardMain: {
@@ -778,7 +778,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: '#333333',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -798,7 +798,7 @@ const styles = StyleSheet.create({
   pedigriChildren: {
     marginLeft: 20,
     borderLeftWidth: 2,
-    borderLeftColor: '#2a2a2a',
+    borderLeftColor: '#333333',
     paddingLeft: 12,
   },
   statsRow: {
@@ -813,7 +813,7 @@ const styles = StyleSheet.create({
     padding: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#2a2a2a',
+    borderColor: '#333333',
   },
   statNumber: {
     fontSize: 24,
@@ -833,7 +833,7 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#2a2a2a',
+    borderColor: '#333333',
   },
   peleaResult: {
     width: 40,
@@ -870,7 +870,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 8,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: '#333333',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -887,7 +887,7 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#2a2a2a',
+    borderColor: '#333333',
   },
   saludIcon: {
     width: 44,
@@ -936,7 +936,7 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#2a2a2a',
+    borderColor: '#333333',
   },
   hijoPhoto: {
     width: 50,
@@ -947,7 +947,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: '#333333',
     alignItems: 'center',
     justifyContent: 'center',
   },

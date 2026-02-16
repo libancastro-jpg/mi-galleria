@@ -18,7 +18,7 @@ const COLORS = {
   gold: '#d4a017',
   goldLight: 'rgba(212, 160, 23, 0.15)',
   grayDark: '#242424',
-  grayMedium: '#2a2a2a',
+  grayMedium: '#333333',
   grayLight: '#6b7280',
   white: '#ffffff',
   blue: '#3b82f6',

@@ -63,7 +63,7 @@ const COLORS = {
   blue: '#3b82f6',
   blueLight: 'rgba(59, 130, 246, 0.15)',
   grayDark: '#1a1a1a',
-  grayMedium: '#2a2a2a',
+  grayMedium: '#333333',
   grayLight: '#6b7280',
   white: '#ffffff',
   background: '#1a1a1a',

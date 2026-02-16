@@ -336,7 +336,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#2a2a2a',
+    borderBottomColor: '#333333',
   },
   backButton: {
     width: 40,
@@ -380,7 +380,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#fff',
     borderWidth: 1,
-    borderColor: '#2a2a2a',
+    borderColor: '#333333',
   },
   textArea: {
     minHeight: 100,
@@ -394,7 +394,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#2a2a2a',
+    borderColor: '#333333',
   },
   selectButtonContent: {
     flexDirection: 'row',
@@ -410,7 +410,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginTop: 8,
     borderWidth: 1,
-    borderColor: '#2a2a2a',
+    borderColor: '#333333',
     maxHeight: 200,
   },
   selectItem: {
@@ -419,7 +419,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#2a2a2a',
+    borderBottomColor: '#333333',
   },
   selectItemActive: {
     backgroundColor: 'rgba(245, 158, 11, 0.1)',
@@ -446,7 +446,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 24,
     borderWidth: 2,
-    borderColor: '#2a2a2a',
+    borderColor: '#333333',
     gap: 8,
   },
   resultadoGanoActive: {
@@ -478,7 +478,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: '#242424',
     borderWidth: 1,
-    borderColor: '#2a2a2a',
+    borderColor: '#333333',
     gap: 8,
   },
   calificacionDot: {

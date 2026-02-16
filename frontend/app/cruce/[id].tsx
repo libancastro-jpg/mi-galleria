@@ -427,7 +427,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#2a2a2a',
+    borderBottomColor: '#333333',
   },
   backButton: {
     width: 40,
@@ -470,7 +470,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#2a2a2a',
+    borderColor: '#333333',
   },
   parentIcon: {
     width: 56,
@@ -513,7 +513,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#2a2a2a',
+    borderColor: '#333333',
     maxHeight: 200,
   },
   selectItem: {
@@ -522,7 +522,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#2a2a2a',
+    borderBottomColor: '#333333',
   },
   selectItemActive: {
     backgroundColor: 'rgba(245, 158, 11, 0.1)',
@@ -543,7 +543,7 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#2a2a2a',
+    borderColor: '#333333',
   },
   consanguinidadTitle: {
     fontSize: 14,
@@ -573,7 +573,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#2a2a2a',
+    borderTopColor: '#333333',
   },
   ancestrosTitle: {
     fontSize: 13,
@@ -599,7 +599,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#fff',
     borderWidth: 1,
-    borderColor: '#2a2a2a',
+    borderColor: '#333333',
   },
   textArea: {
     minHeight: 100,
@@ -616,7 +616,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#242424',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#2a2a2a',
+    borderColor: '#333333',
   },
   estadoButtonActive: {
     backgroundColor: '#f59e0b',

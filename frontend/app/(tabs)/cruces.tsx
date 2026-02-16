@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#2a2a2a',
+    borderColor: '#333333',
   },
   cruceHeader: {
     flexDirection: 'row',
@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: '#333333',
   },
   estadoText: {
     fontSize: 12,
