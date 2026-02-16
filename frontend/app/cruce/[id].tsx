@@ -214,236 +214,253 @@ export default function CruceFormScreen() {
         </View>
 
         <ScrollView style={styles.form} contentContainerStyle={styles.formContent}>
-          {/* Parents Selection */}
-          <View style={styles.parentsContainer}>
-            {/* Padre */}
-            <View style={styles.parentBox}>
-              <View style={styles.parentIcon}>
-                <Ionicons name="male" size={24} color="#3b82f6" />
+          {/* Sección Padre */}
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionIconMale}>
+                <Ionicons name="male" size={20} color="#3b82f6" />
               </View>
-              <Text style={styles.parentLabel}>Padre (Gallo)</Text>
-              <TouchableOpacity
-                style={styles.parentSelect}
-                onPress={() => setShowPadreList(!showPadreList)}
-              >
-                <Text style={styles.parentSelectText}>
-                  {formData.padre_externo
-                    ? `Externo: ${formData.padre_externo.split(' (')[0]}`
-                    : formData.padre_id
-                      ? gallos.find((g) => g.id === formData.padre_id)?.codigo || 'Seleccionado'
-                      : 'Seleccionar'}
-                </Text>
-                <Ionicons name="chevron-down" size={16} color="#a0a0a0" />
-              </TouchableOpacity>
+              <Text style={styles.sectionTitle}>Padre (Gallo)</Text>
             </View>
 
-            <View style={styles.cruceIconContainer}>
-              <Ionicons name="git-merge" size={28} color="#f59e0b" />
-            </View>
-
-            {/* Madre */}
-            <View style={styles.parentBox}>
-              <View style={[styles.parentIcon, styles.parentIconMadre]}>
-                <Ionicons name="female" size={24} color="#ec4899" />
+            {/* Mostrar selección actual */}
+            {(formData.padre_id || formData.padre_externo) && (
+              <View style={styles.selectedParent}>
+                <View style={styles.selectedInfo}>
+                  <Ionicons name="checkmark-circle" size={20} color="#22c55e" />
+                  <Text style={styles.selectedText}>
+                    {formData.padre_externo
+                      ? `Externo: ${formData.padre_externo}`
+                      : gallos.find((g) => g.id === formData.padre_id)?.codigo || 'Seleccionado'}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => {
+                    setFormData({ ...formData, padre_id: '', padre_externo: '' });
+                    setPadreGalleria('');
+                  }}
+                >
+                  <Ionicons name="close-circle" size={24} color="#ef4444" />
+                </TouchableOpacity>
               </View>
-              <Text style={styles.parentLabel}>Madre (Gallina)</Text>
-              <TouchableOpacity
-                style={styles.parentSelect}
-                onPress={() => setShowMadreList(!showMadreList)}
-              >
-                <Text style={styles.parentSelectText}>
-                  {formData.madre_externo
-                    ? `Externa: ${formData.madre_externo.split(' (')[0]}`
-                    : formData.madre_id
-                      ? gallinas.find((g) => g.id === formData.madre_id)?.codigo || 'Seleccionada'
-                      : 'Seleccionar'}
-                </Text>
-                <Ionicons name="chevron-down" size={16} color="#a0a0a0" />
-              </TouchableOpacity>
-            </View>
+            )}
+
+            {/* Opciones de selección */}
+            {!formData.padre_id && !formData.padre_externo && (
+              <View style={styles.selectionOptions}>
+                {/* Botón seleccionar de mi gallería */}
+                <TouchableOpacity
+                  style={styles.optionButton}
+                  onPress={() => {
+                    setShowPadreList(!showPadreList);
+                    setShowPadreExterno(false);
+                  }}
+                >
+                  <Ionicons name="list" size={20} color="#3b82f6" />
+                  <Text style={styles.optionButtonText}>Seleccionar de mi Gallería</Text>
+                  <Ionicons name={showPadreList ? 'chevron-up' : 'chevron-down'} size={18} color="#a0a0a0" />
+                </TouchableOpacity>
+
+                {/* Lista de gallos */}
+                {showPadreList && (
+                  <View style={styles.optionsList}>
+                    {gallos.length === 0 ? (
+                      <Text style={styles.noAvesText}>No hay gallos registrados</Text>
+                    ) : (
+                      gallos.map((gallo) => (
+                        <TouchableOpacity
+                          key={gallo.id}
+                          style={styles.optionItem}
+                          onPress={() => {
+                            setFormData({ ...formData, padre_id: gallo.id, padre_externo: '' });
+                            setPadreGalleria('');
+                            setShowPadreList(false);
+                          }}
+                        >
+                          <Text style={styles.optionItemText}>
+                            {gallo.codigo} {gallo.nombre ? `- ${gallo.nombre}` : ''}
+                          </Text>
+                        </TouchableOpacity>
+                      ))
+                    )}
+                  </View>
+                )}
+
+                {/* Botón agregar externo */}
+                <TouchableOpacity
+                  style={[styles.optionButton, styles.optionButtonExternal]}
+                  onPress={() => {
+                    setShowPadreExterno(!showPadreExterno);
+                    setShowPadreList(false);
+                  }}
+                >
+                  <Ionicons name="add-circle" size={20} color="#f59e0b" />
+                  <Text style={[styles.optionButtonText, { color: '#f59e0b' }]}>Agregar Padre Externo</Text>
+                  <Ionicons name={showPadreExterno ? 'chevron-up' : 'chevron-down'} size={18} color="#a0a0a0" />
+                </TouchableOpacity>
+
+                {/* Formulario externo */}
+                {showPadreExterno && (
+                  <View style={styles.externalForm}>
+                    <TextInput
+                      style={styles.externalInput}
+                      value={formData.padre_externo.split(' (')[0]}
+                      onChangeText={(text) => setFormData({ ...formData, padre_externo: text, padre_id: '' })}
+                      placeholder="Placa del padre externo"
+                      placeholderTextColor="#707070"
+                    />
+                    <TextInput
+                      style={styles.externalInput}
+                      value={padreGalleria}
+                      onChangeText={setPadreGalleria}
+                      placeholder="Gallería / Criador (opcional)"
+                      placeholderTextColor="#707070"
+                    />
+                    <TouchableOpacity
+                      style={styles.confirmButton}
+                      onPress={() => {
+                        if (formData.padre_externo) {
+                          const placaConGalleria = padreGalleria
+                            ? `${formData.padre_externo} (${padreGalleria})`
+                            : formData.padre_externo;
+                          setFormData({ ...formData, padre_externo: placaConGalleria, padre_id: '' });
+                        }
+                        setShowPadreExterno(false);
+                      }}
+                    >
+                      <Text style={styles.confirmButtonText}>Confirmar Padre</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            )}
           </View>
 
-          {/* Padre List */}
-          {showPadreList && (
-            <View style={styles.selectList}>
-              {/* Opción Agregar Padre Externo */}
-              <TouchableOpacity
-                style={[styles.selectItem, styles.addExternalOption]}
-                onPress={() => setShowPadreExterno(!showPadreExterno)}
-              >
-                <View style={styles.addExternalRow}>
+          {/* Icono de cruce central */}
+          <View style={styles.cruceIconCenter}>
+            <Ionicons name="git-merge" size={32} color="#f59e0b" />
+          </View>
+
+          {/* Sección Madre */}
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionIconFemale}>
+                <Ionicons name="female" size={20} color="#ec4899" />
+              </View>
+              <Text style={styles.sectionTitle}>Madre (Gallina)</Text>
+            </View>
+
+            {/* Mostrar selección actual */}
+            {(formData.madre_id || formData.madre_externo) && (
+              <View style={styles.selectedParent}>
+                <View style={styles.selectedInfo}>
+                  <Ionicons name="checkmark-circle" size={20} color="#22c55e" />
+                  <Text style={styles.selectedText}>
+                    {formData.madre_externo
+                      ? `Externa: ${formData.madre_externo}`
+                      : gallinas.find((g) => g.id === formData.madre_id)?.codigo || 'Seleccionada'}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => {
+                    setFormData({ ...formData, madre_id: '', madre_externo: '' });
+                    setMadreGalleria('');
+                  }}
+                >
+                  <Ionicons name="close-circle" size={24} color="#ef4444" />
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Opciones de selección */}
+            {!formData.madre_id && !formData.madre_externo && (
+              <View style={styles.selectionOptions}>
+                {/* Botón seleccionar de mi gallería */}
+                <TouchableOpacity
+                  style={styles.optionButton}
+                  onPress={() => {
+                    setShowMadreList(!showMadreList);
+                    setShowMadreExterno(false);
+                  }}
+                >
+                  <Ionicons name="list" size={20} color="#ec4899" />
+                  <Text style={styles.optionButtonText}>Seleccionar de mi Gallería</Text>
+                  <Ionicons name={showMadreList ? 'chevron-up' : 'chevron-down'} size={18} color="#a0a0a0" />
+                </TouchableOpacity>
+
+                {/* Lista de gallinas */}
+                {showMadreList && (
+                  <View style={styles.optionsList}>
+                    {gallinas.length === 0 ? (
+                      <Text style={styles.noAvesText}>No hay gallinas registradas</Text>
+                    ) : (
+                      gallinas.map((gallina) => (
+                        <TouchableOpacity
+                          key={gallina.id}
+                          style={styles.optionItem}
+                          onPress={() => {
+                            setFormData({ ...formData, madre_id: gallina.id, madre_externo: '' });
+                            setMadreGalleria('');
+                            setShowMadreList(false);
+                          }}
+                        >
+                          <Text style={styles.optionItemText}>
+                            {gallina.codigo} {gallina.nombre ? `- ${gallina.nombre}` : ''}
+                          </Text>
+                        </TouchableOpacity>
+                      ))
+                    )}
+                  </View>
+                )}
+
+                {/* Botón agregar externo */}
+                <TouchableOpacity
+                  style={[styles.optionButton, styles.optionButtonExternal]}
+                  onPress={() => {
+                    setShowMadreExterno(!showMadreExterno);
+                    setShowMadreList(false);
+                  }}
+                >
                   <Ionicons name="add-circle" size={20} color="#f59e0b" />
-                  <Text style={styles.addExternalText}>Agregar Padre</Text>
-                </View>
-                <Text style={styles.addExternalSubtext}>De otra gallería</Text>
-              </TouchableOpacity>
+                  <Text style={[styles.optionButtonText, { color: '#f59e0b' }]}>Agregar Madre Externa</Text>
+                  <Ionicons name={showMadreExterno ? 'chevron-up' : 'chevron-down'} size={18} color="#a0a0a0" />
+                </TouchableOpacity>
 
-              {showPadreExterno && (
-                <View style={styles.externalForm}>
-                  <TextInput
-                    style={styles.externalInput}
-                    value={formData.padre_externo.split(' (')[0]}
-                    onChangeText={(text) => setFormData({ ...formData, padre_externo: text, padre_id: '' })}
-                    placeholder="Placa del padre"
-                    placeholderTextColor="#707070"
-                  />
-                  <TextInput
-                    style={styles.externalInput}
-                    value={padreGalleria}
-                    onChangeText={setPadreGalleria}
-                    placeholder="Gallería / Castador (opcional)"
-                    placeholderTextColor="#707070"
-                  />
-                  <TouchableOpacity
-                    style={styles.confirmExternalButton}
-                    onPress={() => {
-                      if (formData.padre_externo) {
-                        const placaConGalleria = padreGalleria
-                          ? `${formData.padre_externo} (${padreGalleria})`
-                          : formData.padre_externo;
-                        setFormData({ ...formData, padre_externo: placaConGalleria, padre_id: '' });
-                      }
-                      setShowPadreList(false);
-                      setShowPadreExterno(false);
-                    }}
-                  >
-                    <Text style={styles.confirmExternalText}>Confirmar</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {/* Limpiar */}
-              <TouchableOpacity
-                style={styles.selectItem}
-                onPress={() => {
-                  setFormData({ ...formData, padre_id: '', padre_externo: '' });
-                  setPadreGalleria('');
-                  setShowPadreList(false);
-                  setShowPadreExterno(false);
-                }}
-              >
-                <Text style={[styles.selectItemText, { color: '#a0a0a0' }]}>Ninguno / Quitar</Text>
-              </TouchableOpacity>
-
-              {gallos.length === 0 && !showPadreExterno ? (
-                <Text style={styles.noAvesText}>No hay gallos registrados</Text>
-              ) : (
-                gallos.map((gallo) => (
-                  <TouchableOpacity
-                    key={gallo.id}
-                    style={[
-                      styles.selectItem,
-                      formData.padre_id === gallo.id && styles.selectItemActive,
-                    ]}
-                    onPress={() => {
-                      setFormData({ ...formData, padre_id: gallo.id, padre_externo: '' });
-                      setPadreGalleria('');
-                      setShowPadreList(false);
-                      setShowPadreExterno(false);
-                    }}
-                  >
-                    <Text style={styles.selectItemText}>
-                      {gallo.codigo} {gallo.nombre ? `- ${gallo.nombre}` : ''}
-                    </Text>
-                    {formData.padre_id === gallo.id && (
-                      <Ionicons name="checkmark" size={20} color="#f59e0b" />
-                    )}
-                  </TouchableOpacity>
-                ))
-              )}
-            </View>
-          )}
-
-          {/* Madre List */}
-          {showMadreList && (
-            <View style={styles.selectList}>
-              {/* Opción Agregar Madre Externa */}
-              <TouchableOpacity
-                style={[styles.selectItem, styles.addExternalOptionMadre]}
-                onPress={() => setShowMadreExterno(!showMadreExterno)}
-              >
-                <View style={styles.addExternalRow}>
-                  <Ionicons name="add-circle" size={20} color="#ec4899" />
-                  <Text style={[styles.addExternalText, { color: '#ec4899' }]}>Agregar Madre</Text>
-                </View>
-                <Text style={styles.addExternalSubtext}>De otra gallería</Text>
-              </TouchableOpacity>
-
-              {showMadreExterno && (
-                <View style={styles.externalForm}>
-                  <TextInput
-                    style={styles.externalInput}
-                    value={formData.madre_externo.split(' (')[0]}
-                    onChangeText={(text) => setFormData({ ...formData, madre_externo: text, madre_id: '' })}
-                    placeholder="Placa de la madre"
-                    placeholderTextColor="#707070"
-                  />
-                  <TextInput
-                    style={styles.externalInput}
-                    value={madreGalleria}
-                    onChangeText={setMadreGalleria}
-                    placeholder="Gallería / Castador (opcional)"
-                    placeholderTextColor="#707070"
-                  />
-                  <TouchableOpacity
-                    style={[styles.confirmExternalButton, { backgroundColor: '#ec4899' }]}
-                    onPress={() => {
-                      if (formData.madre_externo) {
-                        const placaConGalleria = madreGalleria
-                          ? `${formData.madre_externo} (${madreGalleria})`
-                          : formData.madre_externo;
-                        setFormData({ ...formData, madre_externo: placaConGalleria, madre_id: '' });
-                      }
-                      setShowMadreList(false);
-                      setShowMadreExterno(false);
-                    }}
-                  >
-                    <Text style={styles.confirmExternalText}>Confirmar</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {/* Limpiar */}
-              <TouchableOpacity
-                style={styles.selectItem}
-                onPress={() => {
-                  setFormData({ ...formData, madre_id: '', madre_externo: '' });
-                  setMadreGalleria('');
-                  setShowMadreList(false);
-                  setShowMadreExterno(false);
-                }}
-              >
-                <Text style={[styles.selectItemText, { color: '#a0a0a0' }]}>Ninguna / Quitar</Text>
-              </TouchableOpacity>
-
-              {gallinas.length === 0 && !showMadreExterno ? (
-                <Text style={styles.noAvesText}>No hay gallinas registradas</Text>
-              ) : (
-                gallinas.map((gallina) => (
-                  <TouchableOpacity
-                    key={gallina.id}
-                    style={[
-                      styles.selectItem,
-                      formData.madre_id === gallina.id && styles.selectItemActive,
-                    ]}
-                    onPress={() => {
-                      setFormData({ ...formData, madre_id: gallina.id, madre_externo: '' });
-                      setMadreGalleria('');
-                      setShowMadreList(false);
-                      setShowMadreExterno(false);
-                    }}
-                  >
-                    <Text style={styles.selectItemText}>
-                      {gallina.codigo} {gallina.nombre ? `- ${gallina.nombre}` : ''}
-                    </Text>
-                    {formData.madre_id === gallina.id && (
-                      <Ionicons name="checkmark" size={20} color="#f59e0b" />
-                    )}
-                  </TouchableOpacity>
-                ))
-              )}
-            </View>
-          )}
+                {/* Formulario externo */}
+                {showMadreExterno && (
+                  <View style={styles.externalForm}>
+                    <TextInput
+                      style={styles.externalInput}
+                      value={formData.madre_externo.split(' (')[0]}
+                      onChangeText={(text) => setFormData({ ...formData, madre_externo: text, madre_id: '' })}
+                      placeholder="Placa de la madre externa"
+                      placeholderTextColor="#707070"
+                    />
+                    <TextInput
+                      style={styles.externalInput}
+                      value={madreGalleria}
+                      onChangeText={setMadreGalleria}
+                      placeholder="Gallería / Criador (opcional)"
+                      placeholderTextColor="#707070"
+                    />
+                    <TouchableOpacity
+                      style={[styles.confirmButton, { backgroundColor: '#ec4899' }]}
+                      onPress={() => {
+                        if (formData.madre_externo) {
+                          const placaConGalleria = madreGalleria
+                            ? `${formData.madre_externo} (${madreGalleria})`
+                            : formData.madre_externo;
+                          setFormData({ ...formData, madre_externo: placaConGalleria, madre_id: '' });
+                        }
+                        setShowMadreExterno(false);
+                      }}
+                    >
+                      <Text style={styles.confirmButtonText}>Confirmar Madre</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            )}
 
           {/* Consanguinidad */}
           {(consanguinidad || calculatingConsang) && (
