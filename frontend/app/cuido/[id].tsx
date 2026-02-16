@@ -193,11 +193,20 @@ export default function CuidoDetailScreen() {
     }
 
     try {
+      // Construir URL con parámetros incluyendo notas si existen
       if (actividadTipo === 'tope') {
-        await api.post(`/cuido/${cuido.id}/tope?tope_numero=${numero}`);
+        let url = `/cuido/${cuido.id}/tope?tope_numero=${numero}`;
+        if (actividadNotas) {
+          url += `&notas=${encodeURIComponent(actividadNotas)}`;
+        }
+        await api.post(url);
       } else {
         const tiempo = parseInt(actividadTiempo);
-        await api.post(`/cuido/${cuido.id}/trabajo?trabajo_numero=${numero}&tiempo_minutos=${tiempo}`);
+        let url = `/cuido/${cuido.id}/trabajo?trabajo_numero=${numero}&tiempo_minutos=${tiempo}`;
+        if (actividadNotas) {
+          url += `&notas=${encodeURIComponent(actividadNotas)}`;
+        }
+        await api.post(url);
       }
       
       // Actualizar localmente
