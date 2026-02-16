@@ -251,7 +251,7 @@ export default function DashboardScreen() {
             onPress={() => router.push('/(tabs)/cruces')}
           >
             <View style={styles.statHeader}>
-              <Ionicons name="git-merge" size={24} color={COLORS.gold} />
+              <GeneticsIcon size={24} color={COLORS.gold} />
               <Text style={styles.statTitle}>Cruces</Text>
             </View>
             {(data?.cruces_planeados || 0) > 0 ? (
