@@ -40,6 +40,21 @@ interface DashboardData {
   recordatorios_salud: number;
 }
 
+// Color palette - Professional
+const COLORS = {
+  gold: '#d4a017',
+  goldLight: 'rgba(212, 160, 23, 0.15)',
+  greenDark: '#1a5d3a',
+  greenLight: 'rgba(26, 93, 58, 0.15)',
+  redDeep: '#8b1a1a',
+  redLight: 'rgba(139, 26, 26, 0.15)',
+  grayDark: '#1a1a1a',
+  grayMedium: '#2a2a2a',
+  grayLight: '#6b7280',
+  white: '#ffffff',
+  background: '#0a0a0a',
+};
+
 export default function DashboardScreen() {
   const router = useRouter();
   const { user } = useAuth();
@@ -68,15 +83,44 @@ export default function DashboardScreen() {
     fetchDashboard();
   }, []);
 
+  const getAlertStatus = () => {
+    const count = data?.recordatorios_salud || 0;
+    if (count === 0) return { color: COLORS.greenDark, bg: COLORS.greenLight, text: 'Todo al día', icon: 'checkmark-circle' };
+    if (count <= 3) return { color: COLORS.gold, bg: COLORS.goldLight, text: `${count} recordatorio${count > 1 ? 's' : ''} pendiente${count > 1 ? 's' : ''}`, icon: 'alert-circle' };
+    return { color: COLORS.redDeep, bg: COLORS.redLight, text: `${count} alertas - Atención requerida`, icon: 'warning' };
+  };
+
+  const getCalificacionStyle = (cal: string) => {
+    switch (cal) {
+      case 'EXTRAORDINARIA':
+        return { bg: COLORS.goldLight, color: COLORS.gold, text: 'Extraordinaria' };
+      case 'BUENA':
+        return { bg: COLORS.greenLight, color: COLORS.greenDark, text: 'Buena' };
+      case 'REGULAR':
+        return { bg: 'rgba(107, 114, 128, 0.2)', color: COLORS.grayLight, text: 'Regular' };
+      case 'MALA':
+        return { bg: COLORS.redLight, color: COLORS.redDeep, text: 'Mala' };
+      default:
+        return { bg: 'rgba(107, 114, 128, 0.2)', color: COLORS.grayLight, text: cal };
+    }
+  };
+
+  const formatUserName = (name: string | undefined) => {
+    if (!name) return 'Castador';
+    return name.charAt(0).toUpperCase() + name.slice(1);
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#f59e0b" />
+          <ActivityIndicator size="large" color={COLORS.gold} />
         </View>
       </SafeAreaView>
     );
   }
+
+  const alertStatus = getAlertStatus();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -87,159 +131,249 @@ export default function DashboardScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#f59e0b"
+            tintColor={COLORS.gold}
           />
         }
       >
+        {/* Header */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>¡Hola{user?.nombre ? `, ${user.nombre}` : ''}!</Text>
-            <Text style={styles.subtitle}>Resumen de tu criadero</Text>
+          <View style={styles.headerText}>
+            <Text style={styles.welcomeText}>Bienvenido,</Text>
+            <Text style={styles.userName}>{formatUserName(user?.nombre)}</Text>
+            <Text style={styles.subtitle}>Panel General del Criadero</Text>
           </View>
-          <View style={styles.logoSmall}>
-            <RoosterIcon size={32} color="#f59e0b" />
+          <View style={styles.headerIcon}>
+            <RoosterIcon size={40} color={COLORS.gold} />
           </View>
         </View>
 
+        {/* Alertas Section */}
+        <TouchableOpacity style={[styles.alertCard, { backgroundColor: alertStatus.bg }]}>
+          <View style={[styles.alertIconContainer, { backgroundColor: alertStatus.color }]}>
+            <Ionicons name={alertStatus.icon as any} size={22} color={COLORS.white} />
+          </View>
+          <View style={styles.alertContent}>
+            <Text style={styles.alertTitle}>Recordatorios</Text>
+            <Text style={[styles.alertText, { color: alertStatus.color }]}>
+              {alertStatus.text}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={alertStatus.color} />
+        </TouchableOpacity>
+
         {/* Stats Cards */}
         <View style={styles.statsGrid}>
+          {/* Aves Activas */}
           <TouchableOpacity
-            style={[styles.statCard, styles.statCardPrimary]}
+            style={styles.statCard}
             onPress={() => router.push('/(tabs)/aves')}
           >
-            <RoosterIcon size={28} color="#f59e0b" />
-            <Text style={styles.statNumber}>{data?.aves.total_activas || 0}</Text>
-            <Text style={styles.statLabel}>Aves Activas</Text>
-            <View style={styles.statSubRow}>
-              <View style={styles.statSubItem}>
-                <RoosterIcon size={14} color="#3b82f6" />
-                <Text style={styles.statSub}>{data?.aves.gallos || 0}</Text>
-              </View>
-              <View style={styles.statSubItem}>
-                <HenIcon size={14} color="#ec4899" />
-                <Text style={styles.statSub}>{data?.aves.gallinas || 0}</Text>
-              </View>
+            <View style={styles.statHeader}>
+              <RoosterIcon size={24} color={COLORS.gold} />
+              <Text style={styles.statTitle}>Aves Activas</Text>
             </View>
+            {(data?.aves.total_activas || 0) > 0 ? (
+              <>
+                <Text style={styles.statNumber}>{data?.aves.total_activas || 0}</Text>
+                <View style={styles.statDetails}>
+                  <View style={styles.statDetailRow}>
+                    <RoosterIcon size={14} color={COLORS.gold} />
+                    <Text style={styles.statDetailText}>Gallos: {data?.aves.gallos || 0}</Text>
+                  </View>
+                  <View style={styles.statDetailRow}>
+                    <HenIcon size={14} color={COLORS.gold} />
+                    <Text style={styles.statDetailText}>Gallinas: {data?.aves.gallinas || 0}</Text>
+                  </View>
+                </View>
+              </>
+            ) : (
+              <Text style={styles.emptyCardText}>Aún no tienes aves registradas.</Text>
+            )}
           </TouchableOpacity>
 
+          {/* Rendimiento */}
           <TouchableOpacity
             style={styles.statCard}
             onPress={() => router.push('/(tabs)/peleas')}
           >
-            <Ionicons name="trophy" size={28} color="#22c55e" />
-            <Text style={styles.statNumber}>
-              {data?.peleas.ganadas || 0}/{data?.peleas.total || 0}
-            </Text>
-            <Text style={styles.statLabel}>Victorias</Text>
-            <Text style={styles.statPercent}>
-              {data?.peleas.porcentaje_victorias || 0}%
-            </Text>
+            <View style={styles.statHeader}>
+              <Ionicons name="trophy" size={24} color={COLORS.gold} />
+              <Text style={styles.statTitle}>Rendimiento</Text>
+            </View>
+            {(data?.peleas.total || 0) > 0 ? (
+              <>
+                <View style={styles.rendimientoStats}>
+                  <View style={styles.rendimientoRow}>
+                    <Text style={[styles.rendimientoLabel, { color: COLORS.greenDark }]}>Ganadas:</Text>
+                    <Text style={[styles.rendimientoValue, { color: COLORS.greenDark }]}>{data?.peleas.ganadas || 0}</Text>
+                  </View>
+                  <View style={styles.rendimientoRow}>
+                    <Text style={[styles.rendimientoLabel, { color: COLORS.redDeep }]}>Perdidas:</Text>
+                    <Text style={[styles.rendimientoValue, { color: COLORS.redDeep }]}>{data?.peleas.perdidas || 0}</Text>
+                  </View>
+                  <View style={styles.rendimientoRow}>
+                    <Text style={styles.rendimientoLabel}>Efectividad:</Text>
+                    <Text style={[styles.rendimientoValue, { color: COLORS.gold }]}>{data?.peleas.porcentaje_victorias || 0}%</Text>
+                  </View>
+                </View>
+                {/* Progress Bar */}
+                <View style={styles.progressBarContainer}>
+                  <View style={styles.progressBarBg}>
+                    <View 
+                      style={[
+                        styles.progressBarFill, 
+                        { width: `${data?.peleas.porcentaje_victorias || 0}%` }
+                      ]} 
+                    />
+                  </View>
+                </View>
+              </>
+            ) : (
+              <Text style={styles.emptyCardText}>Sin peleas registradas.</Text>
+            )}
           </TouchableOpacity>
         </View>
 
         <View style={styles.statsGrid}>
+          {/* Cruces */}
           <TouchableOpacity
             style={styles.statCard}
             onPress={() => router.push('/(tabs)/cruces')}
           >
-            <Ionicons name="git-merge" size={28} color="#3b82f6" />
-            <Text style={styles.statNumber}>{data?.cruces_planeados || 0}</Text>
-            <Text style={styles.statLabel}>Cruces Planeados</Text>
+            <View style={styles.statHeader}>
+              <Ionicons name="git-merge" size={24} color={COLORS.gold} />
+              <Text style={styles.statTitle}>Cruces</Text>
+            </View>
+            {(data?.cruces_planeados || 0) > 0 ? (
+              <View style={styles.cruceStats}>
+                <View style={styles.cruceRow}>
+                  <Text style={styles.cruceLabel}>Planeados:</Text>
+                  <Text style={styles.cruceValue}>{data?.cruces_planeados || 0}</Text>
+                </View>
+                <View style={styles.cruceRow}>
+                  <Text style={styles.cruceLabel}>Activos:</Text>
+                  <Text style={styles.cruceValue}>0</Text>
+                </View>
+              </View>
+            ) : (
+              <Text style={styles.emptyCardText}>No hay cruces activos.</Text>
+            )}
           </TouchableOpacity>
 
+          {/* Camadas */}
           <TouchableOpacity style={styles.statCard}>
-            <Ionicons name="egg" size={28} color="#a855f7" />
-            <Text style={styles.statNumber}>{data?.camadas_activas || 0}</Text>
-            <Text style={styles.statLabel}>Camadas Activas</Text>
+            <View style={styles.statHeader}>
+              <Ionicons name="egg" size={24} color={COLORS.gold} />
+              <Text style={styles.statTitle}>Camadas</Text>
+            </View>
+            {(data?.camadas_activas || 0) > 0 ? (
+              <View style={styles.camadaStats}>
+                <View style={styles.camadaRow}>
+                  <Text style={styles.camadaLabel}>Activas:</Text>
+                  <Text style={styles.camadaValue}>{data?.camadas_activas || 0}</Text>
+                </View>
+                <View style={styles.camadaRow}>
+                  <Text style={styles.camadaLabel}>En incubación:</Text>
+                  <Text style={styles.camadaValue}>0</Text>
+                </View>
+              </View>
+            ) : (
+              <Text style={styles.emptyCardText}>No hay camadas activas.</Text>
+            )}
           </TouchableOpacity>
         </View>
 
-        {/* Health Reminders */}
-        {(data?.recordatorios_salud || 0) > 0 && (
-          <TouchableOpacity style={styles.reminderCard}>
-            <View style={styles.reminderIcon}>
-              <Ionicons name="notifications" size={24} color="#ef4444" />
-            </View>
-            <View style={styles.reminderContent}>
-              <Text style={styles.reminderTitle}>Recordatorios de Salud</Text>
-              <Text style={styles.reminderText}>
-                {data?.recordatorios_salud} tratamientos próximos esta semana
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#6b7280" />
-          </TouchableOpacity>
-        )}
-
-        {/* Recent Fights */}
+        {/* Últimas Peleas */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Últimas Peleas</Text>
-            <TouchableOpacity onPress={() => router.push('/(tabs)/peleas')}>
-              <Text style={styles.sectionLink}>Ver todas</Text>
-            </TouchableOpacity>
+            {(data?.peleas.recientes?.length || 0) > 0 && (
+              <TouchableOpacity onPress={() => router.push('/(tabs)/peleas')}>
+                <Text style={styles.sectionLink}>Ver todas</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {data?.peleas.recientes && data.peleas.recientes.length > 0 ? (
-            data.peleas.recientes.map((pelea) => (
-              <View key={pelea.id} style={styles.fightItem}>
-                <View
-                  style={[
-                    styles.fightResult,
-                    pelea.resultado === 'GANO' ? styles.fightWin : styles.fightLoss,
-                  ]}
-                >
-                  <Text style={styles.fightResultText}>
-                    {pelea.resultado === 'GANO' ? 'G' : 'P'}
-                  </Text>
+            data.peleas.recientes.map((pelea) => {
+              const calStyle = getCalificacionStyle(pelea.calificacion);
+              return (
+                <View key={pelea.id} style={styles.peleaItem}>
+                  <View
+                    style={[
+                      styles.peleaResult,
+                      pelea.resultado === 'GANO' ? styles.peleaWin : styles.peleaLoss,
+                    ]}
+                  >
+                    <Text style={styles.peleaResultText}>
+                      {pelea.resultado === 'GANO' ? 'G' : 'P'}
+                    </Text>
+                  </View>
+                  <View style={styles.peleaInfo}>
+                    <Text style={styles.peleaAveName}>
+                      {pelea.ave_codigo || pelea.ave_nombre || 'Ave'}
+                    </Text>
+                    <Text style={[
+                      styles.peleaResultLabel,
+                      { color: pelea.resultado === 'GANO' ? COLORS.greenDark : COLORS.redDeep }
+                    ]}>
+                      {pelea.resultado === 'GANO' ? 'GANÓ' : 'PERDIÓ'}
+                    </Text>
+                  </View>
+                  <View style={[styles.calificacionBadge, { backgroundColor: calStyle.bg }]}>
+                    <Text style={[styles.calificacionText, { color: calStyle.color }]}>
+                      {calStyle.text}
+                    </Text>
+                  </View>
                 </View>
-                <View style={styles.fightInfo}>
-                  <Text style={styles.fightCode}>
-                    {pelea.ave_codigo || 'Sin código'}
-                  </Text>
-                  <Text style={styles.fightDate}>{pelea.fecha}</Text>
-                </View>
-                <View style={styles.fightRating}>
-                  <Text style={styles.fightRatingText}>
-                    {pelea.calificacion?.charAt(0) || '-'}
-                  </Text>
-                </View>
-              </View>
-            ))
+              );
+            })
           ) : (
-            <View style={styles.emptyState}>
-              <Ionicons name="trophy-outline" size={40} color="#4b5563" />
-              <Text style={styles.emptyText}>Sin peleas registradas</Text>
+            <View style={styles.emptyPeleas}>
+              <Ionicons name="trophy-outline" size={56} color={COLORS.grayMedium} />
+              <Text style={styles.emptyPeleasTitle}>Aún no hay peleas registradas</Text>
+              <Text style={styles.emptyPeleasSubtitle}>
+                Registra una pelea para comenzar a medir rendimiento.
+              </Text>
             </View>
           )}
         </View>
 
-        {/* Quick Actions */}
+        {/* Acciones Rápidas */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Acciones Rápidas</Text>
           <View style={styles.actionsGrid}>
             <TouchableOpacity
               style={styles.actionButton}
+              onPress={() => router.push('/pelea/new')}
+            >
+              <View style={[styles.actionIcon, { backgroundColor: COLORS.goldLight }]}>
+                <Ionicons name="trophy" size={26} color={COLORS.gold} />
+              </View>
+              <Text style={styles.actionText}>Nueva Pelea</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionButton}
               onPress={() => router.push('/ave/new')}
             >
-              <RoosterIcon size={24} color="#f59e0b" />
+              <View style={[styles.actionIcon, { backgroundColor: COLORS.goldLight }]}>
+                <RoosterIcon size={26} color={COLORS.gold} />
+              </View>
               <Text style={styles.actionText}>Nueva Ave</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.actionButton}
               onPress={() => router.push('/cruce/new')}
             >
-              <Ionicons name="git-merge" size={24} color="#3b82f6" />
+              <View style={[styles.actionIcon, { backgroundColor: COLORS.goldLight }]}>
+                <Ionicons name="git-merge" size={26} color={COLORS.gold} />
+              </View>
               <Text style={styles.actionText}>Nuevo Cruce</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => router.push('/pelea/new')}
-            >
-              <Ionicons name="trophy" size={24} color="#22c55e" />
-              <Text style={styles.actionText}>Nueva Pelea</Text>
             </TouchableOpacity>
           </View>
         </View>
+
+        <View style={{ height: 24 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -248,7 +382,7 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0a0a',
+    backgroundColor: COLORS.background,
   },
   loadingContainer: {
     flex: 1,
@@ -261,30 +395,79 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
   },
+  // Header
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
+    alignItems: 'flex-start',
+    marginBottom: 20,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.grayMedium,
   },
-  greeting: {
+  headerText: {
+    flex: 1,
+  },
+  welcomeText: {
+    fontSize: 16,
+    color: COLORS.grayLight,
+    fontWeight: '500',
+  },
+  userName: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#9ca3af',
+    color: COLORS.white,
     marginTop: 4,
   },
-  logoSmall: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+  subtitle: {
+    fontSize: 14,
+    color: COLORS.gold,
+    marginTop: 8,
+    fontWeight: '500',
+    letterSpacing: 0.5,
+  },
+  headerIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: COLORS.goldLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: COLORS.gold,
+  },
+  // Alerts
+  alertCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 20,
+  },
+  alertIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  alertContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  alertTitle: {
+    fontSize: 13,
+    color: COLORS.grayLight,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  alertText: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  // Stats Grid
   statsGrid: {
     flexDirection: 'row',
     gap: 12,
@@ -292,159 +475,212 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#141414',
+    backgroundColor: COLORS.grayDark,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#2a2a2a',
+    borderColor: COLORS.grayMedium,
+    minHeight: 140,
   },
-  statCardPrimary: {
-    borderColor: 'rgba(245, 158, 11, 0.3)',
+  statHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  statTitle: {
+    fontSize: 14,
+    color: COLORS.grayLight,
+    fontWeight: '600',
   },
   statNumber: {
-    fontSize: 32,
+    fontSize: 42,
     fontWeight: 'bold',
-    color: '#fff',
+    color: COLORS.white,
+    marginBottom: 8,
+  },
+  statDetails: {
+    gap: 6,
+  },
+  statDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  statDetailText: {
+    fontSize: 13,
+    color: COLORS.grayLight,
+  },
+  emptyCardText: {
+    fontSize: 13,
+    color: COLORS.grayLight,
+    fontStyle: 'italic',
     marginTop: 8,
   },
-  statLabel: {
+  // Rendimiento
+  rendimientoStats: {
+    gap: 6,
+    marginBottom: 12,
+  },
+  rendimientoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  rendimientoLabel: {
+    fontSize: 13,
+    color: COLORS.grayLight,
+  },
+  rendimientoValue: {
     fontSize: 14,
-    color: '#9ca3af',
+    fontWeight: 'bold',
+    color: COLORS.white,
+  },
+  progressBarContainer: {
     marginTop: 4,
   },
-  statSubRow: {
-    flexDirection: 'row',
-    gap: 12,
+  progressBarBg: {
+    height: 6,
+    backgroundColor: COLORS.grayMedium,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: COLORS.gold,
+    borderRadius: 3,
+  },
+  // Cruces
+  cruceStats: {
+    gap: 8,
     marginTop: 8,
   },
-  statSubItem: {
+  cruceRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+    justifyContent: 'space-between',
   },
-  statSub: {
-    fontSize: 12,
-    color: '#6b7280',
+  cruceLabel: {
+    fontSize: 13,
+    color: COLORS.grayLight,
   },
-  statPercent: {
+  cruceValue: {
     fontSize: 14,
-    color: '#22c55e',
-    marginTop: 4,
+    fontWeight: 'bold',
+    color: COLORS.white,
   },
-  reminderCard: {
+  // Camadas
+  camadaStats: {
+    gap: 8,
+    marginTop: 8,
+  },
+  camadaRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
+    justifyContent: 'space-between',
   },
-  reminderIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(239, 68, 68, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
+  camadaLabel: {
+    fontSize: 13,
+    color: COLORS.grayLight,
   },
-  reminderContent: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  reminderTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  reminderText: {
+  camadaValue: {
     fontSize: 14,
-    color: '#ef4444',
-    marginTop: 2,
+    fontWeight: 'bold',
+    color: COLORS.white,
   },
+  // Section
   section: {
-    marginTop: 16,
+    marginTop: 20,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
+    fontWeight: 'bold',
+    color: COLORS.white,
   },
   sectionLink: {
     fontSize: 14,
-    color: '#f59e0b',
+    color: COLORS.gold,
+    fontWeight: '600',
   },
-  fightItem: {
+  // Peleas
+  peleaItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#141414',
+    backgroundColor: COLORS.grayDark,
     borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: COLORS.grayMedium,
   },
-  fightResult: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  peleaResult: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  fightWin: {
-    backgroundColor: 'rgba(34, 197, 94, 0.2)',
+  peleaWin: {
+    backgroundColor: COLORS.greenLight,
   },
-  fightLoss: {
-    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+  peleaLoss: {
+    backgroundColor: COLORS.redLight,
   },
-  fightResultText: {
-    fontSize: 16,
+  peleaResultText: {
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#fff',
+    color: COLORS.white,
   },
-  fightInfo: {
+  peleaInfo: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: 14,
   },
-  fightCode: {
+  peleaAveName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: COLORS.white,
   },
-  fightDate: {
-    fontSize: 13,
-    color: '#6b7280',
-    marginTop: 2,
+  peleaResultLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 4,
+    letterSpacing: 0.5,
   },
-  fightRating: {
-    width: 32,
-    height: 32,
+  calificacionBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: '#2a2a2a',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
-  fightRatingText: {
-    fontSize: 14,
+  calificacionText: {
+    fontSize: 12,
     fontWeight: '600',
-    color: '#f59e0b',
   },
-  emptyState: {
+  // Empty Peleas
+  emptyPeleas: {
     alignItems: 'center',
-    padding: 32,
-    backgroundColor: '#141414',
-    borderRadius: 12,
+    paddingVertical: 40,
+    backgroundColor: COLORS.grayDark,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.grayMedium,
   },
-  emptyText: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 12,
+  emptyPeleasTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.white,
+    marginTop: 16,
   },
+  emptyPeleasSubtitle: {
+    fontSize: 13,
+    color: COLORS.grayLight,
+    marginTop: 8,
+    textAlign: 'center',
+    paddingHorizontal: 24,
+  },
+  // Actions
   actionsGrid: {
     flexDirection: 'row',
     gap: 12,
@@ -452,16 +688,25 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
-    backgroundColor: '#141414',
-    borderRadius: 12,
+    backgroundColor: COLORS.grayDark,
+    borderRadius: 16,
     padding: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#2a2a2a',
+    borderColor: COLORS.grayMedium,
+  },
+  actionIcon: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
   },
   actionText: {
     fontSize: 13,
-    color: '#fff',
-    marginTop: 8,
+    color: COLORS.white,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
