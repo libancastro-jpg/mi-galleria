@@ -2,7 +2,7 @@ import React from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Platform } from 'react-native';
-import { BirdIcon } from '../../src/components/BirdIcons';
+import { AvesIcon } from '../../src/components/BirdIcons';
 
 // Color palette
 const COLORS = {
@@ -50,8 +50,8 @@ export default function TabLayout() {
         name="aves"
         options={{
           title: 'Aves',
-          tabBarIcon: ({ color, size }) => (
-            <BirdIcon size={size} color={color} />
+          tabBarIcon: ({ size }) => (
+            <AvesIcon size={size} />
           ),
         }}
       />
