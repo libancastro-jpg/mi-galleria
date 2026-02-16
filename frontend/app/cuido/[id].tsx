@@ -481,13 +481,25 @@ export default function CuidoDetailScreen() {
         ) : (
           <View style={styles.actividadesGrid}>
             {topes.sort((a, b) => a.numero - b.numero).map((tope) => (
-              <View key={tope.id} style={styles.actividadCard}>
+              <TouchableOpacity 
+                key={tope.id} 
+                style={styles.actividadCard}
+                onPress={() => {
+                  setSelectedActividad(tope);
+                  setShowDetalleModal(true);
+                }}
+              >
                 <View style={styles.actividadIconCompleted}>
                   <Ionicons name="flash" size={20} color="#000" />
                 </View>
                 <Text style={styles.actividadLabel}>Tope {tope.numero}</Text>
                 <Text style={styles.actividadFecha}>{formatDate(tope.fecha)}</Text>
-              </View>
+                {tope.notas && (
+                  <View style={styles.actividadNotasIndicator}>
+                    <Ionicons name="document-text" size={12} color={COLORS.green} />
+                  </View>
+                )}
+              </TouchableOpacity>
             ))}
           </View>
         )}
