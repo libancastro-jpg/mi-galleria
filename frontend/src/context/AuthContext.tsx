@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '../services/api';
+import { Platform } from 'react-native';
 
 interface User {
   id: string;
@@ -19,6 +20,7 @@ interface AuthContextType {
   register: (telefono: string, pin: string, email?: string, nombre?: string) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (data: { email?: string; nombre?: string }) => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -82,23 +84,69 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    await AsyncStorage.removeItem('auth_token');
-    await AsyncStorage.removeItem('auth_user');
-    api.setToken(null);
-    setToken(null);
-    setUser(null);
+    try {
+      // Clear AsyncStorage
+      await AsyncStorage.removeItem('auth_token');
+      await AsyncStorage.removeItem('auth_user');
+      
+      // Clear API token
+      api.setToken(null);
+      
+      // Clear state
+      setToken(null);
+      setUser(null);
+      
+      // For web, also clear localStorage directly
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        try {
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('auth_user');
+          // Clear all AsyncStorage items for web
+          const keys = Object.keys(localStorage);
+          keys.forEach(key => {
+            if (key.includes('auth') || key.includes('token') || key.includes('user')) {
+              localStorage.removeItem(key);
+            }
+          });
+        } catch (e) {
+          console.log('Error clearing web storage:', e);
+        }
+      }
+      
+      console.log('Logout successful');
+    } catch (error) {
+      console.error('Error during logout:', error);
+      // Force clear state even if storage fails
+      setToken(null);
+      setUser(null);
+    }
   };
 
   const updateProfile = async (data: { email?: string; nombre?: string }) => {
     try {
-      await api.put('/auth/profile', data);
-      if (user) {
+      const response = await api.put('/auth/profile', data);
+      if (response.user) {
+        setUser(response.user);
+        await AsyncStorage.setItem('auth_user', JSON.stringify(response.user));
+      } else if (user) {
         const updatedUser = { ...user, ...data };
         setUser(updatedUser);
         await AsyncStorage.setItem('auth_user', JSON.stringify(updatedUser));
       }
     } catch (error: any) {
       throw new Error(error.message || 'Error al actualizar perfil');
+    }
+  };
+
+  const refreshUser = async () => {
+    try {
+      const response = await api.get('/auth/me');
+      if (response) {
+        setUser(response);
+        await AsyncStorage.setItem('auth_user', JSON.stringify(response));
+      }
+    } catch (error) {
+      console.error('Error refreshing user:', error);
     }
   };
 
@@ -113,6 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         register,
         logout,
         updateProfile,
+        refreshUser,
       }}
     >
       {children}
