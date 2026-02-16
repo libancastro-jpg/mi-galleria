@@ -52,7 +52,7 @@ export function TestCircleIcon({ size = 24, color = '#F5A623' }: IconProps) {
 // ============================================
 // Silueta vectorial profesional - perfil izquierdo
 // Postura VERTICAL erguida - gallo de pelea
-// viewBox="0 0 512 512" - estándar para iconos
+// viewBox="0 0 100 100" - cuadrado perfecto
 // ============================================
 export function RoosterIcon({ size = 24, color = '#F5A623' }: IconProps) {
   return (
@@ -65,151 +65,77 @@ export function RoosterIcon({ size = 24, color = '#F5A623' }: IconProps) {
       <Svg 
         width={size} 
         height={size} 
-        viewBox="0 0 512 512" 
+        viewBox="0 0 100 100" 
         preserveAspectRatio="xMidYMid meet"
       >
-        {/* Gallo de pelea - postura erguida y orgullosa */}
-        <G>
-          {/* Cabeza */}
-          <Path
-            d="M320 85
-               c25 5 40 25 35 50
-               l-8 25
-               c10 15 8 35-5 48
-               l-15 12"
-            fill={color}
-          />
-          {/* Cresta grande y prominente */}
-          <Path
-            d="M295 45
-               c8-25 35-30 50-12
-               c10 12 5 30-8 38
-               c12-18 35-15 45 5
-               c8 15 0 35-18 40
-               l-30 5
-               c5-20-5-40-25-45
-               l-14-31
-               z"
-            fill={color}
-          />
-          {/* Pico */}
-          <Path
-            d="M355 115
-               l45 20
-               l-45 18
-               z"
-            fill={color}
-          />
-          {/* Barbilla */}
-          <Path
-            d="M330 155
-               c12 15 8 35-10 42
-               c-15-5-15-28 0-45
-               z"
-            fill={color}
-          />
-          {/* Ojo */}
-          <Circle cx="325" cy="105" r="10" fill="#1a1a1a" />
-          {/* Cuello largo */}
-          <Path
-            d="M290 170
-               c-15 10-30 35-35 60
-               l-8 50
-               c-5 25-2 50 8 72"
-            fill={color}
-          />
-          {/* Cuerpo principal - pecho prominente */}
-          <Path
-            d="M255 352
-               c-50-5-90-35-105-80
-               c-18-55-5-115 35-155
-               l40-30
-               c10-8 22-12 35-10
-               c35 5 60 35 70 70
-               l8 45
-               c5 35-5 72-30 100
-               c-20 25-45 45-75 55
-               l22 5
-               z"
-            fill={color}
-          />
-          {/* Cola arqueada - 3 plumas grandes */}
-          <Path
-            d="M148 280
-               c-35-50-50-120-20-175
-               c18-32 55-38 75-12
-               c15 20 8 50-8 78
-               c-18 35-15 75 8 110
-               l-20 8
-               c-15-2-28-5-35-9
-               z"
-            fill={color}
-          />
-          <Path
-            d="M168 265
-               c-30-55-38-125-5-172
-               c20-28 55-30 72-5
-               c12 20 2 48-15 75
-               c-20 32-18 70 5 105
-               l-25 5
-               c-12-2-25-5-32-8
-               z"
-            fill={color}
-          />
-          <Path
-            d="M190 248
-               c-25-55-28-118 5-160
-               c22-28 55-25 68 2
-               c10 20-2 48-22 72
-               c-22 30-22 68-2 100
-               l-22 2
-               c-12 0-22-5-27-16
-               z"
-            fill={color}
-          />
-          {/* Ala */}
-          <Path
-            d="M280 280
-               c20-15 35-10 42 12
-               c5 18-8 38-28 48
-               c-25 12-48 8-62-12
-               c15 5 32-2 40-18
-               c5-12 2-25-8-32
-               l16 2
-               z"
-            fill={color}
-            opacity={0.9}
-          />
-          {/* Patas - fuertes y firmes */}
-          <Path
-            d="M235 440
-               L235 480
-               L210 500
-               M235 480
-               L235 500
-               M235 480
-               L260 500"
-            stroke={color}
-            strokeWidth={18}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            fill="none"
-          />
-          <Path
-            d="M290 430
-               L295 475
-               L270 495
-               M295 475
-               L295 495
-               M295 475
-               L320 495"
-            stroke={color}
-            strokeWidth={18}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            fill="none"
-          />
-        </G>
+        {/* Gallo de pelea - silueta unificada simple */}
+        <Path
+          d="M65 20 
+             Q72 18 74 25 
+             Q75 30 72 33
+             L78 36 
+             L72 39
+             Q73 42 70 45
+             Q68 47 65 46
+             L62 50
+             Q65 55 63 62
+             Q60 70 54 75
+             L52 78
+             L52 88
+             L48 92
+             M52 88 L52 92
+             M52 88 L56 92
+             L44 78
+             Q38 72 36 65
+             Q34 58 36 50
+             L32 48
+             Q28 45 30 40
+             Q32 36 38 38
+             L42 42
+             Q40 36 43 30
+             Q46 25 52 24
+             L55 28
+             Q58 24 63 24
+             Z
+             M32 45
+             Q25 38 28 28
+             Q30 22 38 24
+             Q42 26 40 32
+             Q38 38 42 44
+             M35 42
+             Q30 34 34 26
+             Q37 20 44 23
+             Q47 26 44 32
+             Q42 38 46 44
+             M38 40
+             Q35 32 40 25
+             Q44 20 50 24
+             Q52 28 48 34
+             Q45 40 48 46"
+          fill={color}
+          fillRule="evenodd"
+        />
+        {/* Cresta */}
+        <Path
+          d="M62 18
+             Q66 12 72 14
+             Q76 16 74 22
+             Q72 18 68 20
+             Q65 18 62 18
+             Z"
+          fill={color}
+        />
+        {/* Ojo */}
+        <Circle cx="68" cy="28" r="2" fill="#1a1a1a" />
+        {/* Pata derecha */}
+        <Path
+          d="M58 78 L60 88 L56 92 M60 88 L60 92 M60 88 L64 92"
+          stroke={color}
+          strokeWidth={3}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
       </Svg>
     </View>
   );
