@@ -17,6 +17,10 @@ from bson import ObjectId
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
+# Configure logging first
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 # MongoDB connection
 mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
 db_name = os.environ.get('DB_NAME', 'castador_pro')
@@ -34,10 +38,6 @@ ACCESS_TOKEN_EXPIRE_DAYS = 30
 app = FastAPI(title="Castador Pro API")
 api_router = APIRouter(prefix="/api")
 security = HTTPBearer(auto_error=False)
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 # ============== MODELS ==============
 
