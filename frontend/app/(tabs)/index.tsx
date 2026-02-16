@@ -147,7 +147,7 @@ export default function DashboardScreen() {
               style={styles.profileButton}
               onPress={() => router.push('/perfil')}
             >
-              <Ionicons name="person-circle" size={36} color={COLORS.gold} />
+              <UserIcon size={32} color={COLORS.gold} />
             </TouchableOpacity>
           </View>
         </View>
