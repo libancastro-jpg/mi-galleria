@@ -739,6 +739,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#fff',
+    textAlign: 'center',
+  },
+  parentExternal: {
+    fontSize: 10,
+    color: '#f59e0b',
+    marginTop: 4,
+    fontWeight: '500',
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
   notesCard: {
     backgroundColor: '#242424',
