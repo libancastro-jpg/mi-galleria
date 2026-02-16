@@ -1,6 +1,6 @@
 import React from 'react';
 import Svg, { Path, Circle, G } from 'react-native-svg';
-import { View } from 'react-native';
+import { View, Image } from 'react-native';
 
 /**
  * Sistema de Iconos Profesionales - Castador Pro
@@ -19,6 +19,37 @@ interface IconProps {
   color?: string;
   strokeWidth?: number;
 }
+
+// ============================================
+// ICONO OFICIAL DE AVES - PNG ESTÁTICO
+// Usado en: Navegación "Aves", Filtros "Gallos"/"Gallinas", "Aves activas"
+// ============================================
+const RoosterPNGSource = require('../../assets/icono_aves_rooster_blanco.png');
+
+export function AvesIcon({ size = 24 }: { size?: number }) {
+  return (
+    <View style={{ 
+      width: size, 
+      height: size, 
+      alignItems: 'center', 
+      justifyContent: 'center' 
+    }}>
+      <Image
+        source={RoosterPNGSource}
+        style={{
+          width: size,
+          height: size,
+        }}
+        resizeMode="contain"
+      />
+    </View>
+  );
+}
+
+// Alias para uso en diferentes contextos
+export const RoosterPNGIcon = AvesIcon;
+export const GalloIcon = AvesIcon;
+export const GallinaIcon = AvesIcon;
 
 // ============================================
 // ICONO DE AVE/PÁJARO - Para navegación "Aves"
