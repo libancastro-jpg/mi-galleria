@@ -16,7 +16,7 @@ interface RoosterLogoProps {
 }
 
 export function RoosterLogo({ size = 72 }: RoosterLogoProps) {
-  const padding = 4;
+  const padding = 1;
   const imageSize = size - (padding * 2);
   
   return (
