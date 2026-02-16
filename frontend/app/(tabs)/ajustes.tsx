@@ -277,10 +277,10 @@ export default function SaludScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Salud y Ajustes</Text>
+        <Text style={styles.title}>Salud</Text>
       </View>
 
-      {/* Tabs */}
+      {/* Tabs - Solo Recordatorios e Historial */}
       <View style={styles.tabs}>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'recordatorios' && styles.tabActive]}
@@ -308,19 +308,6 @@ export default function SaludScreen() {
             Historial
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'config' && styles.tabActive]}
-          onPress={() => setActiveTab('config')}
-        >
-          <Ionicons
-            name="settings"
-            size={18}
-            color={activeTab === 'config' ? COLORS.gold : COLORS.grayLight}
-          />
-          <Text style={[styles.tabText, activeTab === 'config' && styles.tabTextActive]}>
-            Ajustes
-          </Text>
-        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -336,7 +323,6 @@ export default function SaludScreen() {
       >
         {activeTab === 'recordatorios' && renderRecordatorios()}
         {activeTab === 'historial' && renderHistorial()}
-        {activeTab === 'config' && renderConfig()}
       </ScrollView>
     </SafeAreaView>
   );
