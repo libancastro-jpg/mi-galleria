@@ -153,9 +153,9 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        {/* Rooster Logo - Imagen decorativa, contenedor 64x64 */}
+        {/* Rooster Logo - Imagen oficial 72x72 */}
         <View style={styles.roosterBanner}>
-          <RoosterLogo size={64} />
+          <RoosterLogo size={72} />
         </View>
 
         {/* Alertas Section */}
