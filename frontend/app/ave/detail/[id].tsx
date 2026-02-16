@@ -508,6 +508,15 @@ export default function AveDetailScreen() {
 
   const renderHijosTab = () => (
     <View style={styles.tabContent}>
+      {/* Botón para registrar nuevo hijo */}
+      <TouchableOpacity
+        style={styles.registerChildButton}
+        onPress={() => router.push(`/ave/new?padre_id=${ave?.tipo === 'gallo' ? id : ''}&madre_id=${ave?.tipo === 'gallina' ? id : ''}`)}
+      >
+        <Ionicons name="add-circle" size={24} color="#f59e0b" />
+        <Text style={styles.registerChildText}>Registrar Nuevo Hijo</Text>
+      </TouchableOpacity>
+
       {hijos.length > 0 ? (
         hijos.map((hijo) => (
           <TouchableOpacity
@@ -541,6 +550,7 @@ export default function AveDetailScreen() {
         <View style={styles.emptyState}>
           <Ionicons name="people-outline" size={48} color="#4b5563" />
           <Text style={styles.emptyText}>Sin hijos registrados</Text>
+          <Text style={styles.emptySubtext}>Usa el botón de arriba para registrar un hijo</Text>
         </View>
       )}
     </View>
