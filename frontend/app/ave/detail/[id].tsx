@@ -291,13 +291,113 @@ export default function AveDetailScreen() {
   };
 
   const renderPedigriTab = () => (
-    <ScrollView horizontal style={styles.pedigriScroll}>
-      <View style={styles.pedigriContainer}>
-        {pedigri ? renderPedigriNode(pedigri) : (
-          <Text style={styles.emptyText}>Sin información de pedigrí</Text>
+    <View style={styles.tabContent}>
+      {/* Información del Ave */}
+      <View style={styles.infoCard}>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Tipo</Text>
+          <View style={styles.infoValueRow}>
+            <Ionicons
+              name={ave?.tipo === 'gallo' ? 'fitness' : 'egg'}
+              size={18}
+              color={ave?.tipo === 'gallo' ? '#3b82f6' : '#ec4899'}
+            />
+            <Text style={styles.infoValue}>
+              {ave?.tipo === 'gallo' ? 'Gallo' : 'Gallina'}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Placa</Text>
+          <Text style={styles.infoValue}>{ave?.codigo}</Text>
+        </View>
+
+        {ave?.nombre && (
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Nombre</Text>
+            <Text style={styles.infoValue}>{ave.nombre}</Text>
+          </View>
         )}
+
+        {ave?.color && (
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Color</Text>
+            <Text style={styles.infoValue}>{ave.color}</Text>
+          </View>
+        )}
+
+        {ave?.linea && (
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Línea</Text>
+            <Text style={styles.infoValue}>{ave.linea}</Text>
+          </View>
+        )}
+
+        {ave?.fecha_nacimiento && (
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Nacimiento</Text>
+            <Text style={styles.infoValue}>{ave.fecha_nacimiento}</Text>
+          </View>
+        )}
+
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Estado</Text>
+          <View style={[styles.estadoBadge, { backgroundColor: getEstadoColor(ave?.estado || '') + '20' }]}>
+            <Text style={[styles.estadoText, { color: getEstadoColor(ave?.estado || '') }]}>
+              {ave?.estado?.charAt(0).toUpperCase() + (ave?.estado?.slice(1) || '')}
+            </Text>
+          </View>
+        </View>
       </View>
-    </ScrollView>
+
+      {/* Padres */}
+      <Text style={styles.sectionTitle}>Padres</Text>
+      <View style={styles.parentsRow}>
+        <TouchableOpacity
+          style={styles.parentCard}
+          onPress={() => padre && router.push(`/ave/detail/${padre.id}`)}
+          disabled={!padre}
+        >
+          <View style={[styles.parentIcon, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
+            <Ionicons name="fitness" size={20} color="#3b82f6" />
+          </View>
+          <Text style={styles.parentLabel}>Padre</Text>
+          <Text style={styles.parentCode}>{padre?.codigo || 'Desconocido'}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.parentCard}
+          onPress={() => madre && router.push(`/ave/detail/${madre.id}`)}
+          disabled={!madre}
+        >
+          <View style={[styles.parentIcon, { backgroundColor: 'rgba(236, 72, 153, 0.1)' }]}>
+            <Ionicons name="egg" size={20} color="#ec4899" />
+          </View>
+          <Text style={styles.parentLabel}>Madre</Text>
+          <Text style={styles.parentCode}>{madre?.codigo || 'Desconocida'}</Text>
+        </TouchableOpacity>
+      </View>
+
+      {ave?.notas && (
+        <>
+          <Text style={styles.sectionTitle}>Notas</Text>
+          <View style={styles.notesCard}>
+            <Text style={styles.notesText}>{ave.notas}</Text>
+          </View>
+        </>
+      )}
+
+      {/* Árbol de Pedigrí */}
+      <Text style={styles.sectionTitle}>Árbol Genealógico</Text>
+      <ScrollView horizontal style={styles.pedigriScroll}>
+        <View style={styles.pedigriContainer}>
+          {pedigri ? renderPedigriNode(pedigri) : (
+            <Text style={styles.emptyText}>Sin información de pedigrí</Text>
+          )}
+        </View>
+      </ScrollView>
+    </View>
   );
 
   const renderPeleasTab = () => (
