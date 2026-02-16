@@ -823,4 +823,28 @@ const styles = StyleSheet.create({
     color: '#000',
     fontWeight: '600',
   },
+  parentSection: {
+    marginTop: 8,
+  },
+  parentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+    marginTop: 16,
+  },
+  addExternalButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderRadius: 20,
+    gap: 4,
+  },
+  addExternalText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#f59e0b',
+  },
 });
