@@ -276,6 +276,41 @@ export default function PerfilScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Modal de confirmación de Logout (para web) */}
+      <Modal
+        visible={showLogoutConfirm}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLogoutConfirm(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modal}>
+            <View style={styles.logoutModalIcon}>
+              <Ionicons name="log-out" size={40} color={COLORS.redDeep} />
+            </View>
+            <Text style={styles.modalTitle}>Cerrar Sesión</Text>
+            <Text style={styles.logoutModalText}>
+              ¿Estás seguro de que quieres cerrar sesión?
+            </Text>
+            
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalCancelButton}
+                onPress={() => setShowLogoutConfirm(false)}
+              >
+                <Text style={styles.modalCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalConfirmButton, { backgroundColor: COLORS.redDeep }]}
+                onPress={confirmLogout}
+              >
+                <Text style={styles.modalConfirmText}>Cerrar Sesión</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
