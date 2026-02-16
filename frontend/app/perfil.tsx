@@ -527,4 +527,14 @@ const styles = StyleSheet.create({
     color: '#000',
     fontWeight: '600',
   },
+  logoutModalIcon: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  logoutModalText: {
+    fontSize: 14,
+    color: COLORS.grayLight,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
 });
