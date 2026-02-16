@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../src/services/api';
-import { RoosterHeadIcon, HenHeadIcon } from '../../src/components/BirdIcons';
+import { AvesIcon } from '../../src/components/BirdIcons';
 
 interface Ave {
   id: string;
@@ -158,10 +158,7 @@ export default function AvesScreen() {
           style={[styles.filterButton, filterTipo === 'gallo' && styles.filterActive]}
           onPress={() => setFilterTipo('gallo')}
         >
-          <RoosterHeadIcon
-            size={18}
-            color={filterTipo === 'gallo' ? '#000' : '#9ca3af'}
-          />
+          <AvesIcon size={18} />
           <Text style={[styles.filterText, filterTipo === 'gallo' && styles.filterTextActive]}>
             Gallos
           </Text>
@@ -170,10 +167,7 @@ export default function AvesScreen() {
           style={[styles.filterButton, filterTipo === 'gallina' && styles.filterActive]}
           onPress={() => setFilterTipo('gallina')}
         >
-          <HenHeadIcon
-            size={18}
-            color={filterTipo === 'gallina' ? '#000' : '#9ca3af'}
-          />
+          <AvesIcon size={18} />
           <Text style={[styles.filterText, filterTipo === 'gallina' && styles.filterTextActive]}>
             Gallinas
           </Text>
