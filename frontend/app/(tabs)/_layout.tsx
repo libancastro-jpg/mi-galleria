@@ -118,6 +118,15 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="ajustes"
+        options={{
+          title: 'Salud',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="medical" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="cuido"
         options={{
           title: 'Más',
@@ -128,15 +137,6 @@ export default function TabLayout() {
         name="peleas"
         options={{
           href: null, // Oculto, accesible desde el menú
-        }}
-      />
-      <Tabs.Screen
-        name="ajustes"
-        options={{
-          title: 'Salud',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="medical" size={size} color={color} />
-          ),
         }}
       />
       <Tabs.Screen
