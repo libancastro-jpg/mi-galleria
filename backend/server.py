@@ -222,6 +222,57 @@ class SaludResponse(SaludBase):
     created_at: datetime
     updated_at: datetime
 
+# Cuido Models (Gallos en preparación)
+class TrabajoItem(BaseModel):
+    numero: int  # 1-5
+    tiempo_minutos: Optional[int] = None
+    completado: bool = False
+    fecha_completado: Optional[str] = None
+    notas: Optional[str] = None
+
+class CuidoBase(BaseModel):
+    ave_id: str
+    fecha_inicio: str
+    estado: str = "activo"  # activo | descanso | finalizado
+    tope1_completado: bool = False
+    tope1_fecha: Optional[str] = None
+    tope1_notas: Optional[str] = None
+    tope2_completado: bool = False
+    tope2_fecha: Optional[str] = None
+    tope2_notas: Optional[str] = None
+    trabajos: List[TrabajoItem] = []
+    en_descanso: bool = False
+    dias_descanso: Optional[int] = None
+    fecha_inicio_descanso: Optional[str] = None
+    fecha_fin_descanso: Optional[str] = None
+    notas: Optional[str] = None
+
+class CuidoCreate(BaseModel):
+    ave_id: str
+    fecha_inicio: Optional[str] = None
+    notas: Optional[str] = None
+
+class CuidoUpdate(BaseModel):
+    estado: Optional[str] = None
+    tope1_completado: Optional[bool] = None
+    tope1_fecha: Optional[str] = None
+    tope1_notas: Optional[str] = None
+    tope2_completado: Optional[bool] = None
+    tope2_fecha: Optional[str] = None
+    tope2_notas: Optional[str] = None
+    trabajos: Optional[List[TrabajoItem]] = None
+    en_descanso: Optional[bool] = None
+    dias_descanso: Optional[int] = None
+    fecha_inicio_descanso: Optional[str] = None
+    fecha_fin_descanso: Optional[str] = None
+    notas: Optional[str] = None
+
+class CuidoResponse(CuidoBase):
+    id: str
+    user_id: str
+    created_at: datetime
+    updated_at: datetime
+
 # Sync Models
 class SyncData(BaseModel):
     aves: List[Dict[str, Any]] = []
