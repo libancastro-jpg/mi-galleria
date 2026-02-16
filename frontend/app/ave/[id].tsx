@@ -36,6 +36,26 @@ export default function AveFormScreen() {
   const [gallinas, setGallinas] = useState<Ave[]>([]);
   const [showPadreList, setShowPadreList] = useState(false);
   const [showMadreList, setShowMadreList] = useState(false);
+  const [showColorList, setShowColorList] = useState(false);
+
+  const COLORES = [
+    'Jabao',
+    'Cenizo',
+    'Canelo',
+    'Giro',
+    'Colorado',
+    'Pinto',
+    'Negro',
+    'Blanco',
+    'Indio',
+    'Gallino',
+    'Prieto',
+    'Amarillo',
+    'Ajiseñao',
+    'Melao',
+    'Gallo Fino',
+    'Otro',
+  ];
 
   const [formData, setFormData] = useState({
     tipo: 'gallo',
