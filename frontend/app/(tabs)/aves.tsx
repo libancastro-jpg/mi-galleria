@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../src/services/api';
+import { RoosterHeadIcon, HenHeadIcon } from '../../src/components/BirdIcons';
 
 interface Ave {
   id: string;
@@ -157,9 +158,8 @@ export default function AvesScreen() {
           style={[styles.filterButton, filterTipo === 'gallo' && styles.filterActive]}
           onPress={() => setFilterTipo('gallo')}
         >
-          <Ionicons
-            name="fitness"
-            size={16}
+          <RoosterHeadIcon
+            size={18}
             color={filterTipo === 'gallo' ? '#000' : '#9ca3af'}
           />
           <Text style={[styles.filterText, filterTipo === 'gallo' && styles.filterTextActive]}>
@@ -170,9 +170,8 @@ export default function AvesScreen() {
           style={[styles.filterButton, filterTipo === 'gallina' && styles.filterActive]}
           onPress={() => setFilterTipo('gallina')}
         >
-          <Ionicons
-            name="egg"
-            size={16}
+          <HenHeadIcon
+            size={18}
             color={filterTipo === 'gallina' ? '#000' : '#9ca3af'}
           />
           <Text style={[styles.filterText, filterTipo === 'gallina' && styles.filterTextActive]}>
@@ -182,7 +181,7 @@ export default function AvesScreen() {
       </View>
 
       <View style={styles.estadoFilters}>
-        {['activo', 'vendido', 'muerto', 'retirado'].map((estado) => (
+        {['activo', 'vendido', 'retirado'].map((estado) => (
           <TouchableOpacity
             key={estado}
             style={[
