@@ -297,13 +297,13 @@ def verify_pin(pin: str, hashed: str) -> bool:
 def create_token(user_id: str) -> str:
     expire = datetime.utcnow() + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
     payload = {"sub": user_id, "exp": expire}
-    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(payload, JWT_SECRET, algorithm=ALGORITHM)
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     if not credentials:
         raise HTTPException(status_code=401, detail="No autorizado")
     try:
-        payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[ALGORITHM])
         user_id = payload.get("sub")
         if not user_id:
             raise HTTPException(status_code=401, detail="Token inválido")
