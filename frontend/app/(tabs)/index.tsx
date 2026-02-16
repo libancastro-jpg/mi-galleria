@@ -447,6 +447,16 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: COLORS.gold,
   },
+  headerRight: {
+    alignItems: 'center',
+  },
+  profileButton: {
+    padding: 4,
+  },
+  roosterBanner: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   // Alerts
   alertCard: {
     flexDirection: 'row',
