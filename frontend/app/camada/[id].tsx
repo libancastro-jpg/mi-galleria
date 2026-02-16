@@ -54,6 +54,7 @@ export default function CamadaFormScreen() {
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [cruces, setCruces] = useState<Cruce[]>([]);
+  const [aves, setAves] = useState<Ave[]>([]);
   const [showCruceList, setShowCruceList] = useState(false);
 
   const [formData, setFormData] = useState({
