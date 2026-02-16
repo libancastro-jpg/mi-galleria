@@ -6,7 +6,7 @@ import { View, Image } from 'react-native';
  * =====================================
  * Archivo: rooster-logo.png
  * 
- * NO MODIFICAR - Usar exactamente como está
+ * Con círculo amarillo de fondo
  */
 
 const roosterLogo = require('../../assets/rooster-logo.png');
@@ -16,18 +16,24 @@ interface RoosterLogoProps {
 }
 
 export function RoosterLogo({ size = 72 }: RoosterLogoProps) {
+  const padding = 4;
+  const imageSize = size - (padding * 2);
+  
   return (
     <View style={{
       width: size,
       height: size,
       alignItems: 'center',
       justifyContent: 'center',
+      backgroundColor: '#F5A623',
+      borderRadius: size / 2,
+      padding: padding,
     }}>
       <Image
         source={roosterLogo}
         style={{
-          width: size,
-          height: size,
+          width: imageSize,
+          height: imageSize,
         }}
         resizeMode="contain"
       />
