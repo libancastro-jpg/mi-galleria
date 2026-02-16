@@ -173,7 +173,7 @@ export default function AveFormScreen() {
 
   const handleSave = async () => {
     if (!formData.codigo.trim()) {
-      Alert.alert('Error', 'El código es obligatorio');
+      Alert.alert('Error', 'El número de placa es obligatorio');
       return;
     }
 
