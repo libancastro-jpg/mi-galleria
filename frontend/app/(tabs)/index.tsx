@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../src/services/api';
 import { useAuth } from '../../src/context/AuthContext';
 import { RoosterLogo } from '../../src/components/RoosterLogo';
-import { TrophyIcon, GeneticsIcon, EggIcon, UserIcon, RoosterIcon, HenIcon, RoosterHeadIcon, BirdIcon, AvesIcon } from '../../src/components/BirdIcons';
+import { TrophyIcon, GeneticsIcon, EggIcon, UserIcon, RoosterIcon, HenIcon, RoosterHeadIcon, BirdIcon, AvesIcon, PedigreeIcon } from '../../src/components/BirdIcons';
 
 interface DashboardData {
   aves: {
