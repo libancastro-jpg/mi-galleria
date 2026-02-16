@@ -983,6 +983,11 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     marginTop: 12,
   },
+  emptySubtext: {
+    fontSize: 12,
+    color: '#4b5563',
+    marginTop: 8,
+  },
   emptyButton: {
     backgroundColor: '#f59e0b',
     paddingHorizontal: 20,
@@ -994,5 +999,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#000',
+  },
+  registerChildButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderWidth: 1,
+    borderColor: '#f59e0b',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    gap: 8,
+  },
+  registerChildText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#f59e0b',
   },
 });
