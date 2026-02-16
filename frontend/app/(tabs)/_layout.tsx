@@ -85,10 +85,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="cruces"
         options={{
-          title: 'Cruces',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="git-merge" size={size} color={color} />
-          ),
+          href: null, // Accesible desde Dashboard -> Acciones Rápidas
         }}
       />
     </Tabs>
