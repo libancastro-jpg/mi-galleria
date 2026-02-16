@@ -42,15 +42,15 @@ interface DashboardData {
 
 // Color palette - Professional
 const COLORS = {
-  gold: '#d4a017',
-  goldLight: 'rgba(212, 160, 23, 0.15)',
-  greenDark: '#1a5d3a',
-  greenLight: 'rgba(26, 93, 58, 0.15)',
-  redDeep: '#8b1a1a',
-  redLight: 'rgba(139, 26, 26, 0.15)',
-  grayDark: '#1a1a1a',
-  grayMedium: '#2a2a2a',
-  grayLight: '#6b7280',
+  gold: '#F5A623',           // Dorado principal
+  goldLight: 'rgba(245, 166, 35, 0.15)',
+  greenDark: '#22c55e',      // Verde éxito
+  greenLight: 'rgba(34, 197, 94, 0.15)',
+  redDeep: '#ef4444',        // Rojo alertas
+  redLight: 'rgba(239, 68, 68, 0.15)',
+  grayDark: '#1a1a1a',       // Gris oscuro
+  grayMedium: '#2a2a2a',     // Gris medio
+  grayLight: '#6b7280',      // Gris claro
   white: '#ffffff',
   background: '#0a0a0a',
 };
