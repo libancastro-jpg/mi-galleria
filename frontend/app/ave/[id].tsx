@@ -256,7 +256,7 @@ export default function AveFormScreen() {
                 />
               ) : (
                 <View style={styles.photoPlaceholder}>
-                  <Ionicons name="camera" size={40} color="#6b7280" />
+                  <Ionicons name="camera" size={40} color="#a0a0a0" />
                   <Text style={styles.photoText}>Agregar foto</Text>
                 </View>
               )}
@@ -317,7 +317,7 @@ export default function AveFormScreen() {
             value={formData.codigo}
             onChangeText={(text) => setFormData({ ...formData, codigo: text })}
             placeholder="Ej: 12, 001, A-15"
-            placeholderTextColor="#6b7280"
+            placeholderTextColor="#a0a0a0"
           />
 
           {/* Nombre */}
@@ -327,7 +327,7 @@ export default function AveFormScreen() {
             value={formData.nombre}
             onChangeText={(text) => setFormData({ ...formData, nombre: text })}
             placeholder="Nombre del ave"
-            placeholderTextColor="#6b7280"
+            placeholderTextColor="#a0a0a0"
           />
 
           {/* Color */}
@@ -379,7 +379,7 @@ export default function AveFormScreen() {
             value={formData.linea}
             onChangeText={(text) => setFormData({ ...formData, linea: text })}
             placeholder="Línea genética"
-            placeholderTextColor="#6b7280"
+            placeholderTextColor="#a0a0a0"
           />
 
           {/* Castado Por */}
@@ -389,7 +389,7 @@ export default function AveFormScreen() {
             value={formData.castado_por}
             onChangeText={(text) => setFormData({ ...formData, castado_por: text })}
             placeholder="Nombre del castador"
-            placeholderTextColor="#6b7280"
+            placeholderTextColor="#a0a0a0"
           />
 
           {/* Fecha nacimiento */}
@@ -399,7 +399,7 @@ export default function AveFormScreen() {
             value={formData.fecha_nacimiento}
             onChangeText={(text) => setFormData({ ...formData, fecha_nacimiento: text })}
             placeholder="YYYY-MM-DD"
-            placeholderTextColor="#6b7280"
+            placeholderTextColor="#a0a0a0"
           />
 
           {/* Estado */}
@@ -523,7 +523,7 @@ export default function AveFormScreen() {
             value={formData.notas}
             onChangeText={(text) => setFormData({ ...formData, notas: text })}
             placeholder="Notas adicionales..."
-            placeholderTextColor="#6b7280"
+            placeholderTextColor="#a0a0a0"
             multiline
             numberOfLines={4}
           />
@@ -609,7 +609,7 @@ const styles = StyleSheet.create({
   },
   photoText: {
     fontSize: 12,
-    color: '#6b7280',
+    color: '#a0a0a0',
     marginTop: 8,
   },
   label: {

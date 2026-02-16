@@ -153,7 +153,7 @@ export default function CruceFormScreen() {
       case 'alto':
         return '#ef4444';
       default:
-        return '#6b7280';
+        return '#a0a0a0';
     }
   };
 
@@ -354,7 +354,7 @@ export default function CruceFormScreen() {
             value={formData.fecha}
             onChangeText={(text) => setFormData({ ...formData, fecha: text })}
             placeholder="YYYY-MM-DD"
-            placeholderTextColor="#6b7280"
+            placeholderTextColor="#a0a0a0"
           />
 
           {/* Estado */}
@@ -388,7 +388,7 @@ export default function CruceFormScreen() {
             value={formData.objetivo}
             onChangeText={(text) => setFormData({ ...formData, objetivo: text })}
             placeholder="Ej: Mejorar resistencia, color..."
-            placeholderTextColor="#6b7280"
+            placeholderTextColor="#a0a0a0"
           />
 
           {/* Notas */}
@@ -398,7 +398,7 @@ export default function CruceFormScreen() {
             value={formData.notas}
             onChangeText={(text) => setFormData({ ...formData, notas: text })}
             placeholder="Notas adicionales..."
-            placeholderTextColor="#6b7280"
+            placeholderTextColor="#a0a0a0"
             multiline
             numberOfLines={4}
           />
@@ -486,7 +486,7 @@ const styles = StyleSheet.create({
   },
   parentLabel: {
     fontSize: 12,
-    color: '#6b7280',
+    color: '#a0a0a0',
     marginBottom: 8,
   },
   parentSelect: {
@@ -533,7 +533,7 @@ const styles = StyleSheet.create({
   },
   noAvesText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#a0a0a0',
     textAlign: 'center',
     padding: 16,
   },
@@ -582,7 +582,7 @@ const styles = StyleSheet.create({
   },
   ancestroItem: {
     fontSize: 13,
-    color: '#6b7280',
+    color: '#a0a0a0',
     marginBottom: 4,
   },
   label: {

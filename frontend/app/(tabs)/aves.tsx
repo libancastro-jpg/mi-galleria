@@ -86,7 +86,7 @@ export default function AvesScreen() {
             <Ionicons
               name={item.tipo === 'gallo' ? 'fitness' : 'egg'}
               size={32}
-              color="#6b7280"
+              color="#a0a0a0"
             />
           </View>
         )}
@@ -113,7 +113,7 @@ export default function AvesScreen() {
           )}
         </View>
       </View>
-      <Ionicons name="chevron-forward" size={20} color="#6b7280" />
+      <Ionicons name="chevron-forward" size={20} color="#a0a0a0" />
     </TouchableOpacity>
   );
 
@@ -130,17 +130,17 @@ export default function AvesScreen() {
       </View>
 
       <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color="#6b7280" style={styles.searchIcon} />
+        <Ionicons name="search" size={20} color="#a0a0a0" style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
           placeholder="Buscar por placa, nombre, color..."
-          placeholderTextColor="#6b7280"
+          placeholderTextColor="#a0a0a0"
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
         {searchQuery && (
           <TouchableOpacity onPress={() => setSearchQuery('')}>
-            <Ionicons name="close-circle" size={20} color="#6b7280" />
+            <Ionicons name="close-circle" size={20} color="#a0a0a0" />
           </TouchableOpacity>
         )}
       </View>
@@ -322,7 +322,7 @@ const styles = StyleSheet.create({
   },
   estadoText: {
     fontSize: 12,
-    color: '#6b7280',
+    color: '#a0a0a0',
   },
   estadoTextActive: {
     color: '#000',
@@ -421,7 +421,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#a0a0a0',
     marginTop: 8,
   },
   emptyButton: {

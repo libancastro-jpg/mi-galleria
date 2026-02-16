@@ -200,7 +200,7 @@ export default function PeleaFormScreen() {
             value={formData.fecha}
             onChangeText={(text) => setFormData({ ...formData, fecha: text })}
             placeholder="YYYY-MM-DD"
-            placeholderTextColor="#6b7280"
+            placeholderTextColor="#a0a0a0"
           />
 
           {/* Lugar */}
@@ -210,7 +210,7 @@ export default function PeleaFormScreen() {
             value={formData.lugar}
             onChangeText={(text) => setFormData({ ...formData, lugar: text })}
             placeholder="Lugar del evento"
-            placeholderTextColor="#6b7280"
+            placeholderTextColor="#a0a0a0"
           />
 
           {/* Resultado */}
@@ -267,7 +267,7 @@ export default function PeleaFormScreen() {
             {[
               { value: 'EXTRAORDINARIA', label: 'Extraordinaria', color: '#f59e0b' },
               { value: 'BUENA', label: 'Buena', color: '#22c55e' },
-              { value: 'REGULAR', label: 'Regular', color: '#6b7280' },
+              { value: 'REGULAR', label: 'Regular', color: '#a0a0a0' },
               { value: 'MALA', label: 'Mala', color: '#ef4444' },
             ].map((cal) => (
               <TouchableOpacity
@@ -307,7 +307,7 @@ export default function PeleaFormScreen() {
             value={formData.notas}
             onChangeText={(text) => setFormData({ ...formData, notas: text })}
             placeholder="Observaciones de la pelea..."
-            placeholderTextColor="#6b7280"
+            placeholderTextColor="#a0a0a0"
             multiline
             numberOfLines={4}
           />
@@ -430,7 +430,7 @@ const styles = StyleSheet.create({
   },
   noAvesText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#a0a0a0',
     textAlign: 'center',
     padding: 16,
   },

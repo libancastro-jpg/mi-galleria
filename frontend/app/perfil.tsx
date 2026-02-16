@@ -26,7 +26,7 @@ const COLORS = {
   redLight: 'rgba(239, 68, 68, 0.15)',
   grayDark: '#1a1a1a',
   grayMedium: '#333333',
-  grayLight: '#6b7280',
+  grayLight: '#a0a0a0',
   white: '#ffffff',
   background: '#1a1a1a',
 };

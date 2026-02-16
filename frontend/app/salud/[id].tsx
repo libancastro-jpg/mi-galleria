@@ -231,7 +231,7 @@ export default function SaludFormScreen() {
             value={formData.producto}
             onChangeText={(text) => setFormData({ ...formData, producto: text })}
             placeholder="Nombre del producto"
-            placeholderTextColor="#6b7280"
+            placeholderTextColor="#a0a0a0"
           />
 
           {/* Dosis */}
@@ -241,7 +241,7 @@ export default function SaludFormScreen() {
             value={formData.dosis}
             onChangeText={(text) => setFormData({ ...formData, dosis: text })}
             placeholder="Ej: 1ml, 2 gotas, 1 tableta"
-            placeholderTextColor="#6b7280"
+            placeholderTextColor="#a0a0a0"
           />
 
           {/* Fecha */}
@@ -251,7 +251,7 @@ export default function SaludFormScreen() {
             value={formData.fecha}
             onChangeText={(text) => setFormData({ ...formData, fecha: text })}
             placeholder="YYYY-MM-DD"
-            placeholderTextColor="#6b7280"
+            placeholderTextColor="#a0a0a0"
           />
 
           {/* Próxima fecha */}
@@ -261,7 +261,7 @@ export default function SaludFormScreen() {
             value={formData.proxima_fecha}
             onChangeText={(text) => setFormData({ ...formData, proxima_fecha: text })}
             placeholder="YYYY-MM-DD"
-            placeholderTextColor="#6b7280"
+            placeholderTextColor="#a0a0a0"
           />
 
           {/* Notas */}
@@ -271,7 +271,7 @@ export default function SaludFormScreen() {
             value={formData.notas}
             onChangeText={(text) => setFormData({ ...formData, notas: text })}
             placeholder="Observaciones..."
-            placeholderTextColor="#6b7280"
+            placeholderTextColor="#a0a0a0"
             multiline
             numberOfLines={4}
           />

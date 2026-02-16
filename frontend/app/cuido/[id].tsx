@@ -64,7 +64,7 @@ const COLORS = {
   blueLight: 'rgba(59, 130, 246, 0.15)',
   grayDark: '#1a1a1a',
   grayMedium: '#333333',
-  grayLight: '#6b7280',
+  grayLight: '#a0a0a0',
   white: '#ffffff',
   background: '#1a1a1a',
   green: '#22c55e',

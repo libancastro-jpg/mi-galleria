@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
   },
   cruceFecha: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#a0a0a0',
   },
   padresContainer: {
     flexDirection: 'row',
@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
   },
   consanguinidadLabel: {
     fontSize: 13,
-    color: '#6b7280',
+    color: '#a0a0a0',
   },
   consanguinidadBadge: {
     paddingHorizontal: 8,
@@ -381,7 +381,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#a0a0a0',
     marginTop: 8,
   },
   emptyButton: {

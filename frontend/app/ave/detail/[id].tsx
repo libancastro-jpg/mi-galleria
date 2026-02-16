@@ -141,9 +141,9 @@ export default function AveDetailScreen() {
     switch (estado) {
       case 'activo': return '#22c55e';
       case 'vendido': return '#3b82f6';
-      case 'muerto': return '#6b7280';
+      case 'muerto': return '#a0a0a0';
       case 'retirado': return '#f59e0b';
-      default: return '#6b7280';
+      default: return '#a0a0a0';
     }
   };
 
@@ -432,7 +432,7 @@ export default function AveDetailScreen() {
                 <Ionicons
                   name={hijo.tipo === 'gallo' ? 'fitness' : 'egg'}
                   size={24}
-                  color="#6b7280"
+                  color="#a0a0a0"
                 />
               </View>
             )}
@@ -444,7 +444,7 @@ export default function AveDetailScreen() {
                 {hijo.linea && <Text style={styles.hijoDetail}>{hijo.linea}</Text>}
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#6b7280" />
+            <Ionicons name="chevron-forward" size={20} color="#a0a0a0" />
           </TouchableOpacity>
         ))
       ) : (
@@ -499,7 +499,7 @@ export default function AveDetailScreen() {
               <Ionicons
                 name={ave?.tipo === 'gallo' ? 'fitness' : 'egg'}
                 size={48}
-                color="#6b7280"
+                color="#a0a0a0"
               />
             </View>
           )}
@@ -524,7 +524,7 @@ export default function AveDetailScreen() {
                 <Ionicons
                   name={tab.icon as any}
                   size={18}
-                  color={activeTab === tab.key ? '#f59e0b' : '#6b7280'}
+                  color={activeTab === tab.key ? '#f59e0b' : '#a0a0a0'}
                 />
                 <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>
                   {tab.label}
@@ -646,7 +646,7 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#a0a0a0',
   },
   tabTextActive: {
     color: '#f59e0b',
@@ -672,7 +672,7 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#a0a0a0',
   },
   infoValue: {
     fontSize: 16,
@@ -722,7 +722,7 @@ const styles = StyleSheet.create({
   },
   parentLabel: {
     fontSize: 12,
-    color: '#6b7280',
+    color: '#a0a0a0',
     marginBottom: 4,
   },
   parentCode: {
@@ -793,7 +793,7 @@ const styles = StyleSheet.create({
   },
   pedigriDetail: {
     fontSize: 11,
-    color: '#6b7280',
+    color: '#a0a0a0',
   },
   pedigriChildren: {
     marginLeft: 20,
@@ -822,7 +822,7 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 12,
-    color: '#6b7280',
+    color: '#a0a0a0',
     marginTop: 4,
   },
   peleaItem: {
@@ -863,7 +863,7 @@ const styles = StyleSheet.create({
   },
   peleaPlace: {
     fontSize: 12,
-    color: '#6b7280',
+    color: '#a0a0a0',
     marginTop: 2,
   },
   peleaRating: {
@@ -908,7 +908,7 @@ const styles = StyleSheet.create({
   },
   saludType: {
     fontSize: 12,
-    color: '#6b7280',
+    color: '#a0a0a0',
     marginTop: 2,
   },
   saludDate: {
@@ -921,7 +921,7 @@ const styles = StyleSheet.create({
   },
   saludNextLabel: {
     fontSize: 11,
-    color: '#6b7280',
+    color: '#a0a0a0',
   },
   saludNextDate: {
     fontSize: 13,
@@ -972,7 +972,7 @@ const styles = StyleSheet.create({
   },
   hijoDetail: {
     fontSize: 12,
-    color: '#6b7280',
+    color: '#a0a0a0',
   },
   emptyState: {
     alignItems: 'center',
@@ -980,7 +980,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#a0a0a0',
     marginTop: 12,
   },
   emptySubtext: {

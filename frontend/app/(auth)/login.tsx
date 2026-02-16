@@ -69,7 +69,7 @@ export default function LoginScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Número de teléfono"
-                placeholderTextColor="#6b7280"
+                placeholderTextColor="#a0a0a0"
                 value={telefono}
                 onChangeText={setTelefono}
                 keyboardType="phone-pad"
@@ -82,7 +82,7 @@ export default function LoginScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="PIN (4-6 dígitos)"
-                placeholderTextColor="#6b7280"
+                placeholderTextColor="#a0a0a0"
                 value={pin}
                 onChangeText={(text) => setPin(text.replace(/[^0-9]/g, '').slice(0, 6))}
                 keyboardType="numeric"

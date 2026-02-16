@@ -142,7 +142,7 @@ export default function CuidoScreen() {
 
         <View style={styles.cuidoFooter}>
           <Text style={styles.fechaInicio}>Inicio: {item.fecha_inicio}</Text>
-          <Ionicons name="chevron-forward" size={20} color="#6b7280" />
+          <Ionicons name="chevron-forward" size={20} color="#a0a0a0" />
         </View>
       </TouchableOpacity>
     );
@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
   },
   aveDetail: {
     fontSize: 12,
-    color: '#6b7280',
+    color: '#a0a0a0',
   },
   descansoTag: {
     flexDirection: 'row',
@@ -354,7 +354,7 @@ const styles = StyleSheet.create({
   },
   progressLabel: {
     fontSize: 13,
-    color: '#6b7280',
+    color: '#a0a0a0',
     width: 60,
   },
   progressDots: {
@@ -406,7 +406,7 @@ const styles = StyleSheet.create({
   },
   fechaInicio: {
     fontSize: 13,
-    color: '#6b7280',
+    color: '#a0a0a0',
   },
   emptyState: {
     alignItems: 'center',
@@ -420,7 +420,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#a0a0a0',
     marginTop: 8,
     textAlign: 'center',
   },

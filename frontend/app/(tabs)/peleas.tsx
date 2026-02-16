@@ -89,11 +89,11 @@ export default function PeleasScreen() {
       case 'BUENA':
         return '#22c55e';
       case 'REGULAR':
-        return '#6b7280';
+        return '#a0a0a0';
       case 'MALA':
         return '#ef4444';
       default:
-        return '#6b7280';
+        return '#a0a0a0';
     }
   };
 
@@ -297,7 +297,7 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 12,
-    color: '#6b7280',
+    color: '#a0a0a0',
     marginTop: 4,
   },
   statDivider: {
@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
   },
   calLabel: {
     fontSize: 11,
-    color: '#6b7280',
+    color: '#a0a0a0',
     marginTop: 2,
   },
   loadingContainer: {
@@ -393,7 +393,7 @@ const styles = StyleSheet.create({
   },
   peleaFecha: {
     fontSize: 13,
-    color: '#6b7280',
+    color: '#a0a0a0',
     marginTop: 2,
   },
   peleaLugar: {
@@ -424,7 +424,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#a0a0a0',
     marginTop: 8,
   },
   emptyButton: {
