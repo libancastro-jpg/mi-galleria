@@ -18,12 +18,16 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
 # MongoDB connection
-mongo_url = os.environ['MONGO_URL']
+mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
+db_name = os.environ.get('DB_NAME', 'castador_pro')
 client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ.get('DB_NAME', 'castador_pro')]
+db = client[db_name]
 
-# JWT Configuration
-SECRET_KEY = os.environ.get('JWT_SECRET', 'castador-pro-secret-key-2025')
+# JWT Configuration - Use environment variable in production
+JWT_SECRET = os.environ.get('JWT_SECRET')
+if not JWT_SECRET:
+    JWT_SECRET = 'castador-pro-secret-key-2025-dev'
+    logger.warning("JWT_SECRET not set, using development default. Set JWT_SECRET in production!")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
 
