@@ -1,8 +1,16 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Platform, View, StyleSheet } from 'react-native';
+import { Platform } from 'react-native';
 import { RoosterIcon } from '../../src/components/BirdIcons';
+
+// Color palette
+const COLORS = {
+  gold: '#d4a017',
+  grayDark: '#141414',
+  grayMedium: '#2a2a2a',
+  grayLight: '#6b7280',
+};
 
 export default function TabLayout() {
   return (
@@ -10,18 +18,18 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#141414',
-          borderTopColor: '#2a2a2a',
+          backgroundColor: COLORS.grayDark,
+          borderTopColor: COLORS.grayMedium,
           borderTopWidth: 1,
           height: Platform.OS === 'ios' ? 88 : 64,
           paddingBottom: Platform.OS === 'ios' ? 28 : 8,
           paddingTop: 8,
         },
-        tabBarActiveTintColor: '#f59e0b',
-        tabBarInactiveTintColor: '#6b7280',
+        tabBarActiveTintColor: COLORS.gold,
+        tabBarInactiveTintColor: COLORS.grayLight,
         tabBarLabelStyle: {
-          fontSize: 10,
-          fontWeight: '500',
+          fontSize: 11,
+          fontWeight: '600',
         },
       }}
     >
@@ -44,11 +52,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="cuido"
+        name="cruces"
         options={{
-          title: 'Cuido',
+          title: 'Cruces',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="timer" size={size} color={color} />
+            <Ionicons name="git-merge" size={size} color={color} />
           ),
         }}
       />
@@ -64,16 +72,16 @@ export default function TabLayout() {
       <Tabs.Screen
         name="ajustes"
         options={{
-          title: 'Ajustes',
+          title: 'Salud',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="settings" size={size} color={color} />
+            <Ionicons name="medical" size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="cruces"
+        name="cuido"
         options={{
-          href: null, // Hide from tab bar but still accessible
+          href: null, // Hidden but accessible
         }}
       />
     </Tabs>
