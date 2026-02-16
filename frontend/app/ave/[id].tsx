@@ -393,7 +393,7 @@ export default function AveFormScreen() {
           {/* Estado */}
           <Text style={styles.label}>Estado</Text>
           <View style={styles.estadoContainer}>
-            {['activo', 'vendido', 'muerto', 'retirado'].map((estado) => (
+            {['activo', 'vendido', 'retirado'].map((estado) => (
               <TouchableOpacity
                 key={estado}
                 style={[
