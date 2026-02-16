@@ -42,6 +42,7 @@ export default function AveFormScreen() {
   const [showMadreExterno, setShowMadreExterno] = useState(false);
   const [padreExterno, setPadreExterno] = useState('');
   const [madreExterno, setMadreExterno] = useState('');
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
 
   const COLORES = [
     'Jabao',
