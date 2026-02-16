@@ -166,7 +166,7 @@ export default function AveDetailScreen() {
         </View>
 
         <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Código</Text>
+          <Text style={styles.infoLabel}>Placa</Text>
           <Text style={styles.infoValue}>{ave?.codigo}</Text>
         </View>
 

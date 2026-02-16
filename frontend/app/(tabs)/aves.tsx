@@ -132,7 +132,7 @@ export default function AvesScreen() {
         <Ionicons name="search" size={20} color="#6b7280" style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Buscar por código, nombre, color..."
+          placeholder="Buscar por placa, nombre, color..."
           placeholderTextColor="#6b7280"
           value={searchQuery}
           onChangeText={setSearchQuery}
