@@ -250,11 +250,15 @@ export default function AveFormScreen() {
             <TouchableOpacity
               style={styles.photoContainer}
               onPress={() => {
-                Alert.alert('Foto', 'Selecciona una opción', [
-                  { text: 'Cancelar', style: 'cancel' },
-                  { text: 'Cámara', onPress: takePhoto },
-                  { text: 'Galería', onPress: pickImage },
-                ]);
+                if (Platform.OS === 'web') {
+                  setShowPhotoModal(true);
+                } else {
+                  Alert.alert('Foto', 'Selecciona una opción', [
+                    { text: 'Cancelar', style: 'cancel' },
+                    { text: 'Cámara', onPress: takePhoto },
+                    { text: 'Galería', onPress: pickImage },
+                  ]);
+                }
               }}
             >
               {formData.foto_principal ? (
@@ -269,6 +273,14 @@ export default function AveFormScreen() {
                 </View>
               )}
             </TouchableOpacity>
+            {formData.foto_principal && (
+              <TouchableOpacity
+                style={styles.removePhotoButton}
+                onPress={() => setFormData({ ...formData, foto_principal: '' })}
+              >
+                <Ionicons name="close-circle" size={24} color="#ef4444" />
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Tipo */}
