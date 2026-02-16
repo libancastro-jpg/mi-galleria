@@ -293,7 +293,7 @@ export default function DashboardScreen() {
               onPress={() => router.push('/ave/new')}
             >
               <View style={[styles.actionIcon, { backgroundColor: COLORS.goldLight }]}>
-                <AvesIcon size={26} />
+                <Ionicons name="add" size={28} color={COLORS.gold} />
               </View>
               <Text style={styles.actionText}>Nueva Ave</Text>
             </TouchableOpacity>
