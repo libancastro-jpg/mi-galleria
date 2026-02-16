@@ -38,6 +38,7 @@ export default function AveFormScreen() {
   const [showPadreList, setShowPadreList] = useState(false);
   const [showMadreList, setShowMadreList] = useState(false);
   const [showColorList, setShowColorList] = useState(false);
+  const [showCrestaList, setShowCrestaList] = useState(false);
   const [showPadreExterno, setShowPadreExterno] = useState(false);
   const [showMadreExterno, setShowMadreExterno] = useState(false);
   const [padreExterno, setPadreExterno] = useState('');
@@ -59,8 +60,19 @@ export default function AveFormScreen() {
     'Amarillo',
     'Ajiseñao',
     'Melao',
+    'Joco',
     'Gallo Fino',
     'Otro',
+  ];
+
+  const TIPOS_CRESTA = [
+    'Rosa o Crestallado',
+    'Tusa de Peine',
+    'Pava',
+    'Sencilla',
+    'Nuez',
+    'Guisante',
+    'Otra',
   ];
 
   const [formData, setFormData] = useState({
@@ -70,6 +82,7 @@ export default function AveFormScreen() {
     foto_principal: '',
     fecha_nacimiento: '',
     color: '',
+    cresta: '',
     linea: '',
     estado: 'activo',
     notas: '',
