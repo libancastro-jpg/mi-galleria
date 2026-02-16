@@ -330,13 +330,45 @@ export default function AveFormScreen() {
 
           {/* Color */}
           <Text style={styles.label}>Color</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.color}
-            onChangeText={(text) => setFormData({ ...formData, color: text })}
-            placeholder="Ej: Jabao, Cenizo, Canelo, Giro"
-            placeholderTextColor="#6b7280"
-          />
+          <TouchableOpacity
+            style={styles.selectButton}
+            onPress={() => setShowColorList(!showColorList)}
+          >
+            <Text style={[styles.selectButtonText, formData.color && { color: '#fff' }]}>
+              {formData.color || 'Seleccionar color'}
+            </Text>
+            <Ionicons
+              name={showColorList ? 'chevron-up' : 'chevron-down'}
+              size={20}
+              color="#9ca3af"
+            />
+          </TouchableOpacity>
+          {showColorList && (
+            <View style={styles.colorGrid}>
+              {COLORES.map((color) => (
+                <TouchableOpacity
+                  key={color}
+                  style={[
+                    styles.colorOption,
+                    formData.color === color && styles.colorOptionActive,
+                  ]}
+                  onPress={() => {
+                    setFormData({ ...formData, color });
+                    setShowColorList(false);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.colorOptionText,
+                      formData.color === color && styles.colorOptionTextActive,
+                    ]}
+                  >
+                    {color}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
 
           {/* Línea */}
           <Text style={styles.label}>Línea</Text>
