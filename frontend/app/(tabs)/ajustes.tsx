@@ -13,7 +13,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../src/services/api';
-import { useAuth } from '../../src/context/AuthContext';
 
 // Color palette
 const COLORS = {
