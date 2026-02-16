@@ -126,23 +126,37 @@ export default function CruceFormScreen() {
   };
 
   const handleSave = async () => {
-    if (!formData.padre_id) {
-      Alert.alert('Error', 'Debes seleccionar un padre');
+    // Validar que haya al menos padre interno o externo
+    if (!formData.padre_id && !formData.padre_externo) {
+      Alert.alert('Error', 'Debes seleccionar o agregar un padre');
       return;
     }
-    if (!formData.madre_id) {
-      Alert.alert('Error', 'Debes seleccionar una madre');
+    // Validar que haya al menos madre interna o externa
+    if (!formData.madre_id && !formData.madre_externo) {
+      Alert.alert('Error', 'Debes seleccionar o agregar una madre');
       return;
     }
 
     setSaving(true);
     try {
+      const dataToSend = {
+        ...formData,
+        padre_id: formData.padre_id || null,
+        madre_id: formData.madre_id || null,
+        padre_externo: formData.padre_externo || null,
+        madre_externo: formData.madre_externo || null,
+      };
+
       if (isEdit) {
-        await api.put(`/cruces/${id}`, formData);
-        Alert.alert('Éxito', 'Cruce actualizado correctamente');
+        await api.put(`/cruces/${id}`, dataToSend);
+        if (Platform.OS !== 'web') {
+          Alert.alert('Éxito', 'Cruce actualizado correctamente');
+        }
       } else {
-        await api.post('/cruces', formData);
-        Alert.alert('Éxito', 'Cruce creado correctamente');
+        await api.post('/cruces', dataToSend);
+        if (Platform.OS !== 'web') {
+          Alert.alert('Éxito', 'Cruce creado correctamente');
+        }
       }
       router.back();
     } catch (error: any) {
