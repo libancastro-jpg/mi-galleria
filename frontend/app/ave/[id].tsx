@@ -70,8 +70,6 @@ export default function AveFormScreen() {
     'Tusa de Peine',
     'Pava',
     'Sencilla',
-    'Nuez',
-    'Guisante',
     'Otra',
   ];
 
