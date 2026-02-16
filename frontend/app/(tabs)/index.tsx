@@ -221,7 +221,7 @@ export default function DashboardScreen() {
               style={styles.actionButton}
               onPress={() => router.push('/ave/new')}
             >
-              <Ionicons name="add-circle" size={24} color="#f59e0b" />
+              <RoosterIcon size={24} color="#f59e0b" />
               <Text style={styles.actionText}>Nueva Ave</Text>
             </TouchableOpacity>
             <TouchableOpacity
