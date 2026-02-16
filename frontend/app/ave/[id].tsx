@@ -70,6 +70,7 @@ export default function AveFormScreen() {
     padre_id: '',
     madre_id: '',
     marcaje_qr: '',
+    castado_por: '',
   });
 
   const [padreNombre, setPadreNombre] = useState('');
