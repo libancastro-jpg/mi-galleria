@@ -9,6 +9,7 @@ import {
   TextInput,
   Modal,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, Stack } from 'expo-router';
@@ -37,30 +38,39 @@ export default function PerfilScreen() {
   
   // Estados para edición
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [editingGalleria, setEditingGalleria] = useState(user?.nombre || '');
   const [saving, setSaving] = useState(false);
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Cerrar Sesión',
-      '¿Estás seguro de que quieres cerrar sesión?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Cerrar Sesión',
-          style: 'destructive',
-          onPress: async () => {
-            await logout();
-            router.replace('/(auth)/login');
+  const handleLogout = async () => {
+    // En web, usar modal personalizado en lugar de Alert
+    if (Platform.OS === 'web') {
+      setShowLogoutConfirm(true);
+    } else {
+      Alert.alert(
+        'Cerrar Sesión',
+        '¿Estás seguro de que quieres cerrar sesión?',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Cerrar Sesión',
+            style: 'destructive',
+            onPress: confirmLogout,
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
+  };
+
+  const confirmLogout = async () => {
+    setShowLogoutConfirm(false);
+    await logout();
+    router.replace('/(auth)/login');
   };
 
   const handleSaveGalleria = async () => {
     if (!editingGalleria.trim()) {
-      Alert.alert('Error', 'El nombre de la gallera no puede estar vacío');
+      Alert.alert('Error', 'El nombre de la galleria no puede estar vacío');
       return;
     }
 
@@ -71,9 +81,15 @@ export default function PerfilScreen() {
         await refreshUser();
       }
       setShowEditModal(false);
-      Alert.alert('Éxito', 'Galleria actualizada correctamente');
+      if (Platform.OS !== 'web') {
+        Alert.alert('Éxito', 'Galleria actualizada correctamente');
+      }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'No se pudo actualizar');
+      if (Platform.OS === 'web') {
+        console.error('Error:', error.message);
+      } else {
+        Alert.alert('Error', error.message || 'No se pudo actualizar');
+      }
     } finally {
       setSaving(false);
     }
