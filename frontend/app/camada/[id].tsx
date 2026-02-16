@@ -26,6 +26,13 @@ interface Cruce {
   estado: string;
 }
 
+interface Ave {
+  id: string;
+  codigo: string;
+  nombre?: string;
+  tipo: string;
+}
+
 const COLORS = {
   gold: '#d4a017',
   goldLight: 'rgba(212, 160, 23, 0.15)',
