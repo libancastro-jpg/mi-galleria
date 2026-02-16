@@ -273,7 +273,7 @@ export default function DashboardScreen() {
           {/* Camadas */}
           <TouchableOpacity style={styles.statCard}>
             <View style={styles.statHeader}>
-              <Ionicons name="egg" size={24} color={COLORS.gold} />
+              <EggIcon size={24} color={COLORS.gold} />
               <Text style={styles.statTitle}>Camadas</Text>
             </View>
             {(data?.camadas_activas || 0) > 0 ? (
