@@ -75,7 +75,7 @@ export default function AvesScreen() {
   const renderAve = ({ item }: { item: Ave }) => (
     <TouchableOpacity
       style={styles.aveCard}
-      onPress={() => router.push(`/ave/${item.id}`)}
+      onPress={() => router.push(`/ave/detail/${item.id}`)}
     >
       <View style={styles.aveImageContainer}>
         {item.foto_principal ? (
