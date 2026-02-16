@@ -86,6 +86,7 @@ class AveBase(BaseModel):
     fecha_nacimiento: Optional[str] = None
     color: Optional[str] = None
     linea: Optional[str] = None
+    castado_por: Optional[str] = None  # Nombre del castador
     estado: str = "activo"  # activo | vendido | muerto | retirado
     notas: Optional[str] = None
     padre_id: Optional[str] = None
@@ -103,6 +104,7 @@ class AveUpdate(BaseModel):
     fecha_nacimiento: Optional[str] = None
     color: Optional[str] = None
     linea: Optional[str] = None
+    castado_por: Optional[str] = None
     estado: Optional[str] = None
     notas: Optional[str] = None
     padre_id: Optional[str] = None
