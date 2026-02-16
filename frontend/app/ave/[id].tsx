@@ -147,7 +147,7 @@ export default function AveFormScreen() {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.5,
+      quality: 0.3,  // Reducido para carga más rápida
       base64: true,
     });
 
@@ -169,7 +169,7 @@ export default function AveFormScreen() {
     const result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.5,
+      quality: 0.3,  // Reducido para carga más rápida
       base64: true,
     });
 
@@ -193,14 +193,20 @@ export default function AveFormScreen() {
         ...formData,
         padre_id: formData.padre_id || null,
         madre_id: formData.madre_id || null,
+        padre_externo: formData.padre_externo || null,
+        madre_externo: formData.madre_externo || null,
       };
 
       if (isEdit) {
         await api.put(`/aves/${id}`, dataToSend);
-        Alert.alert('Éxito', 'Ave actualizada correctamente');
+        if (Platform.OS !== 'web') {
+          Alert.alert('Éxito', 'Ave actualizada correctamente');
+        }
       } else {
         await api.post('/aves', dataToSend);
-        Alert.alert('Éxito', 'Ave creada correctamente');
+        if (Platform.OS !== 'web') {
+          Alert.alert('Éxito', 'Ave creada correctamente');
+        }
       }
       router.back();
     } catch (error: any) {
