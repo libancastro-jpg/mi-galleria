@@ -1,0 +1,190 @@
+<analysis>
+
+<original_problem_statement>
+The user wants to build a mobile app (Android + iOS) named Castador Pro for rooster breeders. The app's primary requirement is to be fully functional offline, with cloud synchronization.
+
+Core features requested:
+-   **Modules**: Birds (Gallos/Gallinas), Pedigree (5 generations), Cross-breeding & Broods, Performance (fights), Health (vaccines/vitamins), and Care (Cuido).
+-   **Key Features**: 5-generation pedigree visualization, inbreeding calculation, and PDF/CSV data export.
+-   **Authentication**: Custom system using phone number, a Gallera (breeder name) instead of a personal name, an optional email, and a PIN.
+-   **UI/UX**: The user has made numerous specific requests for a professional, high-contrast, and visually consistent UI, with many iterations on the main logo and app icons.
+
+Recent consolidated requests that have been worked on:
+1.  Redesign all app icons for a professional, consistent look.
+2.  Fix the main rooster logo's aspect ratio and appearance, iterating from SVG to a final user-provided PNG.
+3.  Add a circular golden background to the logo for better contrast.
+4.  Move the logo to the top-center of the dashboard header.
+5.  Globally replace the user's name (Nombre) with Gallera.
+6.  Allow the Gallera name to be edited from the profile screen.
+7.  Move the reminder/notification bar from the dashboard into the Salud (Health) screen, and only show it on the dashboard if there is a real, pending notification.
+8.  On the Cuido (Care) screen, replace static activity fields with dynamic + buttons to add any number of topes (spars) or trabajos (workouts).
+9.  Change the button text on the empty Cruces (Cross-breeding) screen to Iniciar Cruces.
+</original_problem_statement>
+
+**User's preferred language**: Spanish. The next agent MUST respond in Spanish.
+
+**what currently exists?**
+A full-stack mobile application using Expo (React Native) and FastAPI/MongoDB.
+-   **Authentication**: Functional JWT-based auth with phone, PIN, and Gallera name (replaces Nombre).
+-   **Frontend**: A tab-navigated app with a redesigned dashboard, profile screen, and screens for all core modules (Aves, Cuido, Peleas, Salud, Cruces).
+-   **Dashboard**: Features a professional design with the official logo centered in the header, summary cards with new consistent icons, and quick actions. The conditional alert bar has been moved to the Health screen.
+-   **Profile Screen**: A dedicated screen () allows users to view their Gallera name, phone, and email, with a UI built to support editing the Gallera name.
+-   **Cuido Module**: The detail screen () has been refactored to dynamically add activities (Topes and Trabajos) via + buttons and modals.
+-   **Terminology**: Código has been globally replaced with Placa. Nombre has been globally replaced with Gallera.
+-   **Logo & Icons**: The user's final  is used as the official logo, displayed within a circular golden background. All other icons on the dashboard and navigation have been updated for a consistent, professional style.
+
+**Last working item**:
+-   **Last item agent was working**: The agent had just finished a multi-part user request. The final steps involved:
+    1.  Moving the logo to the top-center of the header.
+    2.  Changing Nombre to Gallera in the profile and registration screens.
+    3.  Implementing the UI on the profile screen to allow editing the Gallera name.
+    The agent was about to implement the required backend endpoint to save the updated Gallera name.
+-   **Status**: IN PROGRESS
+-   **Agent Testing Done**: N (Backend change was not implemented)
+-   **Which testing method agent to use?**: backend testing agent. After creating the backend endpoint, it must be tested to ensure it correctly updates the user's data in the database.
+-   **User Testing Done**: N
+
+**All Pending/In progress Issue list**:
+-   Issue 1: (P0) Implement backend endpoint to allow editing the Gallera name.
+
+**Issues Detail**:
+-   **Issue 1: Implement backend endpoint to allow editing the Gallera name.**
+    -   **Attempted fixes**: The frontend UI in  was completely rebuilt to support editing, including state management and an input field. The agent was about to start on the backend.
+    -   **Next debug checklist**:
+        1.  In , create a new API endpoint, e.g., .
+        2.  This endpoint should be protected and require authentication (use the existing  decorator).
+        3.  The endpoint should accept a JSON body with the new  name.
+        4.  Update the user document in the  collection in MongoDB for the current .
+        5.  Connect the Guardar (Save) button in  to call this new endpoint.
+        6.  After a successful update, refresh the user data in the frontend auth context to reflect the change immediately.
+    -   **Why fix this issue and what will be achieved with the fix?**: This is a direct user request to allow users to manage their breeder/farm name.
+    -   **Status**: IN PROGRESS
+    -   **Is recurring issue?**: N
+    -   **Should Test frontend/backend/both after fix?**: both
+    -   **Blocked on other issue**: None
+
+**In progress Task List**:
+The pending issue listed above is the only in-progress task.
+
+**Upcoming and Future Tasks**
+-   **Future Tasks**:
+    -   **(P0) Offline-First Architecture**: This is the most critical, un-started task from the original problem statement. The app is currently online-only and must be refactored to use a local database (e.g., , ) and a synchronization engine.
+    -   **(P1) Pedigree Visualization**: Implement the 5-generation pedigree tree view on the bird detail screen ().
+    -   **(P2) Inbreeding Calculation**: Implement logic to calculate and display an estimated inbreeding coefficient based on the pedigree data.
+    -   **(P3) Data Export**: Implement functionality to export data to PDF and CSV formats.
+    -   **(P4) Health Module Reminders**: Enhance the health module to generate actionable push notifications for upcoming health events.
+
+**Completed work in this session**
+-   Fixed initial application crash due to a JSX syntax error.
+-   Created a dedicated Profile screen ().
+-   Globally replaced código with Placa.
+-   Globally replaced Nombre with Gallera.
+-   Restored the Cuido module to the main tab navigation.
+-   Refactored the Salud screen to remove the Ajustes tab.
+-   Moved the conditional reminder banner from the Dashboard to the Salud screen.
+-   Refactored the Cuido detail screen to allow dynamic adding of Topes and Trabajos.
+-   Updated the Cruces screen empty state button text to Iniciar Cruces.
+-   Completed multiple iterations of icon and logo redesign, including:
+    -   Fixing aspect ratio and distortion issues.
+    -   Implementing a user-provided static SVG, then a static PNG.
+    -   Adding a circular golden background for contrast.
+    -   Adjusting the logo size within the circle for better visibility.
+    -   Moving the final logo to the top-center of the dashboard header.
+
+**Earlier issues found/mentioned but not fixed**
+-   **Issue 1: Lack of Offline-First Architecture**
+    -   **Debug checklist**:
+        1.  Select a local database solution (e.g.,  is a strong candidate for React Native).
+        2.  Refactor all data-fetching hooks and API calls to interact with the local database first.
+        3.  Implement a synchronization service using a library like  to detect online/offline status.
+        4.  Create a queue for local changes to be pushed to the backend API when connectivity is restored.
+    -   **Why to solve this issue and what will be achieved with this?**: This was the user's #1 core requirement. The app must be 100% functional offline for use in rural areas.
+    -   **Should Test frontend/backend/both after fix**: both
+    -   **Is recurring issue?**: N
+
+**Known issue recurrence from previous fork**
+-   N/A
+
+**Code Architecture**
+
+
+**Key Technical Concepts**
+-   **Frontend**: React Native, Expo, Expo Router, Zustand, , .
+-   **Backend**: FastAPI (Python), Motor (async MongoDB driver).
+-   **Database**: MongoDB.
+-   **Architecture**: Client-server (online-only). The critical offline-first architecture is not yet implemented.
+
+**key DB schema**
+-   **users**: {, ,  (should be ), } -> **Note**: The backend model likely still uses . This must be updated to  to match the frontend changes.
+-   **aves**: {, , , , , ...}
+-   **cuido**: {, , :[{, , }]}
+
+**changes in tech stack**
+-   None.
+
+**All files of reference**
+-   : Needs modification to add the user profile update endpoint.
+-   : Contains the UI for editing the Gallera name. Needs to be connected to the new backend endpoint.
+-   : The dashboard screen, where the logo was moved to the header.
+-   : Updated to use Gallera instead of Nombre.
+-   : The component that renders the final logo with its circular background.
+-   : The official logo image file.
+
+**Areas that need refactoring**:
+-   The entire frontend data layer requires a major refactor to implement the offline-first architecture.
+-   The  file is a monolith and should be split into separate routers for better maintainability.
+-   The  model in  and the database schema should be migrated from using  to  for consistency.
+
+**key api endpoints**
+-    (POST)
+-    (POST)
+-    (GET, POST)
+-    (GET)
+-   **NEEDS TO BE CREATED**:  (PUT/PATCH) to update user information.
+
+**Critical Info for New Agent**
+1.  **Offline-First is NOT Implemented**: This is the most critical missing piece of the original requirements. The app currently requires an internet connection for all operations. This will be the next major architectural task after the current small fixes.
+2.  **Backend Update Required**: You must start by creating the backend endpoint () to allow saving the Gallera name from the profile screen. The frontend is already waiting for this.
+3.  **User is Visually-Oriented**: The user is very specific about UI/UX details, especially logos and icons. Pay close attention to visual requests and be prepared for iterative feedback.
+4.  **Schema Mismatch**: The frontend now uses Gallera, but the backend  model likely still uses name. This should be harmonized.
+
+**documents created in this job**
+-    (intermediate, now unused)
+-    (final logo)
+-   
+
+**Last 10 User Messages and any pending HUMAN messages**
+1.  **user**: Replace logo with a new image file. (Completed)
+2.  **user**: You removed the yellow circle, restore it. Also, move the reminder bar from the dashboard to the Health screen, and only show it on the dashboard if there's a real alert. (Completed)
+3.  **user**: Make the logo inside the yellow circle bigger. (Completed)
+4.  **user**: The logo is still too small. Make it much bigger, filling 85-90% of the circle. (Completed)
+5.  **user**: Move the complete logo (circle + image) to the top-center of the header. Also, change Nombre to Gallera in the profile and registration, and allow editing the Gallera name. (In Progress - Backend part pending)
+6.  **user**: Uploaded a new  file to be used as the official logo. (Completed)
+7.  **user**: The logo needs a golden circular background to improve contrast. (Completed)
+8.  **user**: Make the logo bigger inside the circle. (Completed)
+9.  **user**: Replace the square background with a circle and make the rooster a bit bigger. (Completed)
+10. **user**: Uploaded a new  and wants it to replace the previous one completely. (Completed)
+
+**Project Health Check:**
+-   **Broken**: The Edit Gallera feature is broken as it lacks the backend implementation.
+-   **Mocked**: None.
+
+**3rd Party Integrations**
+-    - Used for UI icons.
+-    - Used for rendering SVG assets.
+-    - Allows importing SVG files as React components.
+
+**Testing status**
+-   **Testing agent used after significant changes**: NO
+-   **Troubleshoot agent used after agent stuck in loop**: NO
+-   **Test files created**: None
+-   **Known regressions**: None
+
+**Credentials to test flow:**
+-   No specific credentials. New user registration is fully functional.
+
+**What agent forgot to execute**
+-   The primary forgotten task across the project's lifespan is the **offline-first architecture**.
+-   The last agent did not complete the implementation for updating the Gallera name; the backend part is missing.
+
+</analysis>

@@ -1,4 +1,4 @@
-const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://poultry-manage.preview.emergentagent.com';
+const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://gallera-manager.preview.emergentagent.com';
 
 class ApiService {
   private token: string | null = null;
