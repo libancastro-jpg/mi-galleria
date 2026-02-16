@@ -77,9 +77,13 @@ export default function CamadaFormScreen() {
 
   const fetchCruces = async () => {
     try {
-      // Obtener cruces que se han realizado (hecho)
-      const data = await api.get('/cruces');
-      setCruces(data);
+      // Obtener cruces y aves
+      const [crucesData, avesData] = await Promise.all([
+        api.get('/cruces'),
+        api.get('/aves'),
+      ]);
+      setCruces(crucesData);
+      setAves(avesData);
     } catch (error) {
       console.error('Error fetching cruces:', error);
     }
