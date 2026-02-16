@@ -529,7 +529,14 @@ export default function CuidoDetailScreen() {
         ) : (
           <View style={styles.actividadesGrid}>
             {trabajos.sort((a, b) => a.numero - b.numero).map((trabajo) => (
-              <View key={trabajo.id} style={styles.actividadCard}>
+              <TouchableOpacity 
+                key={trabajo.id} 
+                style={styles.actividadCard}
+                onPress={() => {
+                  setSelectedActividad(trabajo);
+                  setShowDetalleModal(true);
+                }}
+              >
                 <View style={styles.actividadIconCompleted}>
                   <Ionicons name="barbell" size={20} color="#000" />
                 </View>
@@ -538,7 +545,12 @@ export default function CuidoDetailScreen() {
                   <Text style={styles.actividadTiempo}>{trabajo.tiempo_minutos} min</Text>
                 )}
                 <Text style={styles.actividadFecha}>{formatDate(trabajo.fecha)}</Text>
-              </View>
+                {trabajo.notas && (
+                  <View style={styles.actividadNotasIndicator}>
+                    <Ionicons name="document-text" size={12} color={COLORS.green} />
+                  </View>
+                )}
+              </TouchableOpacity>
             ))}
           </View>
         )}
