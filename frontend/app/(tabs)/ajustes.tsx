@@ -57,8 +57,7 @@ interface Recordatorio {
 
 export default function SaludScreen() {
   const router = useRouter();
-  const { logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<'recordatorios' | 'historial' | 'config'>('recordatorios');
+  const [activeTab, setActiveTab] = useState<'recordatorios' | 'historial'>('recordatorios');
   const [recordatorios, setRecordatorios] = useState<Recordatorio[]>([]);
   const [historial, setHistorial] = useState<SaludRecord[]>([]);
   const [loading, setLoading] = useState(true);
