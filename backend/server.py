@@ -1038,6 +1038,265 @@ async def delete_salud(salud_id: str, current_user: dict = Depends(get_current_u
         raise HTTPException(status_code=404, detail="Registro no encontrado")
     return {"message": "Registro eliminado"}
 
+# ============== CUIDO ROUTES ==============
+
+@api_router.post("/cuido")
+async def create_cuido(cuido: CuidoCreate, current_user: dict = Depends(get_current_user)):
+    """Create a new cuido record for a gallo"""
+    # Validate ave exists and is a gallo
+    ave = await db.aves.find_one({"_id": ObjectId(cuido.ave_id), "user_id": current_user["id"]})
+    if not ave:
+        raise HTTPException(status_code=404, detail="Ave no encontrada")
+    if ave.get("tipo") != "gallo":
+        raise HTTPException(status_code=400, detail="Solo se puede crear cuido para gallos")
+    
+    # Check if gallo already has active cuido
+    existing = await db.cuido.find_one({
+        "ave_id": cuido.ave_id,
+        "user_id": current_user["id"],
+        "estado": {"$in": ["activo", "descanso"]}
+    })
+    if existing:
+        raise HTTPException(status_code=400, detail="Este gallo ya tiene un cuido activo")
+    
+    # Initialize trabajos list
+    trabajos = [
+        {"numero": i, "tiempo_minutos": None, "completado": False, "fecha_completado": None, "notas": None}
+        for i in range(1, 6)
+    ]
+    
+    cuido_doc = {
+        "ave_id": cuido.ave_id,
+        "fecha_inicio": cuido.fecha_inicio or datetime.utcnow().strftime("%Y-%m-%d"),
+        "estado": "activo",
+        "tope1_completado": False,
+        "tope1_fecha": None,
+        "tope1_notas": None,
+        "tope2_completado": False,
+        "tope2_fecha": None,
+        "tope2_notas": None,
+        "trabajos": trabajos,
+        "en_descanso": False,
+        "dias_descanso": None,
+        "fecha_inicio_descanso": None,
+        "fecha_fin_descanso": None,
+        "notas": cuido.notas,
+        "user_id": current_user["id"],
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow()
+    }
+    
+    result = await db.cuido.insert_one(cuido_doc)
+    cuido_doc["_id"] = result.inserted_id
+    
+    return serialize_doc(cuido_doc)
+
+@api_router.get("/cuido")
+async def get_cuidos(
+    estado: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get all cuido records"""
+    query = {"user_id": current_user["id"]}
+    if estado:
+        query["estado"] = estado
+    
+    cuidos = await db.cuido.find(query).sort("created_at", -1).to_list(1000)
+    
+    # Enrich with ave info
+    result = []
+    for c in cuidos:
+        ave = await db.aves.find_one({"_id": ObjectId(c["ave_id"])})
+        cuido_data = serialize_doc(c)
+        if ave:
+            cuido_data["ave_codigo"] = ave.get("codigo")
+            cuido_data["ave_nombre"] = ave.get("nombre")
+            cuido_data["ave_foto"] = ave.get("foto_principal")
+            cuido_data["ave_color"] = ave.get("color")
+            cuido_data["ave_linea"] = ave.get("linea")
+        result.append(cuido_data)
+    
+    return result
+
+@api_router.get("/cuido/{cuido_id}")
+async def get_cuido(cuido_id: str, current_user: dict = Depends(get_current_user)):
+    """Get a specific cuido record"""
+    cuido = await db.cuido.find_one({"_id": ObjectId(cuido_id), "user_id": current_user["id"]})
+    if not cuido:
+        raise HTTPException(status_code=404, detail="Cuido no encontrado")
+    
+    # Enrich with ave info
+    ave = await db.aves.find_one({"_id": ObjectId(cuido["ave_id"])})
+    cuido_data = serialize_doc(cuido)
+    if ave:
+        cuido_data["ave_codigo"] = ave.get("codigo")
+        cuido_data["ave_nombre"] = ave.get("nombre")
+        cuido_data["ave_foto"] = ave.get("foto_principal")
+        cuido_data["ave_color"] = ave.get("color")
+        cuido_data["ave_linea"] = ave.get("linea")
+    
+    return cuido_data
+
+@api_router.put("/cuido/{cuido_id}")
+async def update_cuido(cuido_id: str, cuido_update: CuidoUpdate, current_user: dict = Depends(get_current_user)):
+    """Update a cuido record"""
+    existing = await db.cuido.find_one({"_id": ObjectId(cuido_id), "user_id": current_user["id"]})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Cuido no encontrado")
+    
+    update_data = {k: v for k, v in cuido_update.dict().items() if v is not None}
+    
+    # Handle trabajos update - convert to dict if needed
+    if "trabajos" in update_data:
+        update_data["trabajos"] = [t.dict() if hasattr(t, 'dict') else t for t in update_data["trabajos"]]
+    
+    update_data["updated_at"] = datetime.utcnow()
+    
+    await db.cuido.update_one({"_id": ObjectId(cuido_id)}, {"$set": update_data})
+    
+    updated = await db.cuido.find_one({"_id": ObjectId(cuido_id)})
+    return serialize_doc(updated)
+
+@api_router.post("/cuido/{cuido_id}/tope")
+async def registrar_tope(
+    cuido_id: str,
+    tope_numero: int,
+    notas: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Register a tope (1 or 2)"""
+    if tope_numero not in [1, 2]:
+        raise HTTPException(status_code=400, detail="Tope debe ser 1 o 2")
+    
+    cuido = await db.cuido.find_one({"_id": ObjectId(cuido_id), "user_id": current_user["id"]})
+    if not cuido:
+        raise HTTPException(status_code=404, detail="Cuido no encontrado")
+    
+    field_completado = f"tope{tope_numero}_completado"
+    field_fecha = f"tope{tope_numero}_fecha"
+    field_notas = f"tope{tope_numero}_notas"
+    
+    await db.cuido.update_one(
+        {"_id": ObjectId(cuido_id)},
+        {"$set": {
+            field_completado: True,
+            field_fecha: datetime.utcnow().strftime("%Y-%m-%d"),
+            field_notas: notas,
+            "updated_at": datetime.utcnow()
+        }}
+    )
+    
+    return {"message": f"Tope {tope_numero} registrado"}
+
+@api_router.post("/cuido/{cuido_id}/trabajo")
+async def registrar_trabajo(
+    cuido_id: str,
+    trabajo_numero: int,
+    tiempo_minutos: int,
+    notas: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Register a trabajo (1-5) with time"""
+    if trabajo_numero < 1 or trabajo_numero > 5:
+        raise HTTPException(status_code=400, detail="Trabajo debe ser entre 1 y 5")
+    
+    cuido = await db.cuido.find_one({"_id": ObjectId(cuido_id), "user_id": current_user["id"]})
+    if not cuido:
+        raise HTTPException(status_code=404, detail="Cuido no encontrado")
+    
+    trabajos = cuido.get("trabajos", [])
+    for t in trabajos:
+        if t["numero"] == trabajo_numero:
+            t["tiempo_minutos"] = tiempo_minutos
+            t["completado"] = True
+            t["fecha_completado"] = datetime.utcnow().strftime("%Y-%m-%d")
+            t["notas"] = notas
+            break
+    
+    await db.cuido.update_one(
+        {"_id": ObjectId(cuido_id)},
+        {"$set": {"trabajos": trabajos, "updated_at": datetime.utcnow()}}
+    )
+    
+    return {"message": f"Trabajo {trabajo_numero} registrado con {tiempo_minutos} minutos"}
+
+@api_router.post("/cuido/{cuido_id}/descanso")
+async def iniciar_descanso(
+    cuido_id: str,
+    dias: int,
+    current_user: dict = Depends(get_current_user)
+):
+    """Start rest period (1-20 days)"""
+    if dias < 1 or dias > 20:
+        raise HTTPException(status_code=400, detail="Días de descanso debe ser entre 1 y 20")
+    
+    cuido = await db.cuido.find_one({"_id": ObjectId(cuido_id), "user_id": current_user["id"]})
+    if not cuido:
+        raise HTTPException(status_code=404, detail="Cuido no encontrado")
+    
+    fecha_inicio = datetime.utcnow()
+    fecha_fin = fecha_inicio + timedelta(days=dias)
+    
+    await db.cuido.update_one(
+        {"_id": ObjectId(cuido_id)},
+        {"$set": {
+            "en_descanso": True,
+            "dias_descanso": dias,
+            "fecha_inicio_descanso": fecha_inicio.strftime("%Y-%m-%d"),
+            "fecha_fin_descanso": fecha_fin.strftime("%Y-%m-%d"),
+            "estado": "descanso",
+            "updated_at": datetime.utcnow()
+        }}
+    )
+    
+    return {
+        "message": f"Descanso de {dias} días iniciado",
+        "fecha_fin": fecha_fin.strftime("%Y-%m-%d")
+    }
+
+@api_router.post("/cuido/{cuido_id}/finalizar-descanso")
+async def finalizar_descanso(cuido_id: str, current_user: dict = Depends(get_current_user)):
+    """End rest period and return to active"""
+    cuido = await db.cuido.find_one({"_id": ObjectId(cuido_id), "user_id": current_user["id"]})
+    if not cuido:
+        raise HTTPException(status_code=404, detail="Cuido no encontrado")
+    
+    await db.cuido.update_one(
+        {"_id": ObjectId(cuido_id)},
+        {"$set": {
+            "en_descanso": False,
+            "estado": "activo",
+            "updated_at": datetime.utcnow()
+        }}
+    )
+    
+    return {"message": "Descanso finalizado, gallo vuelve a cuido activo"}
+
+@api_router.post("/cuido/{cuido_id}/finalizar")
+async def finalizar_cuido(cuido_id: str, current_user: dict = Depends(get_current_user)):
+    """Finalize cuido completely"""
+    cuido = await db.cuido.find_one({"_id": ObjectId(cuido_id), "user_id": current_user["id"]})
+    if not cuido:
+        raise HTTPException(status_code=404, detail="Cuido no encontrado")
+    
+    await db.cuido.update_one(
+        {"_id": ObjectId(cuido_id)},
+        {"$set": {
+            "estado": "finalizado",
+            "en_descanso": False,
+            "updated_at": datetime.utcnow()
+        }}
+    )
+    
+    return {"message": "Cuido finalizado"}
+
+@api_router.delete("/cuido/{cuido_id}")
+async def delete_cuido(cuido_id: str, current_user: dict = Depends(get_current_user)):
+    result = await db.cuido.delete_one({"_id": ObjectId(cuido_id), "user_id": current_user["id"]})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Cuido no encontrado")
+    return {"message": "Cuido eliminado"}
+
 # ============== DASHBOARD ==============
 
 @api_router.get("/dashboard")
