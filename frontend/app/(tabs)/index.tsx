@@ -299,62 +299,6 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Últimas Peleas */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Últimas Peleas</Text>
-            {(data?.peleas.recientes?.length || 0) > 0 && (
-              <TouchableOpacity onPress={() => router.push('/(tabs)/peleas')}>
-                <Text style={styles.sectionLink}>Ver todas</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {data?.peleas.recientes && data.peleas.recientes.length > 0 ? (
-            data.peleas.recientes.map((pelea) => {
-              const calStyle = getCalificacionStyle(pelea.calificacion);
-              return (
-                <View key={pelea.id} style={styles.peleaItem}>
-                  <View
-                    style={[
-                      styles.peleaResult,
-                      pelea.resultado === 'GANO' ? styles.peleaWin : styles.peleaLoss,
-                    ]}
-                  >
-                    <Text style={styles.peleaResultText}>
-                      {pelea.resultado === 'GANO' ? 'G' : 'P'}
-                    </Text>
-                  </View>
-                  <View style={styles.peleaInfo}>
-                    <Text style={styles.peleaAveName}>
-                      {pelea.ave_codigo || pelea.ave_nombre || 'Ave'}
-                    </Text>
-                    <Text style={[
-                      styles.peleaResultLabel,
-                      { color: pelea.resultado === 'GANO' ? COLORS.greenDark : COLORS.redDeep }
-                    ]}>
-                      {pelea.resultado === 'GANO' ? 'GANÓ' : 'PERDIÓ'}
-                    </Text>
-                  </View>
-                  <View style={[styles.calificacionBadge, { backgroundColor: calStyle.bg }]}>
-                    <Text style={[styles.calificacionText, { color: calStyle.color }]}>
-                      {calStyle.text}
-                    </Text>
-                  </View>
-                </View>
-              );
-            })
-          ) : (
-            <View style={styles.emptyPeleas}>
-              <Ionicons name="trophy-outline" size={56} color={COLORS.grayMedium} />
-              <Text style={styles.emptyPeleasTitle}>Aún no hay peleas registradas</Text>
-              <Text style={styles.emptyPeleasSubtitle}>
-                Registra una pelea para comenzar a medir rendimiento.
-              </Text>
-            </View>
-          )}
-        </View>
-
         {/* Acciones Rápidas */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Acciones Rápidas</Text>
@@ -607,98 +551,13 @@ const styles = StyleSheet.create({
   },
   // Section
   section: {
-    marginTop: 20,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 14,
+    marginTop: 16,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: COLORS.white,
-  },
-  sectionLink: {
-    fontSize: 14,
-    color: COLORS.gold,
-    fontWeight: '600',
-  },
-  // Peleas
-  peleaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.grayDark,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: COLORS.grayMedium,
-  },
-  peleaResult: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  peleaWin: {
-    backgroundColor: COLORS.greenLight,
-  },
-  peleaLoss: {
-    backgroundColor: COLORS.redLight,
-  },
-  peleaResultText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.white,
-  },
-  peleaInfo: {
-    flex: 1,
-    marginLeft: 14,
-  },
-  peleaAveName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.white,
-  },
-  peleaResultLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    marginTop: 4,
-    letterSpacing: 0.5,
-  },
-  calificacionBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  calificacionText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  // Empty Peleas
-  emptyPeleas: {
-    alignItems: 'center',
-    paddingVertical: 40,
-    backgroundColor: COLORS.grayDark,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: COLORS.grayMedium,
-  },
-  emptyPeleasTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.white,
-    marginTop: 16,
-  },
-  emptyPeleasSubtitle: {
-    fontSize: 13,
-    color: COLORS.grayLight,
-    marginTop: 8,
-    textAlign: 'center',
-    paddingHorizontal: 24,
+    marginBottom: 12,
   },
   // Actions
   actionsGrid: {
