@@ -125,8 +125,10 @@ class AveResponse(AveBase):
 
 # Cruce Models
 class CruceBase(BaseModel):
-    padre_id: str
-    madre_id: str
+    padre_id: Optional[str] = None
+    madre_id: Optional[str] = None
+    padre_externo: Optional[str] = None  # Placa + gallería de padre externo
+    madre_externo: Optional[str] = None  # Placa + gallería de madre externa
     fecha: str
     objetivo: Optional[str] = None
     notas: Optional[str] = None
@@ -138,6 +140,8 @@ class CruceCreate(CruceBase):
 class CruceUpdate(BaseModel):
     padre_id: Optional[str] = None
     madre_id: Optional[str] = None
+    padre_externo: Optional[str] = None
+    madre_externo: Optional[str] = None
     fecha: Optional[str] = None
     objetivo: Optional[str] = None
     notas: Optional[str] = None
