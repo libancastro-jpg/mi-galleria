@@ -30,7 +30,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Función de logout que se puede llamar desde cualquier lugar
+  const forceLogout = async () => {
+    console.log('Forzando logout por token inválido...');
+    try {
+      await AsyncStorage.removeItem('auth_token');
+      await AsyncStorage.removeItem('auth_user');
+      
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        localStorage.clear();
+        sessionStorage.clear();
+      }
+    } catch (e) {
+      console.log('Error limpiando storage:', e);
+    }
+    
+    api.setToken(null);
+    setToken(null);
+    setUser(null);
+  };
+
   useEffect(() => {
+    // Registrar callback para 401
+    api.setOnUnauthorized(forceLogout);
     loadStoredAuth();
   }, []);
 
@@ -43,6 +65,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setToken(storedToken);
         setUser(JSON.parse(storedUser));
         api.setToken(storedToken);
+        
+        // Verificar si el token es válido haciendo una petición
+        try {
+          await api.get('/auth/me');
+        } catch (error) {
+          // Si falla, el callback de 401 se encargará del logout
+          console.log('Token inválido al cargar');
+        }
       }
     } catch (error) {
       console.error('Error loading auth:', error);
