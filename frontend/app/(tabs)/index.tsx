@@ -290,15 +290,6 @@ export default function DashboardScreen() {
           <View style={styles.actionsGrid}>
             <TouchableOpacity
               style={styles.actionButton}
-              onPress={() => router.push('/pelea/new')}
-            >
-              <View style={[styles.actionIcon, { backgroundColor: COLORS.goldLight }]}>
-                <TrophyIcon size={26} color={COLORS.gold} />
-              </View>
-              <Text style={styles.actionText}>Nueva Pelea</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.actionButton}
               onPress={() => router.push('/ave/new')}
             >
               <View style={[styles.actionIcon, { backgroundColor: COLORS.goldLight }]}>
@@ -314,6 +305,15 @@ export default function DashboardScreen() {
                 <GeneticsIcon size={26} color={COLORS.gold} />
               </View>
               <Text style={styles.actionText}>Nuevo Cruce</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => router.push('/pelea/new')}
+            >
+              <View style={[styles.actionIcon, { backgroundColor: COLORS.goldLight }]}>
+                <TrophyIcon size={26} color={COLORS.gold} />
+              </View>
+              <Text style={styles.actionText}>Nueva Pelea</Text>
             </TouchableOpacity>
           </View>
         </View>
