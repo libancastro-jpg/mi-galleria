@@ -56,7 +56,7 @@ export default function AveDetailScreen() {
   const [pedigri, setPedigri] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState('datos');
+  const [activeTab, setActiveTab] = useState('pedigri');
   const [padre, setPadre] = useState<Ave | null>(null);
   const [madre, setMadre] = useState<Ave | null>(null);
 
