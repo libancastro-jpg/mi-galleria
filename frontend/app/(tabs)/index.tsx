@@ -411,60 +411,50 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
   },
-  // Header
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+  // Header con Logo Central
+  headerContainer: {
     marginBottom: 20,
-    paddingBottom: 20,
+    paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.grayMedium,
   },
-  headerText: {
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerLeft: {
     flex: 1,
   },
+  headerCenter: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerRight: {
+    flex: 1,
+    alignItems: 'flex-end',
+  },
   welcomeText: {
-    fontSize: 16,
+    fontSize: 14,
     color: COLORS.grayLight,
     fontWeight: '500',
   },
   userName: {
-    fontSize: 28,
+    fontSize: 18,
     fontWeight: 'bold',
     color: COLORS.white,
-    marginTop: 4,
+    marginTop: 2,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: COLORS.gold,
-    marginTop: 8,
+    marginTop: 12,
     fontWeight: '500',
     letterSpacing: 0.5,
-  },
-  headerIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: COLORS.goldLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: COLORS.gold,
-  },
-  headerRight: {
-    alignItems: 'center',
+    textAlign: 'center',
   },
   profileButton: {
     padding: 4,
-  },
-  roosterBanner: {
-    width: 72,
-    height: 72,
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'center',
-    marginBottom: 16,
   },
   // Alerts
   alertCard: {
