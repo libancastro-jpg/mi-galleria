@@ -21,15 +21,19 @@ export default function TabLayout() {
           backgroundColor: COLORS.grayDark,
           borderTopColor: COLORS.grayMedium,
           borderTopWidth: 1,
-          height: Platform.OS === 'ios' ? 88 : 64,
-          paddingBottom: Platform.OS === 'ios' ? 28 : 8,
-          paddingTop: 8,
+          height: Platform.OS === 'ios' ? 80 : 60,
+          paddingBottom: Platform.OS === 'ios' ? 20 : 6,
+          paddingTop: 6,
         },
         tabBarActiveTintColor: COLORS.gold,
         tabBarInactiveTintColor: COLORS.grayLight,
         tabBarLabelStyle: {
           fontSize: 10,
           fontWeight: '600',
+          marginTop: -2,
+        },
+        tabBarIconStyle: {
+          marginTop: 2,
         },
       }}
     >
