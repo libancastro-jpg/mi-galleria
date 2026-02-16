@@ -91,6 +91,10 @@ export default function CuidoDetailScreen() {
   
   const [showDescansoModal, setShowDescansoModal] = useState(false);
   const [diasDescanso, setDiasDescanso] = useState('');
+  
+  // Estado para ver detalle de actividad
+  const [selectedActividad, setSelectedActividad] = useState<Actividad | null>(null);
+  const [showDetalleModal, setShowDetalleModal] = useState(false);
 
   useEffect(() => {
     if (!isNew) {
