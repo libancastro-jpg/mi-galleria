@@ -204,7 +204,7 @@ export default function CrucesScreen() {
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <Ionicons name="git-merge-outline" size={64} color="#4b5563" />
-              <Text style={styles.emptyTitle}>Sin cruces</Text>
+              <Text style={styles.emptyTitle}>Sin cruces registrados</Text>
               <Text style={styles.emptyText}>
                 Planea tu primer cruce para comenzar
               </Text>
@@ -213,7 +213,7 @@ export default function CrucesScreen() {
                 onPress={() => router.push('/cruce/new')}
               >
                 <Ionicons name="add" size={20} color="#000" />
-                <Text style={styles.emptyButtonText}>Nuevo Cruce</Text>
+                <Text style={styles.emptyButtonText}>Iniciar Cruces</Text>
               </TouchableOpacity>
             </View>
           }
