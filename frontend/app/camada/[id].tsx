@@ -144,8 +144,25 @@ export default function CamadaFormScreen() {
   };
 
   const formatCruceLabel = (cruce: Cruce) => {
-    const fecha = new Date(cruce.fecha).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
-    return `Cruce del ${fecha}`;
+    // Obtener información del padre
+    let padreLabel = 'Desconocido';
+    if (cruce.padre_id) {
+      const padre = aves.find(a => a.id === cruce.padre_id);
+      padreLabel = padre ? `Placa ${padre.codigo}` : 'Desconocido';
+    } else if (cruce.padre_externo) {
+      padreLabel = `Ext. ${cruce.padre_externo.split(' (')[0]}`;
+    }
+
+    // Obtener información de la madre
+    let madreLabel = 'Desconocida';
+    if (cruce.madre_id) {
+      const madre = aves.find(a => a.id === cruce.madre_id);
+      madreLabel = madre ? `Placa ${madre.codigo}` : 'Desconocida';
+    } else if (cruce.madre_externo) {
+      madreLabel = `Ext. ${cruce.madre_externo.split(' (')[0]}`;
+    }
+
+    return `Gallo ${padreLabel} x Gallina ${madreLabel}`;
   };
 
   if (loading) {
