@@ -369,6 +369,37 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.white,
   },
+  // Alert Summary
+  alertSummary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 8,
+    padding: 14,
+    borderRadius: 12,
+  },
+  alertSummaryIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  alertSummaryContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  alertSummaryTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.white,
+  },
+  alertSummaryText: {
+    fontSize: 13,
+    fontWeight: '500',
+    marginTop: 2,
+  },
   tabs: {
     flexDirection: 'row',
     backgroundColor: COLORS.grayDark,
