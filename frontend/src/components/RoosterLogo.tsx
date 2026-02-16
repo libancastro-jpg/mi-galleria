@@ -6,7 +6,7 @@ import { View, Image } from 'react-native';
  * =====================================
  * Archivo: rooster-logo.png (NO MODIFICAR)
  * 
- * Fondo dorado para mejorar contraste
+ * Fondo dorado circular para mejorar contraste
  */
 
 // Importar imagen PNG como asset
@@ -18,10 +18,10 @@ interface RoosterLogoProps {
 
 /**
  * Componente del Logo Oficial
- * Con fondo dorado para mejor visibilidad
+ * Con fondo dorado circular
  */
 export function RoosterLogo({ size = 72 }: RoosterLogoProps) {
-  const padding = 8;
+  const padding = 4;
   const imageSize = size - (padding * 2);
   
   return (
@@ -31,7 +31,7 @@ export function RoosterLogo({ size = 72 }: RoosterLogoProps) {
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: '#F5A623',
-      borderRadius: 12,
+      borderRadius: size / 2,
       padding: padding,
     }}>
       <Image
