@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -25,12 +26,13 @@ interface Ave {
   linea?: string;
 }
 
-interface Trabajo {
+interface Actividad {
+  id: string;
+  tipo: 'tope' | 'trabajo';
   numero: number;
-  tiempo_minutos: number | null;
-  completado: boolean;
-  fecha_completado: string | null;
-  notas: string | null;
+  tiempo_minutos?: number;
+  fecha: string;
+  notas?: string;
 }
 
 interface Cuido {
@@ -43,19 +45,30 @@ interface Cuido {
   ave_linea?: string;
   fecha_inicio: string;
   estado: string;
-  tope1_completado: boolean;
-  tope1_fecha?: string;
-  tope1_notas?: string;
-  tope2_completado: boolean;
-  tope2_fecha?: string;
-  tope2_notas?: string;
-  trabajos: Trabajo[];
+  actividades: Actividad[];
   en_descanso: boolean;
   dias_descanso?: number;
   fecha_inicio_descanso?: string;
   fecha_fin_descanso?: string;
   notas?: string;
 }
+
+const COLORS = {
+  gold: '#d4a017',
+  goldLight: 'rgba(212, 160, 23, 0.15)',
+  greenDark: '#1a5d3a',
+  greenLight: 'rgba(26, 93, 58, 0.15)',
+  redDeep: '#8b1a1a',
+  redLight: 'rgba(139, 26, 26, 0.15)',
+  blue: '#3b82f6',
+  blueLight: 'rgba(59, 130, 246, 0.15)',
+  grayDark: '#1a1a1a',
+  grayMedium: '#2a2a2a',
+  grayLight: '#6b7280',
+  white: '#ffffff',
+  background: '#0a0a0a',
+  green: '#22c55e',
+};
 
 export default function CuidoDetailScreen() {
   const router = useRouter();
@@ -68,9 +81,14 @@ export default function CuidoDetailScreen() {
   const [gallos, setGallos] = useState<Ave[]>([]);
   const [showGalloList, setShowGalloList] = useState(false);
   const [selectedGallo, setSelectedGallo] = useState<string>('');
-  const [showTrabajoModal, setShowTrabajoModal] = useState(false);
-  const [selectedTrabajo, setSelectedTrabajo] = useState<number | null>(null);
-  const [trabajoTiempo, setTrabajoTiempo] = useState('');
+  
+  // Modal states
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [actividadTipo, setActividadTipo] = useState<'tope' | 'trabajo' | null>(null);
+  const [actividadTiempo, setActividadTiempo] = useState('');
+  const [actividadFecha, setActividadFecha] = useState(new Date().toISOString().split('T')[0]);
+  const [actividadNotas, setActividadNotas] = useState('');
+  
   const [showDescansoModal, setShowDescansoModal] = useState(false);
   const [diasDescanso, setDiasDescanso] = useState('');
 
@@ -84,7 +102,46 @@ export default function CuidoDetailScreen() {
   const fetchCuido = async () => {
     try {
       const data = await api.get(`/cuido/${id}`);
-      setCuido(data);
+      // Transform old format to new format if needed
+      const actividades: Actividad[] = data.actividades || [];
+      
+      // Migrate old tope fields if present
+      if (data.tope1_completado && !actividades.find(a => a.tipo === 'tope' && a.numero === 1)) {
+        actividades.push({
+          id: 'tope1',
+          tipo: 'tope',
+          numero: 1,
+          fecha: data.tope1_fecha || data.fecha_inicio,
+          notas: data.tope1_notas,
+        });
+      }
+      if (data.tope2_completado && !actividades.find(a => a.tipo === 'tope' && a.numero === 2)) {
+        actividades.push({
+          id: 'tope2',
+          tipo: 'tope',
+          numero: 2,
+          fecha: data.tope2_fecha || data.fecha_inicio,
+          notas: data.tope2_notas,
+        });
+      }
+      
+      // Migrate old trabajos if present
+      if (data.trabajos && Array.isArray(data.trabajos)) {
+        data.trabajos.forEach((t: any) => {
+          if (t.completado && !actividades.find(a => a.tipo === 'trabajo' && a.numero === t.numero)) {
+            actividades.push({
+              id: `trabajo${t.numero}`,
+              tipo: 'trabajo',
+              numero: t.numero,
+              tiempo_minutos: t.tiempo_minutos,
+              fecha: t.fecha_completado || data.fecha_inicio,
+              notas: t.notas,
+            });
+          }
+        });
+      }
+      
+      setCuido({ ...data, actividades });
     } catch (error: any) {
       Alert.alert('Error', error.message);
     } finally {
@@ -119,45 +176,62 @@ export default function CuidoDetailScreen() {
     }
   };
 
-  const handleTope = async (topeNum: 1 | 2) => {
-    if (!cuido) return;
+  const handleAddActividad = async () => {
+    if (!cuido || !actividadTipo) return;
+
+    const topeCount = cuido.actividades.filter(a => a.tipo === 'tope').length;
+    const trabajoCount = cuido.actividades.filter(a => a.tipo === 'trabajo').length;
+    const numero = actividadTipo === 'tope' ? topeCount + 1 : trabajoCount + 1;
+
+    if (actividadTipo === 'trabajo' && !actividadTiempo) {
+      Alert.alert('Error', 'Ingresa el tiempo del trabajo');
+      return;
+    }
 
     try {
-      await api.post(`/cuido/${cuido.id}/tope?tope_numero=${topeNum}`);
-      fetchCuido();
-      Alert.alert('Éxito', `Tope ${topeNum} registrado`);
+      if (actividadTipo === 'tope') {
+        await api.post(`/cuido/${cuido.id}/tope?tope_numero=${numero}`);
+      } else {
+        const tiempo = parseInt(actividadTiempo);
+        await api.post(`/cuido/${cuido.id}/trabajo?trabajo_numero=${numero}&tiempo_minutos=${tiempo}`);
+      }
+      
+      // Actualizar localmente
+      const newActividad: Actividad = {
+        id: `${actividadTipo}${numero}`,
+        tipo: actividadTipo,
+        numero,
+        tiempo_minutos: actividadTipo === 'trabajo' ? parseInt(actividadTiempo) : undefined,
+        fecha: actividadFecha,
+        notas: actividadNotas || undefined,
+      };
+      
+      setCuido({
+        ...cuido,
+        actividades: [...cuido.actividades, newActividad],
+      });
+      
+      resetAddModal();
+      Alert.alert('Éxito', `${actividadTipo === 'tope' ? 'Tope' : 'Trabajo'} ${numero} registrado`);
     } catch (error: any) {
       Alert.alert('Error', error.message);
     }
   };
 
-  const handleTrabajo = async () => {
-    if (!cuido || !selectedTrabajo || !trabajoTiempo) return;
-
-    const tiempo = parseInt(trabajoTiempo);
-    if (isNaN(tiempo) || tiempo < 1) {
-      Alert.alert('Error', 'Ingresa un tiempo válido en minutos');
-      return;
-    }
-
-    try {
-      await api.post(`/cuido/${cuido.id}/trabajo?trabajo_numero=${selectedTrabajo}&tiempo_minutos=${tiempo}`);
-      setShowTrabajoModal(false);
-      setSelectedTrabajo(null);
-      setTrabajoTiempo('');
-      fetchCuido();
-      Alert.alert('Éxito', `Trabajo ${selectedTrabajo} registrado`);
-    } catch (error: any) {
-      Alert.alert('Error', error.message);
-    }
+  const resetAddModal = () => {
+    setShowAddModal(false);
+    setActividadTipo(null);
+    setActividadTiempo('');
+    setActividadFecha(new Date().toISOString().split('T')[0]);
+    setActividadNotas('');
   };
 
   const handleDescanso = async () => {
     if (!cuido || !diasDescanso) return;
 
     const dias = parseInt(diasDescanso);
-    if (isNaN(dias) || dias < 1 || dias > 20) {
-      Alert.alert('Error', 'Los días deben ser entre 1 y 20');
+    if (isNaN(dias) || dias < 1 || dias > 30) {
+      Alert.alert('Error', 'Los días deben ser entre 1 y 30');
       return;
     }
 
@@ -206,11 +280,16 @@ export default function CuidoDetailScreen() {
     );
   };
 
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#f59e0b" />
+          <ActivityIndicator size="large" color={COLORS.gold} />
         </View>
       </SafeAreaView>
     );
@@ -222,7 +301,7 @@ export default function CuidoDetailScreen() {
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#fff" />
+            <Ionicons name="arrow-back" size={24} color={COLORS.white} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Nuevo Cuido</Text>
           <TouchableOpacity
@@ -245,7 +324,7 @@ export default function CuidoDetailScreen() {
             onPress={() => setShowGalloList(!showGalloList)}
           >
             <View style={styles.selectButtonContent}>
-              <RoosterIcon size={24} color="#f59e0b" />
+              <RoosterIcon size={24} color={COLORS.gold} />
               <Text style={styles.selectButtonText}>
                 {selectedGallo
                   ? gallos.find(g => g.id === selectedGallo)?.codigo || 'Seleccionado'
@@ -255,7 +334,7 @@ export default function CuidoDetailScreen() {
             <Ionicons
               name={showGalloList ? 'chevron-up' : 'chevron-down'}
               size={20}
-              color="#9ca3af"
+              color={COLORS.grayLight}
             />
           </TouchableOpacity>
 
@@ -281,7 +360,7 @@ export default function CuidoDetailScreen() {
                         <Image source={{ uri: gallo.foto_principal }} style={styles.galloPhoto} />
                       ) : (
                         <View style={styles.galloPhotoPlaceholder}>
-                          <RoosterIcon size={20} color="#6b7280" />
+                          <RoosterIcon size={20} color={COLORS.grayLight} />
                         </View>
                       )}
                       <View style={styles.galloInfo}>
@@ -290,7 +369,7 @@ export default function CuidoDetailScreen() {
                       </View>
                     </View>
                     {selectedGallo === gallo.id && (
-                      <Ionicons name="checkmark" size={20} color="#f59e0b" />
+                      <Ionicons name="checkmark" size={20} color={COLORS.gold} />
                     )}
                   </TouchableOpacity>
                 ))
@@ -299,9 +378,9 @@ export default function CuidoDetailScreen() {
           )}
 
           <View style={styles.infoCard}>
-            <Ionicons name="information-circle" size={24} color="#3b82f6" />
+            <Ionicons name="information-circle" size={24} color={COLORS.blue} />
             <Text style={styles.infoText}>
-              Al crear un cuido podrás registrar topes, trabajos con tiempos y periodos de descanso para preparar al gallo.
+              Al crear un cuido podrás agregar topes, trabajos y periodos de descanso según las necesidades del gallo.
             </Text>
           </View>
         </ScrollView>
@@ -310,11 +389,14 @@ export default function CuidoDetailScreen() {
   }
 
   // Cuido Detail View
+  const topes = cuido?.actividades.filter(a => a.tipo === 'tope') || [];
+  const trabajos = cuido?.actividades.filter(a => a.tipo === 'trabajo') || [];
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+          <Ionicons name="arrow-back" size={24} color={COLORS.white} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Cuido</Text>
         <TouchableOpacity onPress={handleFinalizar} style={styles.finalizarButton}>
@@ -329,7 +411,7 @@ export default function CuidoDetailScreen() {
             <Image source={{ uri: cuido.ave_foto }} style={styles.galloDetailPhoto} />
           ) : (
             <View style={styles.galloDetailPhotoPlaceholder}>
-              <RoosterIcon size={40} color="#f59e0b" />
+              <RoosterIcon size={40} color={COLORS.gold} />
             </View>
           )}
           <View style={styles.galloDetailInfo}>
@@ -342,8 +424,8 @@ export default function CuidoDetailScreen() {
           </View>
           {cuido?.en_descanso && (
             <View style={styles.descansoIndicator}>
-              <Ionicons name="bed" size={20} color="#3b82f6" />
-              <Text style={styles.descansoIndicatorText}>En descanso</Text>
+              <Ionicons name="bed" size={20} color={COLORS.blue} />
+              <Text style={styles.descansoIndicatorText}>Descansando</Text>
             </View>
           )}
         </View>
@@ -352,7 +434,7 @@ export default function CuidoDetailScreen() {
         {cuido?.en_descanso && (
           <View style={styles.descansoCard}>
             <View style={styles.descansoHeader}>
-              <Ionicons name="bed" size={24} color="#3b82f6" />
+              <Ionicons name="bed" size={24} color={COLORS.blue} />
               <Text style={styles.descansoTitle}>Período de Descanso</Text>
             </View>
             <Text style={styles.descansoInfo}>
@@ -370,121 +452,90 @@ export default function CuidoDetailScreen() {
           </View>
         )}
 
-        {/* Topes Section */}
-        <Text style={styles.sectionTitle}>Topes</Text>
-        <View style={styles.topesContainer}>
-          <TouchableOpacity
-            style={[
-              styles.topeCard,
-              cuido?.tope1_completado && styles.topeCardCompleted,
-            ]}
-            onPress={() => !cuido?.tope1_completado && handleTope(1)}
-            disabled={cuido?.tope1_completado || cuido?.en_descanso}
-          >
-            <View style={[
-              styles.topeIcon,
-              cuido?.tope1_completado && styles.topeIconCompleted,
-            ]}>
-              {cuido?.tope1_completado ? (
-                <Ionicons name="checkmark" size={24} color="#000" />
-              ) : (
-                <Text style={styles.topeNumber}>1</Text>
-              )}
-            </View>
-            <Text style={[
-              styles.topeLabel,
-              cuido?.tope1_completado && styles.topeLabelCompleted,
-            ]}>
-              Tope 1
-            </Text>
-            {cuido?.tope1_fecha && (
-              <Text style={styles.topeFecha}>{cuido.tope1_fecha}</Text>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.topeCard,
-              cuido?.tope2_completado && styles.topeCardCompleted,
-            ]}
-            onPress={() => !cuido?.tope2_completado && handleTope(2)}
-            disabled={cuido?.tope2_completado || cuido?.en_descanso}
-          >
-            <View style={[
-              styles.topeIcon,
-              cuido?.tope2_completado && styles.topeIconCompleted,
-            ]}>
-              {cuido?.tope2_completado ? (
-                <Ionicons name="checkmark" size={24} color="#000" />
-              ) : (
-                <Text style={styles.topeNumber}>2</Text>
-              )}
-            </View>
-            <Text style={[
-              styles.topeLabel,
-              cuido?.tope2_completado && styles.topeLabelCompleted,
-            ]}>
-              Tope 2
-            </Text>
-            {cuido?.tope2_fecha && (
-              <Text style={styles.topeFecha}>{cuido.tope2_fecha}</Text>
-            )}
-          </TouchableOpacity>
+        {/* Actividades Section - Topes */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Topes ({topes.length})</Text>
+          {!cuido?.en_descanso && (
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={() => {
+                setActividadTipo('tope');
+                setShowAddModal(true);
+              }}
+            >
+              <Ionicons name="add" size={22} color={COLORS.gold} />
+            </TouchableOpacity>
+          )}
         </View>
-
-        {/* Trabajos Section */}
-        <Text style={styles.sectionTitle}>Trabajos</Text>
-        <View style={styles.trabajosContainer}>
-          {[1, 2, 3, 4, 5].map((num) => {
-            const trabajo = cuido?.trabajos?.find(t => t.numero === num);
-            return (
-              <TouchableOpacity
-                key={num}
-                style={[
-                  styles.trabajoCard,
-                  trabajo?.completado && styles.trabajoCardCompleted,
-                ]}
-                onPress={() => {
-                  if (!trabajo?.completado && !cuido?.en_descanso) {
-                    setSelectedTrabajo(num);
-                    setShowTrabajoModal(true);
-                  }
-                }}
-                disabled={trabajo?.completado || cuido?.en_descanso}
-              >
-                <View style={[
-                  styles.trabajoIcon,
-                  trabajo?.completado && styles.trabajoIconCompleted,
-                ]}>
-                  {trabajo?.completado ? (
-                    <Ionicons name="checkmark" size={20} color="#000" />
-                  ) : (
-                    <Text style={styles.trabajoNumber}>{num}</Text>
-                  )}
+        
+        {topes.length === 0 ? (
+          <View style={styles.emptyActividad}>
+            <Ionicons name="flash-outline" size={32} color={COLORS.grayLight} />
+            <Text style={styles.emptyActividadText}>Sin topes registrados</Text>
+            <Text style={styles.emptyActividadHint}>Presiona + para agregar</Text>
+          </View>
+        ) : (
+          <View style={styles.actividadesGrid}>
+            {topes.sort((a, b) => a.numero - b.numero).map((tope) => (
+              <View key={tope.id} style={styles.actividadCard}>
+                <View style={styles.actividadIconCompleted}>
+                  <Ionicons name="flash" size={20} color="#000" />
                 </View>
-                <Text style={[
-                  styles.trabajoLabel,
-                  trabajo?.completado && styles.trabajoLabelCompleted,
-                ]}>
-                  Trabajo {num}
-                </Text>
-                {trabajo?.completado && trabajo.tiempo_minutos && (
-                  <Text style={styles.trabajoTiempo}>{trabajo.tiempo_minutos} min</Text>
-                )}
-              </TouchableOpacity>
-            );
-          })}
+                <Text style={styles.actividadLabel}>Tope {tope.numero}</Text>
+                <Text style={styles.actividadFecha}>{formatDate(tope.fecha)}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Actividades Section - Trabajos */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Trabajos ({trabajos.length})</Text>
+          {!cuido?.en_descanso && (
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={() => {
+                setActividadTipo('trabajo');
+                setShowAddModal(true);
+              }}
+            >
+              <Ionicons name="add" size={22} color={COLORS.gold} />
+            </TouchableOpacity>
+          )}
         </View>
+        
+        {trabajos.length === 0 ? (
+          <View style={styles.emptyActividad}>
+            <Ionicons name="barbell-outline" size={32} color={COLORS.grayLight} />
+            <Text style={styles.emptyActividadText}>Sin trabajos registrados</Text>
+            <Text style={styles.emptyActividadHint}>Presiona + para agregar</Text>
+          </View>
+        ) : (
+          <View style={styles.actividadesGrid}>
+            {trabajos.sort((a, b) => a.numero - b.numero).map((trabajo) => (
+              <View key={trabajo.id} style={styles.actividadCard}>
+                <View style={styles.actividadIconCompleted}>
+                  <Ionicons name="barbell" size={20} color="#000" />
+                </View>
+                <Text style={styles.actividadLabel}>Trabajo {trabajo.numero}</Text>
+                {trabajo.tiempo_minutos && (
+                  <Text style={styles.actividadTiempo}>{trabajo.tiempo_minutos} min</Text>
+                )}
+                <Text style={styles.actividadFecha}>{formatDate(trabajo.fecha)}</Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* Descanso Section */}
         {!cuido?.en_descanso && (
           <>
-            <Text style={styles.sectionTitle}>Descanso</Text>
+            <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Descanso</Text>
             <TouchableOpacity
               style={styles.descansoButton}
               onPress={() => setShowDescansoModal(true)}
             >
-              <Ionicons name="bed" size={24} color="#3b82f6" />
+              <Ionicons name="bed" size={24} color={COLORS.blue} />
               <Text style={styles.descansoButtonText}>Iniciar Período de Descanso</Text>
             </TouchableOpacity>
           </>
@@ -493,58 +544,133 @@ export default function CuidoDetailScreen() {
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      {/* Trabajo Modal */}
-      {showTrabajoModal && (
+      {/* Add Actividad Modal */}
+      <Modal
+        visible={showAddModal}
+        transparent
+        animationType="fade"
+        onRequestClose={resetAddModal}
+      >
         <View style={styles.modalOverlay}>
           <View style={styles.modal}>
-            <Text style={styles.modalTitle}>Registrar Trabajo {selectedTrabajo}</Text>
-            <Text style={styles.modalLabel}>Tiempo (minutos)</Text>
+            <Text style={styles.modalTitle}>
+              Agregar {actividadTipo === 'tope' ? 'Tope' : 'Trabajo'}
+            </Text>
+            
+            {actividadTipo === null && (
+              <>
+                <Text style={styles.modalLabel}>Tipo de actividad</Text>
+                <View style={styles.tipoButtons}>
+                  <TouchableOpacity
+                    style={[styles.tipoButton, actividadTipo === 'tope' && styles.tipoButtonActive]}
+                    onPress={() => setActividadTipo('tope')}
+                  >
+                    <Ionicons name="flash" size={24} color={COLORS.gold} />
+                    <Text style={styles.tipoButtonText}>Tope</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.tipoButton, actividadTipo === 'trabajo' && styles.tipoButtonActive]}
+                    onPress={() => setActividadTipo('trabajo')}
+                  >
+                    <Ionicons name="barbell" size={24} color={COLORS.gold} />
+                    <Text style={styles.tipoButtonText}>Trabajo</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+            
+            {actividadTipo === 'trabajo' && (
+              <>
+                <Text style={styles.modalLabel}>Tiempo (minutos)</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={actividadTiempo}
+                  onChangeText={setActividadTiempo}
+                  keyboardType="numeric"
+                  placeholder="Ej: 15, 30, 45"
+                  placeholderTextColor={COLORS.grayLight}
+                />
+                <View style={styles.tiempoButtons}>
+                  {[10, 15, 20, 30, 45].map((min) => (
+                    <TouchableOpacity
+                      key={min}
+                      style={[
+                        styles.tiempoButton,
+                        actividadTiempo === min.toString() && styles.tiempoButtonActive,
+                      ]}
+                      onPress={() => setActividadTiempo(min.toString())}
+                    >
+                      <Text style={[
+                        styles.tiempoButtonText,
+                        actividadTiempo === min.toString() && styles.tiempoButtonTextActive,
+                      ]}>
+                        {min}m
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </>
+            )}
+
+            <Text style={styles.modalLabel}>Fecha</Text>
             <TextInput
               style={styles.modalInput}
-              value={trabajoTiempo}
-              onChangeText={setTrabajoTiempo}
-              keyboardType="numeric"
-              placeholder="Ej: 15, 30, 45"
-              placeholderTextColor="#6b7280"
+              value={actividadFecha}
+              onChangeText={setActividadFecha}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor={COLORS.grayLight}
             />
+            
+            <Text style={styles.modalLabel}>Notas (opcional)</Text>
+            <TextInput
+              style={[styles.modalInput, styles.modalInputMultiline]}
+              value={actividadNotas}
+              onChangeText={setActividadNotas}
+              placeholder="Observaciones..."
+              placeholderTextColor={COLORS.grayLight}
+              multiline
+              numberOfLines={2}
+            />
+
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={styles.modalCancelButton}
-                onPress={() => {
-                  setShowTrabajoModal(false);
-                  setSelectedTrabajo(null);
-                  setTrabajoTiempo('');
-                }}
+                onPress={resetAddModal}
               >
                 <Text style={styles.modalCancelText}>Cancelar</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.modalConfirmButton}
-                onPress={handleTrabajo}
+                onPress={handleAddActividad}
               >
-                <Text style={styles.modalConfirmText}>Registrar</Text>
+                <Text style={styles.modalConfirmText}>Agregar</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
-      )}
+      </Modal>
 
       {/* Descanso Modal */}
-      {showDescansoModal && (
+      <Modal
+        visible={showDescansoModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDescansoModal(false)}
+      >
         <View style={styles.modalOverlay}>
           <View style={styles.modal}>
             <Text style={styles.modalTitle}>Iniciar Descanso</Text>
-            <Text style={styles.modalLabel}>Días de descanso (1-20)</Text>
+            <Text style={styles.modalLabel}>Días de descanso (1-30)</Text>
             <TextInput
               style={styles.modalInput}
               value={diasDescanso}
               onChangeText={setDiasDescanso}
               keyboardType="numeric"
               placeholder="Ej: 5, 10, 15"
-              placeholderTextColor="#6b7280"
+              placeholderTextColor={COLORS.grayLight}
             />
             <View style={styles.diasButtons}>
-              {[5, 7, 10, 14, 20].map((dias) => (
+              {[5, 7, 10, 14, 21].map((dias) => (
                 <TouchableOpacity
                   key={dias}
                   style={[
@@ -581,7 +707,7 @@ export default function CuidoDetailScreen() {
             </View>
           </View>
         </View>
-      )}
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -589,7 +715,7 @@ export default function CuidoDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0a0a',
+    backgroundColor: COLORS.background,
   },
   loadingContainer: {
     flex: 1,
@@ -603,7 +729,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#2a2a2a',
+    borderBottomColor: COLORS.grayMedium,
   },
   backButton: {
     width: 40,
@@ -614,10 +740,10 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#fff',
+    color: COLORS.white,
   },
   saveButton: {
-    backgroundColor: '#f59e0b',
+    backgroundColor: COLORS.gold,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
@@ -633,29 +759,44 @@ const styles = StyleSheet.create({
   },
   finalizarText: {
     fontSize: 14,
-    color: '#ef4444',
+    color: COLORS.redDeep,
     fontWeight: '600',
   },
   content: {
     flex: 1,
     padding: 16,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 24,
+    marginBottom: 12,
+  },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
-    marginTop: 24,
-    marginBottom: 12,
+    color: COLORS.white,
+  },
+  addButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.goldLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.gold,
   },
   selectButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#141414',
+    backgroundColor: COLORS.grayDark,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#2a2a2a',
+    borderColor: COLORS.grayMedium,
   },
   selectButtonContent: {
     flexDirection: 'row',
@@ -664,14 +805,14 @@ const styles = StyleSheet.create({
   },
   selectButtonText: {
     fontSize: 16,
-    color: '#fff',
+    color: COLORS.white,
   },
   selectList: {
-    backgroundColor: '#141414',
+    backgroundColor: COLORS.grayDark,
     borderRadius: 12,
     marginTop: 8,
     borderWidth: 1,
-    borderColor: '#2a2a2a',
+    borderColor: COLORS.grayMedium,
     maxHeight: 300,
   },
   selectItem: {
@@ -680,10 +821,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#2a2a2a',
+    borderBottomColor: COLORS.grayMedium,
   },
   selectItemActive: {
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    backgroundColor: COLORS.goldLight,
   },
   galloItemContent: {
     flexDirection: 'row',
@@ -699,7 +840,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: COLORS.grayMedium,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -709,22 +850,22 @@ const styles = StyleSheet.create({
   galloCodigo: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: COLORS.white,
   },
   galloNombre: {
     fontSize: 13,
-    color: '#6b7280',
+    color: COLORS.grayLight,
   },
   noDataText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: COLORS.grayLight,
     textAlign: 'center',
     padding: 16,
   },
   infoCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    backgroundColor: COLORS.blueLight,
     borderRadius: 12,
     padding: 16,
     marginTop: 24,
@@ -733,17 +874,17 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     fontSize: 14,
-    color: '#9ca3af',
+    color: COLORS.grayLight,
     lineHeight: 20,
   },
   galloCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#141414',
+    backgroundColor: COLORS.grayDark,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#2a2a2a',
+    borderColor: COLORS.grayMedium,
   },
   galloDetailPhoto: {
     width: 72,
@@ -754,7 +895,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: COLORS.grayMedium,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -765,11 +906,11 @@ const styles = StyleSheet.create({
   galloDetailCodigo: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#fff',
+    color: COLORS.white,
   },
   galloDetailNombre: {
     fontSize: 15,
-    color: '#9ca3af',
+    color: COLORS.grayLight,
     marginTop: 2,
   },
   galloDetailTags: {
@@ -779,25 +920,25 @@ const styles = StyleSheet.create({
   },
   galloDetailTag: {
     fontSize: 12,
-    color: '#6b7280',
-    backgroundColor: '#2a2a2a',
+    color: COLORS.grayLight,
+    backgroundColor: COLORS.grayMedium,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
   },
   descansoIndicator: {
     alignItems: 'center',
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    backgroundColor: COLORS.blueLight,
     padding: 10,
     borderRadius: 12,
   },
   descansoIndicatorText: {
     fontSize: 11,
-    color: '#3b82f6',
+    color: COLORS.blue,
     marginTop: 4,
   },
   descansoCard: {
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    backgroundColor: COLORS.blueLight,
     borderRadius: 16,
     padding: 16,
     marginTop: 16,
@@ -813,19 +954,19 @@ const styles = StyleSheet.create({
   descansoTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#3b82f6',
+    color: COLORS.blue,
   },
   descansoInfo: {
     fontSize: 14,
-    color: '#fff',
+    color: COLORS.white,
     marginBottom: 4,
   },
   descansoFecha: {
     fontSize: 13,
-    color: '#9ca3af',
+    color: COLORS.grayLight,
   },
   finalizarDescansoButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: COLORS.blue,
     borderRadius: 8,
     padding: 12,
     alignItems: 'center',
@@ -834,108 +975,71 @@ const styles = StyleSheet.create({
   finalizarDescansoText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#fff',
+    color: COLORS.white,
   },
-  topesContainer: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  topeCard: {
-    flex: 1,
-    backgroundColor: '#141414',
-    borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#2a2a2a',
-  },
-  topeCardCompleted: {
-    borderColor: '#22c55e',
-    backgroundColor: 'rgba(34, 197, 94, 0.1)',
-  },
-  topeIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#2a2a2a',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  topeIconCompleted: {
-    backgroundColor: '#22c55e',
-  },
-  topeNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#9ca3af',
-  },
-  topeLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#9ca3af',
-  },
-  topeLabelCompleted: {
-    color: '#22c55e',
-  },
-  topeFecha: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginTop: 4,
-  },
-  trabajosContainer: {
+  // Actividades Grid
+  actividadesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
   },
-  trabajoCard: {
+  actividadCard: {
     width: '31%',
-    backgroundColor: '#141414',
+    backgroundColor: COLORS.greenLight,
     borderRadius: 12,
     padding: 12,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#2a2a2a',
+    borderColor: COLORS.green,
   },
-  trabajoCardCompleted: {
-    borderColor: '#22c55e',
-    backgroundColor: 'rgba(34, 197, 94, 0.1)',
-  },
-  trabajoIcon: {
+  actividadIconCompleted: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: COLORS.green,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
   },
-  trabajoIconCompleted: {
-    backgroundColor: '#22c55e',
-  },
-  trabajoNumber: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#9ca3af',
-  },
-  trabajoLabel: {
+  actividadLabel: {
     fontSize: 12,
-    color: '#9ca3af',
-  },
-  trabajoLabelCompleted: {
-    color: '#22c55e',
-  },
-  trabajoTiempo: {
-    fontSize: 11,
-    color: '#22c55e',
-    marginTop: 4,
+    color: COLORS.green,
     fontWeight: '600',
+  },
+  actividadTiempo: {
+    fontSize: 11,
+    color: COLORS.green,
+    marginTop: 2,
+  },
+  actividadFecha: {
+    fontSize: 10,
+    color: COLORS.grayLight,
+    marginTop: 4,
+  },
+  emptyActividad: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    backgroundColor: COLORS.grayDark,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.grayMedium,
+    borderStyle: 'dashed',
+  },
+  emptyActividadText: {
+    fontSize: 14,
+    color: COLORS.grayLight,
+    marginTop: 8,
+  },
+  emptyActividadHint: {
+    fontSize: 12,
+    color: COLORS.gold,
+    marginTop: 4,
   },
   descansoButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    backgroundColor: COLORS.blueLight,
     borderRadius: 12,
     padding: 16,
     gap: 12,
@@ -945,21 +1049,18 @@ const styles = StyleSheet.create({
   descansoButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#3b82f6',
+    color: COLORS.blue,
   },
+  // Modal Styles
   modalOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
   },
   modal: {
-    backgroundColor: '#141414',
+    backgroundColor: COLORS.grayDark,
     borderRadius: 16,
     padding: 24,
     width: '100%',
@@ -968,23 +1069,72 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
+    color: COLORS.white,
     marginBottom: 20,
     textAlign: 'center',
   },
   modalLabel: {
     fontSize: 14,
-    color: '#9ca3af',
+    color: COLORS.grayLight,
     marginBottom: 8,
   },
   modalInput: {
-    backgroundColor: '#2a2a2a',
+    backgroundColor: COLORS.grayMedium,
     borderRadius: 12,
-    padding: 16,
-    fontSize: 18,
-    color: '#fff',
-    textAlign: 'center',
+    padding: 14,
+    fontSize: 16,
+    color: COLORS.white,
     marginBottom: 16,
+  },
+  modalInputMultiline: {
+    height: 80,
+    textAlignVertical: 'top',
+  },
+  tipoButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
+  },
+  tipoButton: {
+    flex: 1,
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: COLORS.grayMedium,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: COLORS.grayMedium,
+  },
+  tipoButtonActive: {
+    borderColor: COLORS.gold,
+    backgroundColor: COLORS.goldLight,
+  },
+  tipoButtonText: {
+    fontSize: 14,
+    color: COLORS.white,
+    marginTop: 8,
+    fontWeight: '600',
+  },
+  tiempoButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  tiempoButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: COLORS.grayMedium,
+  },
+  tiempoButtonActive: {
+    backgroundColor: COLORS.gold,
+  },
+  tiempoButtonText: {
+    fontSize: 14,
+    color: COLORS.grayLight,
+    fontWeight: '600',
+  },
+  tiempoButtonTextActive: {
+    color: '#000',
   },
   diasButtons: {
     flexDirection: 'row',
@@ -995,18 +1145,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 8,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: COLORS.grayMedium,
   },
   diasButtonActive: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: COLORS.blue,
   },
   diasButtonText: {
     fontSize: 14,
-    color: '#9ca3af',
+    color: COLORS.grayLight,
     fontWeight: '600',
   },
   diasButtonTextActive: {
-    color: '#fff',
+    color: COLORS.white,
   },
   modalButtons: {
     flexDirection: 'row',
@@ -1014,19 +1164,19 @@ const styles = StyleSheet.create({
   },
   modalCancelButton: {
     flex: 1,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: COLORS.grayMedium,
     borderRadius: 12,
     padding: 14,
     alignItems: 'center',
   },
   modalCancelText: {
     fontSize: 16,
-    color: '#9ca3af',
+    color: COLORS.grayLight,
     fontWeight: '600',
   },
   modalConfirmButton: {
     flex: 1,
-    backgroundColor: '#f59e0b',
+    backgroundColor: COLORS.gold,
     borderRadius: 12,
     padding: 14,
     alignItems: 'center',
