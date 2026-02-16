@@ -91,21 +91,6 @@ export default function DashboardScreen() {
     return { color: COLORS.redDeep, bg: COLORS.redLight, text: `${count} alertas - Atención requerida`, icon: 'warning' };
   };
 
-  const getCalificacionStyle = (cal: string) => {
-    switch (cal) {
-      case 'EXTRAORDINARIA':
-        return { bg: COLORS.goldLight, color: COLORS.gold, text: 'Extraordinaria' };
-      case 'BUENA':
-        return { bg: COLORS.greenLight, color: COLORS.greenDark, text: 'Buena' };
-      case 'REGULAR':
-        return { bg: 'rgba(107, 114, 128, 0.2)', color: COLORS.grayLight, text: 'Regular' };
-      case 'MALA':
-        return { bg: COLORS.redLight, color: COLORS.redDeep, text: 'Mala' };
-      default:
-        return { bg: 'rgba(107, 114, 128, 0.2)', color: COLORS.grayLight, text: cal };
-    }
-  };
-
   const formatUserName = (name: string | undefined) => {
     if (!name) return 'Castador';
     return name.charAt(0).toUpperCase() + name.slice(1);
