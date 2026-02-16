@@ -142,8 +142,19 @@ export default function DashboardScreen() {
             <Text style={styles.userName}>{formatUserName(user?.nombre)}</Text>
             <Text style={styles.subtitle}>Panel General del Criadero</Text>
           </View>
-          <View style={styles.headerIcon}>
-            <RoosterIcon size={40} color={COLORS.gold} />
+          <View style={styles.headerRight}>
+            <TouchableOpacity 
+              style={styles.profileButton}
+              onPress={() => router.push('/perfil')}
+            >
+              <Ionicons name="person-circle" size={36} color={COLORS.gold} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Rooster Icon Banner */}
+        <View style={styles.roosterBanner}>
+          <RoosterIcon size={50} color={COLORS.gold} />
           </View>
         </View>
 
