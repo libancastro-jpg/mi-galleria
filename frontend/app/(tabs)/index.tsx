@@ -136,26 +136,26 @@ export default function DashboardScreen() {
           />
         }
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerText}>
-            <Text style={styles.welcomeText}>Bienvenido,</Text>
-            <Text style={styles.userName}>{formatUserName(user?.nombre)}</Text>
-            <Text style={styles.subtitle}>Panel General del Criadero</Text>
+        {/* Header con Logo Central */}
+        <View style={styles.headerContainer}>
+          <View style={styles.headerTop}>
+            <View style={styles.headerLeft}>
+              <Text style={styles.welcomeText}>Bienvenido,</Text>
+              <Text style={styles.userName}>{formatUserName(user?.nombre)}</Text>
+            </View>
+            <View style={styles.headerCenter}>
+              <RoosterLogo size={72} />
+            </View>
+            <View style={styles.headerRight}>
+              <TouchableOpacity 
+                style={styles.profileButton}
+                onPress={() => router.push('/perfil')}
+              >
+                <UserIcon size={32} color={COLORS.gold} />
+              </TouchableOpacity>
+            </View>
           </View>
-          <View style={styles.headerRight}>
-            <TouchableOpacity 
-              style={styles.profileButton}
-              onPress={() => router.push('/perfil')}
-            >
-              <UserIcon size={32} color={COLORS.gold} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Rooster Logo - Imagen oficial 72x72 */}
-        <View style={styles.roosterBanner}>
-          <RoosterLogo size={72} />
+          <Text style={styles.subtitle}>Panel General del Criadero</Text>
         </View>
 
         {/* Alertas Section - Solo mostrar si hay recordatorios pendientes */}
