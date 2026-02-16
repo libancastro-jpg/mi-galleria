@@ -105,7 +105,7 @@ export default function RegisterScreen() {
               <Ionicons name="home-outline" size={20} color="#9ca3af" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder="Gallera (opcional)"
+                placeholder="Galleria (opcional)"
                 placeholderTextColor="#6b7280"
                 value={nombre}
                 onChangeText={setNombre}

@@ -37,7 +37,7 @@ export default function PerfilScreen() {
   
   // Estados para edición
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editingGallera, setEditingGallera] = useState(user?.nombre || '');
+  const [editingGalleria, setEditingGalleria] = useState(user?.nombre || '');
   const [saving, setSaving] = useState(false);
 
   const handleLogout = () => {
@@ -58,20 +58,20 @@ export default function PerfilScreen() {
     );
   };
 
-  const handleSaveGallera = async () => {
-    if (!editingGallera.trim()) {
+  const handleSaveGalleria = async () => {
+    if (!editingGalleria.trim()) {
       Alert.alert('Error', 'El nombre de la gallera no puede estar vacío');
       return;
     }
 
     setSaving(true);
     try {
-      await api.put('/auth/profile', { nombre: editingGallera.trim() });
+      await api.put('/auth/profile', { nombre: editingGalleria.trim() });
       if (refreshUser) {
         await refreshUser();
       }
       setShowEditModal(false);
-      Alert.alert('Éxito', 'Gallera actualizada correctamente');
+      Alert.alert('Éxito', 'Galleria actualizada correctamente');
     } catch (error: any) {
       Alert.alert('Error', error.message || 'No se pudo actualizar');
     } finally {
@@ -106,7 +106,7 @@ export default function PerfilScreen() {
             <View style={styles.avatarContainer}>
               <Ionicons name="person" size={50} color={COLORS.gold} />
             </View>
-            <Text style={styles.userName}>{user?.nombre || 'Mi Gallera'}</Text>
+            <Text style={styles.userName}>{user?.nombre || 'Mi Galleria'}</Text>
             <Text style={styles.userRole}>Criador de Gallos de Pelea</Text>
           </View>
 
@@ -142,7 +142,7 @@ export default function PerfilScreen() {
               <TouchableOpacity 
                 style={styles.infoRow}
                 onPress={() => {
-                  setEditingGallera(user?.nombre || '');
+                  setEditingGalleria(user?.nombre || '');
                   setShowEditModal(true);
                 }}
               >
@@ -150,7 +150,7 @@ export default function PerfilScreen() {
                   <Ionicons name="home" size={20} color={COLORS.gold} />
                 </View>
                 <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Gallera</Text>
+                  <Text style={styles.infoLabel}>Galleria</Text>
                   <Text style={styles.infoValue}>{user?.nombre || 'No registrado'}</Text>
                 </View>
                 <Ionicons name="create-outline" size={20} color={COLORS.gold} />
@@ -165,14 +165,14 @@ export default function PerfilScreen() {
             <TouchableOpacity 
               style={styles.actionItem}
               onPress={() => {
-                setEditingGallera(user?.nombre || '');
+                setEditingGalleria(user?.nombre || '');
                 setShowEditModal(true);
               }}
             >
               <View style={styles.actionIcon}>
                 <Ionicons name="create" size={20} color={COLORS.gold} />
               </View>
-              <Text style={styles.actionText}>Editar Gallera</Text>
+              <Text style={styles.actionText}>Editar Galleria</Text>
               <Ionicons name="chevron-forward" size={20} color={COLORS.grayLight} />
             </TouchableOpacity>
             
@@ -217,7 +217,7 @@ export default function PerfilScreen() {
         </ScrollView>
       </SafeAreaView>
 
-      {/* Modal para editar Gallera */}
+      {/* Modal para editar Galleria */}
       <Modal
         visible={showEditModal}
         transparent
@@ -226,14 +226,14 @@ export default function PerfilScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modal}>
-            <Text style={styles.modalTitle}>Editar Gallera</Text>
+            <Text style={styles.modalTitle}>Editar Galleria</Text>
             
-            <Text style={styles.modalLabel}>Nombre de la Gallera</Text>
+            <Text style={styles.modalLabel}>Nombre de la Galleria</Text>
             <TextInput
               style={styles.modalInput}
-              value={editingGallera}
-              onChangeText={setEditingGallera}
-              placeholder="Ej: Gallera El Campeón"
+              value={editingGalleria}
+              onChangeText={setEditingGalleria}
+              placeholder="Ej: Galleria El Campeón"
               placeholderTextColor={COLORS.grayLight}
               autoFocus
             />
@@ -247,7 +247,7 @@ export default function PerfilScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.modalConfirmButton}
-                onPress={handleSaveGallera}
+                onPress={handleSaveGalleria}
                 disabled={saving}
               >
                 {saving ? (
