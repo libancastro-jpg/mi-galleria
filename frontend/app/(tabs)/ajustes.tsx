@@ -259,6 +259,47 @@ export default function SaludScreen() {
         <Text style={styles.title}>Salud</Text>
       </View>
 
+      {/* Resumen de Recordatorios */}
+      <View style={[
+        styles.alertSummary, 
+        { backgroundColor: recordatorios.length > 0 
+          ? (recordatorios.length > 3 ? COLORS.redLight : COLORS.goldLight) 
+          : COLORS.greenLight 
+        }
+      ]}>
+        <View style={[
+          styles.alertSummaryIcon, 
+          { backgroundColor: recordatorios.length > 0 
+            ? (recordatorios.length > 3 ? COLORS.redDeep : COLORS.gold) 
+            : COLORS.greenDark 
+          }
+        ]}>
+          <Ionicons 
+            name={recordatorios.length > 0 
+              ? (recordatorios.length > 3 ? 'warning' : 'alert-circle') 
+              : 'checkmark-circle'
+            } 
+            size={22} 
+            color={COLORS.white} 
+          />
+        </View>
+        <View style={styles.alertSummaryContent}>
+          <Text style={styles.alertSummaryTitle}>Estado de Recordatorios</Text>
+          <Text style={[
+            styles.alertSummaryText, 
+            { color: recordatorios.length > 0 
+              ? (recordatorios.length > 3 ? COLORS.redDeep : COLORS.gold) 
+              : COLORS.greenDark 
+            }
+          ]}>
+            {recordatorios.length === 0 
+              ? 'Todo al día - Sin pendientes' 
+              : `${recordatorios.length} recordatorio${recordatorios.length > 1 ? 's' : ''} pendiente${recordatorios.length > 1 ? 's' : ''}`
+            }
+          </Text>
+        </View>
+      </View>
+
       {/* Tabs - Solo Recordatorios e Historial */}
       <View style={styles.tabs}>
         <TouchableOpacity
