@@ -46,12 +46,18 @@ export default function CruceFormScreen() {
   const [gallinas, setGallinas] = useState<Ave[]>([]);
   const [showPadreList, setShowPadreList] = useState(false);
   const [showMadreList, setShowMadreList] = useState(false);
+  const [showPadreExterno, setShowPadreExterno] = useState(false);
+  const [showMadreExterno, setShowMadreExterno] = useState(false);
+  const [padreGalleria, setPadreGalleria] = useState('');
+  const [madreGalleria, setMadreGalleria] = useState('');
   const [consanguinidad, setConsanguinidad] = useState<Consanguinidad | null>(null);
   const [calculatingConsang, setCalculatingConsang] = useState(false);
 
   const [formData, setFormData] = useState({
     padre_id: '',
     madre_id: '',
+    padre_externo: '',
+    madre_externo: '',
     fecha: new Date().toISOString().split('T')[0],
     objetivo: '',
     notas: '',
