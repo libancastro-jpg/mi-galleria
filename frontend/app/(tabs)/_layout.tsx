@@ -2,6 +2,7 @@ import React from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Platform, View, StyleSheet } from 'react-native';
+import { RoosterIcon } from '../../src/components/BirdIcons';
 
 export default function TabLayout() {
   return (
@@ -19,7 +20,7 @@ export default function TabLayout() {
         tabBarActiveTintColor: '#f59e0b',
         tabBarInactiveTintColor: '#6b7280',
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: '500',
         },
       }}
@@ -38,16 +39,16 @@ export default function TabLayout() {
         options={{
           title: 'Aves',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="fitness" size={size} color={color} />
+            <RoosterIcon size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="cruces"
+        name="cuido"
         options={{
-          title: 'Cruces',
+          title: 'Cuido',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="git-merge" size={size} color={color} />
+            <Ionicons name="timer" size={size} color={color} />
           ),
         }}
       />
@@ -67,6 +68,12 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="settings" size={size} color={color} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="cruces"
+        options={{
+          href: null, // Hide from tab bar but still accessible
         }}
       />
     </Tabs>
