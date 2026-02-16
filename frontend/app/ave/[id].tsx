@@ -414,6 +414,48 @@ export default function AveFormScreen() {
             </View>
           )}
 
+          {/* Tipo de Cresta */}
+          <Text style={styles.label}>Tipo de Cresta</Text>
+          <TouchableOpacity
+            style={styles.selectButton}
+            onPress={() => setShowCrestaList(!showCrestaList)}
+          >
+            <Text style={[styles.selectButtonText, formData.cresta && { color: '#fff' }]}>
+              {formData.cresta || 'Seleccionar cresta'}
+            </Text>
+            <Ionicons
+              name={showCrestaList ? 'chevron-up' : 'chevron-down'}
+              size={20}
+              color="#9ca3af"
+            />
+          </TouchableOpacity>
+          {showCrestaList && (
+            <View style={styles.colorGrid}>
+              {TIPOS_CRESTA.map((cresta) => (
+                <TouchableOpacity
+                  key={cresta}
+                  style={[
+                    styles.colorOption,
+                    formData.cresta === cresta && styles.colorOptionActive,
+                  ]}
+                  onPress={() => {
+                    setFormData({ ...formData, cresta });
+                    setShowCrestaList(false);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.colorOptionText,
+                      formData.cresta === cresta && styles.colorOptionTextActive,
+                    ]}
+                  >
+                    {cresta}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
           {/* Línea */}
           <Text style={styles.label}>Línea</Text>
           <TextInput
