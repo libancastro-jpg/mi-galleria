@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,20 +6,24 @@ import {
   TouchableOpacity,
   Alert,
   ScrollView,
+  TextInput,
+  Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../src/context/AuthContext';
+import { api } from '../src/services/api';
 
 // Color palette
 const COLORS = {
-  gold: '#d4a017',
-  goldLight: 'rgba(212, 160, 23, 0.15)',
-  greenDark: '#1a5d3a',
-  greenLight: 'rgba(26, 93, 58, 0.15)',
-  redDeep: '#8b1a1a',
-  redLight: 'rgba(139, 26, 26, 0.15)',
+  gold: '#F5A623',
+  goldLight: 'rgba(245, 166, 35, 0.15)',
+  greenDark: '#22c55e',
+  greenLight: 'rgba(34, 197, 94, 0.15)',
+  redDeep: '#ef4444',
+  redLight: 'rgba(239, 68, 68, 0.15)',
   grayDark: '#1a1a1a',
   grayMedium: '#2a2a2a',
   grayLight: '#6b7280',
@@ -29,7 +33,12 @@ const COLORS = {
 
 export default function PerfilScreen() {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
+  
+  // Estados para edición
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingGallera, setEditingGallera] = useState(user?.nombre || '');
+  const [saving, setSaving] = useState(false);
 
   const handleLogout = () => {
     Alert.alert(
@@ -47,6 +56,27 @@ export default function PerfilScreen() {
         },
       ]
     );
+  };
+
+  const handleSaveGallera = async () => {
+    if (!editingGallera.trim()) {
+      Alert.alert('Error', 'El nombre de la gallera no puede estar vacío');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await api.put('/auth/profile', { nombre: editingGallera.trim() });
+      if (refreshUser) {
+        await refreshUser();
+      }
+      setShowEditModal(false);
+      Alert.alert('Éxito', 'Gallera actualizada correctamente');
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'No se pudo actualizar');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const formatPhoneNumber = (phone: string | undefined) => {
@@ -76,7 +106,7 @@ export default function PerfilScreen() {
             <View style={styles.avatarContainer}>
               <Ionicons name="person" size={50} color={COLORS.gold} />
             </View>
-            <Text style={styles.userName}>{user?.nombre || 'Criador'}</Text>
+            <Text style={styles.userName}>{user?.nombre || 'Mi Gallera'}</Text>
             <Text style={styles.userRole}>Criador de Gallos de Pelea</Text>
           </View>
 
@@ -109,15 +139,22 @@ export default function PerfilScreen() {
               
               <View style={styles.divider} />
               
-              <View style={styles.infoRow}>
+              <TouchableOpacity 
+                style={styles.infoRow}
+                onPress={() => {
+                  setEditingGallera(user?.nombre || '');
+                  setShowEditModal(true);
+                }}
+              >
                 <View style={styles.infoIcon}>
-                  <Ionicons name="person" size={20} color={COLORS.gold} />
+                  <Ionicons name="home" size={20} color={COLORS.gold} />
                 </View>
                 <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Nombre</Text>
+                  <Text style={styles.infoLabel}>Gallera</Text>
                   <Text style={styles.infoValue}>{user?.nombre || 'No registrado'}</Text>
                 </View>
-              </View>
+                <Ionicons name="create-outline" size={20} color={COLORS.gold} />
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -125,11 +162,17 @@ export default function PerfilScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Configuración</Text>
             
-            <TouchableOpacity style={styles.actionItem}>
+            <TouchableOpacity 
+              style={styles.actionItem}
+              onPress={() => {
+                setEditingGallera(user?.nombre || '');
+                setShowEditModal(true);
+              }}
+            >
               <View style={styles.actionIcon}>
                 <Ionicons name="create" size={20} color={COLORS.gold} />
               </View>
-              <Text style={styles.actionText}>Editar Perfil</Text>
+              <Text style={styles.actionText}>Editar Gallera</Text>
               <Ionicons name="chevron-forward" size={20} color={COLORS.grayLight} />
             </TouchableOpacity>
             
@@ -173,6 +216,50 @@ export default function PerfilScreen() {
           </View>
         </ScrollView>
       </SafeAreaView>
+
+      {/* Modal para editar Gallera */}
+      <Modal
+        visible={showEditModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowEditModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modal}>
+            <Text style={styles.modalTitle}>Editar Gallera</Text>
+            
+            <Text style={styles.modalLabel}>Nombre de la Gallera</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={editingGallera}
+              onChangeText={setEditingGallera}
+              placeholder="Ej: Gallera El Campeón"
+              placeholderTextColor={COLORS.grayLight}
+              autoFocus
+            />
+            
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalCancelButton}
+                onPress={() => setShowEditModal(false)}
+              >
+                <Text style={styles.modalCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalConfirmButton}
+                onPress={handleSaveGallera}
+                disabled={saving}
+              >
+                {saving ? (
+                  <ActivityIndicator size="small" color="#000" />
+                ) : (
+                  <Text style={styles.modalConfirmText}>Guardar</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
@@ -325,5 +412,68 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.grayLight,
     marginTop: 4,
+  },
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modal: {
+    backgroundColor: COLORS.grayDark,
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 340,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: COLORS.white,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  modalLabel: {
+    fontSize: 14,
+    color: COLORS.grayLight,
+    marginBottom: 8,
+  },
+  modalInput: {
+    backgroundColor: COLORS.grayMedium,
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 16,
+    color: COLORS.white,
+    marginBottom: 20,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalCancelButton: {
+    flex: 1,
+    backgroundColor: COLORS.grayMedium,
+    borderRadius: 12,
+    padding: 14,
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    fontSize: 16,
+    color: COLORS.grayLight,
+    fontWeight: '600',
+  },
+  modalConfirmButton: {
+    flex: 1,
+    backgroundColor: COLORS.gold,
+    borderRadius: 12,
+    padding: 14,
+    alignItems: 'center',
+  },
+  modalConfirmText: {
+    fontSize: 16,
+    color: '#000',
+    fontWeight: '600',
   },
 });
