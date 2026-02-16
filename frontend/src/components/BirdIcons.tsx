@@ -452,6 +452,76 @@ export function PerformanceIcon({ size = 24, color = '#F5A623', strokeWidth = 2 
   );
 }
 
+// ============================================
+// ICONO DE CABEZA DE GALLO (Silueta)
+// Para filtros y menús
+// ============================================
+export function RoosterHeadIcon({ size = 24, color = '#F5A623' }: IconProps) {
+  return (
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={size} height={size} viewBox="0 0 24 24" preserveAspectRatio="xMidYMid meet">
+        {/* Cresta */}
+        <Path
+          d="M14 2c0 1.5.5 2.5 1.5 3.5c-1 0-2 .5-2.5 1.5c-.5-1-1.5-1.5-2.5-1.5c1-1 1.5-2 1.5-3.5c0 1.5 1 2.5 2 2.5s2-1 2-2.5z"
+          fill={color}
+        />
+        {/* Cabeza */}
+        <Path
+          d="M17 8c0-2-1.5-3.5-3.5-3.5c-.5 0-1 .1-1.5.3c-.5-.2-1-.3-1.5-.3C8.5 4.5 7 6 7 8c0 .5.1 1 .3 1.5C6.5 10 6 11 6 12c0 2 1.5 3.5 3.5 3.5h.5l-1 3c-.2.5 0 1 .5 1.2l2.5 1c.5.2 1 0 1.2-.5l1.3-4c.3.1.7.2 1 .2c2 0 3.5-1.5 3.5-3.5c0-1-.5-2-1.3-2.5c.2-.5.3-1 .3-1.5z"
+          fill={color}
+        />
+        {/* Pico */}
+        <Path
+          d="M18 10l3-1.5l-3-1.5c.3.8.3 2.2 0 3z"
+          fill={color}
+        />
+        {/* Ojo */}
+        <Circle cx="14" cy="8" r="1" fill="#1a1a1a" />
+        {/* Barbilla */}
+        <Path
+          d="M13 13c0 1-1 2-2 2c-.5 0-1-.5-1-1c0-1 1-2 2-2c.5 0 1 .5 1 1z"
+          fill={color}
+        />
+      </Svg>
+    </View>
+  );
+}
+
+// ============================================
+// ICONO DE CABEZA DE GALLINA (Silueta)
+// Para filtros y menús
+// ============================================
+export function HenHeadIcon({ size = 24, color = '#F5A623' }: IconProps) {
+  return (
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={size} height={size} viewBox="0 0 24 24" preserveAspectRatio="xMidYMid meet">
+        {/* Cresta pequeña */}
+        <Path
+          d="M12 3c0 1 .5 1.5 1 2c-.5 0-1 .3-1 .8c0-.5-.5-.8-1-.8c.5-.5 1-1 1-2z"
+          fill={color}
+        />
+        {/* Cabeza redondeada */}
+        <Path
+          d="M15 8c0-2-1.3-3-3-3s-3 1-3 3c0 .4.1.8.2 1.2c-.7.5-1.2 1.3-1.2 2.3c0 1.7 1.3 3 3 3l-.8 2.5c-.1.4.1.8.5.9l2 .6c.4.1.8-.1.9-.5l1-3.2c.2 0 .4.1.6.1c1.7 0 3-1.3 3-3c0-1-.5-1.8-1.2-2.3c.1-.4.2-.8.2-1.2z"
+          fill={color}
+        />
+        {/* Pico pequeño */}
+        <Path
+          d="M16 9l2-1l-2-1c.2.5.2 1.5 0 2z"
+          fill={color}
+        />
+        {/* Ojo */}
+        <Circle cx="13" cy="8" r="0.8" fill="#1a1a1a" />
+        {/* Barbilla pequeña */}
+        <Path
+          d="M11 11c0 .5-.5 1-1 1s-1-.5-1-1s.5-1 1-1s1 .5 1 1z"
+          fill={color}
+        />
+      </Svg>
+    </View>
+  );
+}
+
 // Tab icon simplificado
 export function RoosterTabIcon({ size = 24, color = '#F5A623' }: IconProps) {
   return (
