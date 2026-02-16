@@ -102,10 +102,10 @@ export default function RegisterScreen() {
             </View>
 
             <View style={styles.inputContainer}>
-              <Ionicons name="person-outline" size={20} color="#9ca3af" style={styles.inputIcon} />
+              <Ionicons name="home-outline" size={20} color="#9ca3af" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder="Nombre (opcional)"
+                placeholder="Gallera (opcional)"
                 placeholderTextColor="#6b7280"
                 value={nombre}
                 onChangeText={setNombre}
