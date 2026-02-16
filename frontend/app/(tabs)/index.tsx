@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../src/services/api';
 import { useAuth } from '../../src/context/AuthContext';
 import { RoosterLogo } from '../../src/components/RoosterLogo';
-import { TrophyIcon, GeneticsIcon, EggIcon, UserIcon, RoosterIcon, HenIcon } from '../../src/components/BirdIcons';
+import { TrophyIcon, GeneticsIcon, EggIcon, UserIcon, RoosterIcon, HenIcon, BirdNavIcon } from '../../src/components/BirdIcons';
 
 interface DashboardData {
   aves: {
@@ -302,7 +302,7 @@ export default function DashboardScreen() {
               onPress={() => router.push('/ave/new')}
             >
               <View style={[styles.actionIcon, { backgroundColor: COLORS.goldLight }]}>
-                <RoosterIcon size={26} color={COLORS.gold} />
+                <BirdNavIcon size={26} color={COLORS.gold} />
               </View>
               <Text style={styles.actionText}>Nueva Ave</Text>
             </TouchableOpacity>
