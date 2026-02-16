@@ -661,6 +661,60 @@ export default function AveFormScreen() {
           <View style={{ height: 40 }} />
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Modal para seleccionar foto (web) */}
+      <Modal
+        visible={showPhotoModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPhotoModal(false)}
+      >
+        <View style={styles.photoModalOverlay}>
+          <View style={styles.photoModal}>
+            <Text style={styles.photoModalTitle}>Agregar Foto</Text>
+            <Text style={styles.photoModalSubtitle}>Selecciona una opción</Text>
+            
+            <TouchableOpacity
+              style={styles.photoModalOption}
+              onPress={() => {
+                setShowPhotoModal(false);
+                pickImage();
+              }}
+            >
+              <View style={[styles.photoModalIcon, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
+                <Ionicons name="images" size={28} color="#3b82f6" />
+              </View>
+              <View>
+                <Text style={styles.photoModalOptionText}>Galería</Text>
+                <Text style={styles.photoModalOptionSubtext}>Seleccionar de tus fotos</Text>
+              </View>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.photoModalOption}
+              onPress={() => {
+                setShowPhotoModal(false);
+                takePhoto();
+              }}
+            >
+              <View style={[styles.photoModalIcon, { backgroundColor: 'rgba(34, 197, 94, 0.15)' }]}>
+                <Ionicons name="camera" size={28} color="#22c55e" />
+              </View>
+              <View>
+                <Text style={styles.photoModalOptionText}>Cámara</Text>
+                <Text style={styles.photoModalOptionSubtext}>Tomar una foto nueva</Text>
+              </View>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.photoModalCancel}
+              onPress={() => setShowPhotoModal(false)}
+            >
+              <Text style={styles.photoModalCancelText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
