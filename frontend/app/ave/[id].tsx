@@ -110,6 +110,7 @@ export default function AveFormScreen() {
         padre_id: ave.padre_id || '',
         madre_id: ave.madre_id || '',
         marcaje_qr: ave.marcaje_qr || '',
+        castado_por: ave.castado_por || '',
       });
 
       if (ave.padre_id) {
