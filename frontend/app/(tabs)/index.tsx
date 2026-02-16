@@ -170,7 +170,7 @@ export default function DashboardScreen() {
             onPress={() => router.push('/(tabs)/aves')}
           >
             <View style={styles.statHeader}>
-              <RoosterIcon size={24} color={COLORS.gold} />
+              <AvesIcon size={24} />
               <Text style={styles.statTitle}>Aves Activas</Text>
             </View>
             {(data?.aves.total_activas || 0) > 0 ? (
@@ -178,11 +178,11 @@ export default function DashboardScreen() {
                 <Text style={styles.statNumber}>{data?.aves.total_activas || 0}</Text>
                 <View style={styles.statDetails}>
                   <View style={styles.statDetailRow}>
-                    <RoosterIcon size={14} color={COLORS.gold} />
+                    <AvesIcon size={14} />
                     <Text style={styles.statDetailText}>Gallos: {data?.aves.gallos || 0}</Text>
                   </View>
                   <View style={styles.statDetailRow}>
-                    <HenIcon size={14} color={COLORS.gold} />
+                    <AvesIcon size={14} />
                     <Text style={styles.statDetailText}>Gallinas: {data?.aves.gallinas || 0}</Text>
                   </View>
                 </View>
