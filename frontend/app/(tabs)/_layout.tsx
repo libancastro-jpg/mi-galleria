@@ -2,7 +2,6 @@ import React from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Platform } from 'react-native';
-import { BirdNavIcon } from '../../src/components/BirdIcons';
 
 // Color palette
 const COLORS = {
@@ -51,7 +50,7 @@ export default function TabLayout() {
         options={{
           title: 'Aves',
           tabBarIcon: ({ color, size }) => (
-            <BirdNavIcon size={size} color={color} />
+            <Ionicons name="heart" size={size} color={color} />
           ),
         }}
       />
