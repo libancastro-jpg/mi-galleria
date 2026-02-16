@@ -1300,4 +1300,97 @@ const styles = StyleSheet.create({
     color: '#000',
     fontWeight: '600',
   },
+  // Estilos para indicador de notas en actividades
+  actividadNotasIndicator: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+  },
+  // Estilos para modal de detalle
+  detalleHeader: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  detalleIconContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  detalleTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: COLORS.white,
+  },
+  detalleInfoRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
+  },
+  detalleInfoItem: {
+    flex: 1,
+    backgroundColor: COLORS.grayMedium,
+    borderRadius: 12,
+    padding: 14,
+    alignItems: 'center',
+  },
+  detalleInfoLabel: {
+    fontSize: 12,
+    color: COLORS.grayLight,
+    marginTop: 6,
+  },
+  detalleInfoValue: {
+    fontSize: 14,
+    color: COLORS.white,
+    fontWeight: '600',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  detalleNotasContainer: {
+    backgroundColor: COLORS.goldLight,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(212, 160, 23, 0.3)',
+  },
+  detalleNotasHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
+  detalleNotasLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.gold,
+  },
+  detalleNotasText: {
+    fontSize: 15,
+    color: COLORS.white,
+    lineHeight: 22,
+  },
+  detalleNotasEmpty: {
+    alignItems: 'center',
+    paddingVertical: 20,
+    marginBottom: 20,
+  },
+  detalleNotasEmptyText: {
+    fontSize: 14,
+    color: COLORS.grayLight,
+    marginTop: 8,
+  },
+  detalleCerrarButton: {
+    backgroundColor: COLORS.grayMedium,
+    borderRadius: 12,
+    padding: 14,
+    alignItems: 'center',
+  },
+  detalleCerrarText: {
+    fontSize: 16,
+    color: COLORS.white,
+    fontWeight: '600',
+  },
 });
