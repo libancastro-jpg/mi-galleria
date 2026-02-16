@@ -454,8 +454,8 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   roosterBanner: {
-    width: 80,
-    height: 80,
+    width: 64,
+    height: 64,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
