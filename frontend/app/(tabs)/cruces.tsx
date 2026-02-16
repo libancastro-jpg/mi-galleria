@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   cruceCard: {
-    backgroundColor: '#141414',
+    backgroundColor: '#242424',
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,

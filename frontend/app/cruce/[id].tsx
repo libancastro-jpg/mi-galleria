@@ -466,7 +466,7 @@ const styles = StyleSheet.create({
   parentBox: {
     flex: 1,
     alignItems: 'center',
-    backgroundColor: '#141414',
+    backgroundColor: '#242424',
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
@@ -509,7 +509,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
   },
   selectList: {
-    backgroundColor: '#141414',
+    backgroundColor: '#242424',
     borderRadius: 12,
     marginBottom: 16,
     borderWidth: 1,
@@ -538,7 +538,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   consanguinidadCard: {
-    backgroundColor: '#141414',
+    backgroundColor: '#242424',
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
@@ -593,7 +593,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   input: {
-    backgroundColor: '#141414',
+    backgroundColor: '#242424',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
@@ -613,7 +613,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     borderRadius: 12,
-    backgroundColor: '#141414',
+    backgroundColor: '#242424',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#2a2a2a',

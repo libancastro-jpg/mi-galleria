@@ -656,7 +656,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   infoCard: {
-    backgroundColor: '#141414',
+    backgroundColor: '#242424',
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
@@ -705,7 +705,7 @@ const styles = StyleSheet.create({
   },
   parentCard: {
     flex: 1,
-    backgroundColor: '#141414',
+    backgroundColor: '#242424',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -731,7 +731,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   notesCard: {
-    backgroundColor: '#141414',
+    backgroundColor: '#242424',
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
@@ -755,7 +755,7 @@ const styles = StyleSheet.create({
   pedigriCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#141414',
+    backgroundColor: '#242424',
     borderRadius: 12,
     padding: 12,
     borderWidth: 1,
@@ -808,7 +808,7 @@ const styles = StyleSheet.create({
   },
   statBox: {
     flex: 1,
-    backgroundColor: '#141414',
+    backgroundColor: '#242424',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -828,7 +828,7 @@ const styles = StyleSheet.create({
   peleaItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#141414',
+    backgroundColor: '#242424',
     borderRadius: 12,
     padding: 12,
     marginBottom: 8,
@@ -882,7 +882,7 @@ const styles = StyleSheet.create({
   saludItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#141414',
+    backgroundColor: '#242424',
     borderRadius: 12,
     padding: 12,
     marginBottom: 8,
@@ -931,7 +931,7 @@ const styles = StyleSheet.create({
   hijoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#141414',
+    backgroundColor: '#242424',
     borderRadius: 12,
     padding: 12,
     marginBottom: 8,

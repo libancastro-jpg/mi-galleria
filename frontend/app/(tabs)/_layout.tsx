@@ -9,7 +9,7 @@ import { AvesIcon } from '../../src/components/BirdIcons';
 const COLORS = {
   gold: '#d4a017',
   goldLight: 'rgba(212, 160, 23, 0.15)',
-  grayDark: '#141414',
+  grayDark: '#242424',
   grayMedium: '#2a2a2a',
   grayLight: '#6b7280',
   background: '#0a0a0a',

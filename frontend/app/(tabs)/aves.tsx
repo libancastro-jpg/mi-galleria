@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#141414',
+    backgroundColor: '#242424',
     borderRadius: 12,
     marginHorizontal: 16,
     paddingHorizontal: 12,
@@ -340,7 +340,7 @@ const styles = StyleSheet.create({
   aveCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#141414',
+    backgroundColor: '#242424',
     borderRadius: 16,
     padding: 12,
     marginBottom: 12,
@@ -371,7 +371,7 @@ const styles = StyleSheet.create({
     height: 16,
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: '#141414',
+    borderColor: '#242424',
   },
   galloIndicator: {
     backgroundColor: '#3b82f6',

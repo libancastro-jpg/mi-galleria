@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   statsContainer: {
-    backgroundColor: '#141414',
+    backgroundColor: '#242424',
     marginHorizontal: 16,
     borderRadius: 16,
     padding: 16,
@@ -357,7 +357,7 @@ const styles = StyleSheet.create({
   peleaCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#141414',
+    backgroundColor: '#242424',
     borderRadius: 12,
     padding: 12,
     marginBottom: 8,
