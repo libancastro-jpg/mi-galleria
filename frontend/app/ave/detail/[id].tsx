@@ -634,7 +634,6 @@ export default function AveDetailScreen() {
         </View>
 
         {/* Tab Content */}
-        {activeTab === 'datos' && renderDatosTab()}
         {activeTab === 'pedigri' && renderPedigriTab()}
         {activeTab === 'peleas' && renderPeleasTab()}
         {activeTab === 'salud' && renderSaludTab()}
