@@ -91,6 +91,8 @@ class AveBase(BaseModel):
     notas: Optional[str] = None
     padre_id: Optional[str] = None
     madre_id: Optional[str] = None
+    padre_externo: Optional[str] = None  # Placa de padre externo (otra gallería)
+    madre_externo: Optional[str] = None  # Placa de madre externo (otra gallería)
     marcaje_qr: Optional[str] = None
 
 class AveCreate(AveBase):
@@ -109,6 +111,8 @@ class AveUpdate(BaseModel):
     notas: Optional[str] = None
     padre_id: Optional[str] = None
     madre_id: Optional[str] = None
+    padre_externo: Optional[str] = None
+    madre_externo: Optional[str] = None
     marcaje_qr: Optional[str] = None
 
 class AveResponse(AveBase):
