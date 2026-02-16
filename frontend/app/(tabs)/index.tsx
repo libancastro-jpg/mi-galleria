@@ -207,7 +207,7 @@ export default function DashboardScreen() {
             onPress={() => router.push('/(tabs)/peleas')}
           >
             <View style={styles.statHeader}>
-              <Ionicons name="trophy" size={24} color={COLORS.gold} />
+              <TrophyIcon size={24} color={COLORS.gold} />
               <Text style={styles.statTitle}>Rendimiento</Text>
             </View>
             {(data?.peleas.total || 0) > 0 ? (
