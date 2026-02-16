@@ -51,8 +51,8 @@ export function TestCircleIcon({ size = 24, color = '#F5A623' }: IconProps) {
 // ICONO PRINCIPAL DEL GALLO
 // ============================================
 // Silueta vectorial profesional - perfil izquierdo
+// Postura VERTICAL erguida - gallo de pelea
 // viewBox="0 0 512 512" - estándar para iconos
-// El diseño ocupa exactamente el área del viewBox
 // ============================================
 export function RoosterIcon({ size = 24, color = '#F5A623' }: IconProps) {
   return (
@@ -68,110 +68,141 @@ export function RoosterIcon({ size = 24, color = '#F5A623' }: IconProps) {
         viewBox="0 0 512 512" 
         preserveAspectRatio="xMidYMid meet"
       >
-        {/* Silueta completa del gallo - diseño optimizado para viewBox 512x512 */}
+        {/* Gallo de pelea - postura erguida y orgullosa */}
         <G>
-          {/* Cuerpo principal */}
+          {/* Cabeza */}
           <Path
-            d="M340 140
-               c20-15 45-10 50 15
-               l-5 30
-               c15 20 18 45 10 70
-               c-10 35-35 65-70 85
-               l-25 12
-               c0 20-10 40-30 50
-               l-35 8
-               c-30 5-65 0-95-15
-               l-25-18
-               c-25-18-45-45-55-80
-               c-12-40-10-85 10-125
-               l15-30
-               c-15-15-20-35-10-55
-               c12-25 40-30 65-18
-               l25 15
-               c-8-30 5-60 30-80
-               c28-22 65-18 90 5
-               l25 25
-               c25-18 55-15 80 5
-               c28 22 35 55 30 85
-               z"
+            d="M320 85
+               c25 5 40 25 35 50
+               l-8 25
+               c10 15 8 35-5 48
+               l-15 12"
             fill={color}
           />
-          {/* Cola - pluma superior */}
+          {/* Cresta grande y prominente */}
           <Path
-            d="M125 170
-               c-40-40-70-100-50-160
-               c12-35 50-50 80-30
-               c20 15 15 45 5 75
-               c-12 40 0 80 30 115
-               l-20 10
-               c-15-3-30-5-45-10
-               z"
-            fill={color}
-          />
-          {/* Cola - pluma media */}
-          <Path
-            d="M145 155
-               c-35-50-55-110-25-160
-               c18-30 55-35 75-10
-               c15 20 5 50-10 80
-               c-18 35-10 75 15 110
-               l-25 5
-               c-12-8-22-17-30-25
-               z"
-            fill={color}
-          />
-          {/* Cola - pluma inferior */}
-          <Path
-            d="M170 145
-               c-28-45-40-100-15-145
-               c18-28 55-30 70-5
-               c12 20 0 50-15 78
-               c-15 30-8 65 18 95
-               l-25 2
-               c-12-8-23-17-33-25
-               z"
-            fill={color}
-          />
-          {/* Cresta */}
-          <Path
-            d="M330 100
-               c15-30 50-35 65-10
-               c12 22-5 50-35 45
-               l-12-8
-               c8-18 2-30-18-27
+            d="M295 45
+               c8-25 35-30 50-12
+               c10 12 5 30-8 38
+               c12-18 35-15 45 5
+               c8 15 0 35-18 40
+               l-30 5
+               c5-20-5-40-25-45
+               l-14-31
                z"
             fill={color}
           />
           {/* Pico */}
           <Path
-            d="M385 175
-               l60 25
-               l-60 25
+            d="M355 115
+               l45 20
+               l-45 18
                z"
             fill={color}
           />
           {/* Barbilla */}
           <Path
-            d="M360 230
-               c15 25 5 50-25 50
-               c-18-8-12-35 10-55
+            d="M330 155
+               c12 15 8 35-10 42
+               c-15-5-15-28 0-45
                z"
             fill={color}
           />
           {/* Ojo */}
-          <Circle cx="355" cy="165" r="12" fill="#1a1a1a" />
-          {/* Pata izquierda */}
+          <Circle cx="325" cy="105" r="10" fill="#1a1a1a" />
+          {/* Cuello largo */}
           <Path
-            d="M220 400 L220 470 L190 500 M220 470 L220 500 M220 470 L250 500"
+            d="M290 170
+               c-15 10-30 35-35 60
+               l-8 50
+               c-5 25-2 50 8 72"
+            fill={color}
+          />
+          {/* Cuerpo principal - pecho prominente */}
+          <Path
+            d="M255 352
+               c-50-5-90-35-105-80
+               c-18-55-5-115 35-155
+               l40-30
+               c10-8 22-12 35-10
+               c35 5 60 35 70 70
+               l8 45
+               c5 35-5 72-30 100
+               c-20 25-45 45-75 55
+               l22 5
+               z"
+            fill={color}
+          />
+          {/* Cola arqueada - 3 plumas grandes */}
+          <Path
+            d="M148 280
+               c-35-50-50-120-20-175
+               c18-32 55-38 75-12
+               c15 20 8 50-8 78
+               c-18 35-15 75 8 110
+               l-20 8
+               c-15-2-28-5-35-9
+               z"
+            fill={color}
+          />
+          <Path
+            d="M168 265
+               c-30-55-38-125-5-172
+               c20-28 55-30 72-5
+               c12 20 2 48-15 75
+               c-20 32-18 70 5 105
+               l-25 5
+               c-12-2-25-5-32-8
+               z"
+            fill={color}
+          />
+          <Path
+            d="M190 248
+               c-25-55-28-118 5-160
+               c22-28 55-25 68 2
+               c10 20-2 48-22 72
+               c-22 30-22 68-2 100
+               l-22 2
+               c-12 0-22-5-27-16
+               z"
+            fill={color}
+          />
+          {/* Ala */}
+          <Path
+            d="M280 280
+               c20-15 35-10 42 12
+               c5 18-8 38-28 48
+               c-25 12-48 8-62-12
+               c15 5 32-2 40-18
+               c5-12 2-25-8-32
+               l16 2
+               z"
+            fill={color}
+            opacity={0.9}
+          />
+          {/* Patas - fuertes y firmes */}
+          <Path
+            d="M235 440
+               L235 480
+               L210 500
+               M235 480
+               L235 500
+               M235 480
+               L260 500"
             stroke={color}
             strokeWidth={18}
             strokeLinecap="round"
             strokeLinejoin="round"
             fill="none"
           />
-          {/* Pata derecha */}
           <Path
-            d="M290 380 L295 455 L265 485 M295 455 L295 485 M295 455 L325 485"
+            d="M290 430
+               L295 475
+               L270 495
+               M295 475
+               L295 495
+               M295 475
+               L320 495"
             stroke={color}
             strokeWidth={18}
             strokeLinecap="round"
