@@ -863,28 +863,52 @@ const styles = StyleSheet.create({
     color: '#000',
     fontWeight: '600',
   },
-  parentSection: {
-    marginTop: 8,
+  addParentOption: {
+    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    borderBottomWidth: 2,
+    borderBottomColor: '#333333',
   },
-  parentHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-    marginTop: 16,
-  },
-  addExternalButton: {
+  addParentRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
-    borderRadius: 20,
-    gap: 4,
+    gap: 8,
   },
-  addExternalText: {
-    fontSize: 12,
+  addParentText: {
+    fontSize: 15,
     fontWeight: '600',
     color: '#f59e0b',
+  },
+  addParentSubtext: {
+    fontSize: 11,
+    color: '#707070',
+    marginTop: 4,
+  },
+  externalForm: {
+    backgroundColor: '#1a1a1a',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333333',
+  },
+  externalInput: {
+    backgroundColor: '#242424',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 14,
+    color: '#fff',
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#333333',
+  },
+  confirmExternalButton: {
+    backgroundColor: '#f59e0b',
+    borderRadius: 8,
+    padding: 12,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  confirmExternalText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000',
   },
 });
