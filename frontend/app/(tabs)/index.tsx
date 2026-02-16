@@ -158,19 +158,24 @@ export default function DashboardScreen() {
           <RoosterLogo size={72} />
         </View>
 
-        {/* Alertas Section */}
-        <TouchableOpacity style={[styles.alertCard, { backgroundColor: alertStatus.bg }]}>
-          <View style={[styles.alertIconContainer, { backgroundColor: alertStatus.color }]}>
-            <Ionicons name={alertStatus.icon as any} size={22} color={COLORS.white} />
-          </View>
-          <View style={styles.alertContent}>
-            <Text style={styles.alertTitle}>Recordatorios</Text>
-            <Text style={[styles.alertText, { color: alertStatus.color }]}>
-              {alertStatus.text}
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={alertStatus.color} />
-        </TouchableOpacity>
+        {/* Alertas Section - Solo mostrar si hay recordatorios pendientes */}
+        {(data?.recordatorios_salud || 0) > 0 && (
+          <TouchableOpacity 
+            style={[styles.alertCard, { backgroundColor: alertStatus.bg }]}
+            onPress={() => router.push('/(tabs)/ajustes')}
+          >
+            <View style={[styles.alertIconContainer, { backgroundColor: alertStatus.color }]}>
+              <Ionicons name={alertStatus.icon as any} size={22} color={COLORS.white} />
+            </View>
+            <View style={styles.alertContent}>
+              <Text style={styles.alertTitle}>Recordatorios</Text>
+              <Text style={[styles.alertText, { color: alertStatus.color }]}>
+                {alertStatus.text}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={alertStatus.color} />
+          </TouchableOpacity>
+        )}
 
         {/* Stats Cards */}
         <View style={styles.statsGrid}>
