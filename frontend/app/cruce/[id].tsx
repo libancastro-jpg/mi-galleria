@@ -461,6 +461,7 @@ export default function CruceFormScreen() {
                 )}
               </View>
             )}
+          </View>
 
           {/* Consanguinidad */}
           {(consanguinidad || calculatingConsang) && (
