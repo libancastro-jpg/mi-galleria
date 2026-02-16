@@ -317,6 +317,11 @@ const styles = StyleSheet.create({
     gap: 12,
     marginTop: 8,
   },
+  statSubItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   statSub: {
     fontSize: 12,
     color: '#6b7280',
