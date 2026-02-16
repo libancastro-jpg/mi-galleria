@@ -382,6 +382,16 @@ export default function AveFormScreen() {
             placeholderTextColor="#6b7280"
           />
 
+          {/* Castado Por */}
+          <Text style={styles.label}>Castado Por</Text>
+          <TextInput
+            style={styles.input}
+            value={formData.castado_por}
+            onChangeText={(text) => setFormData({ ...formData, castado_por: text })}
+            placeholder="Nombre del castador"
+            placeholderTextColor="#6b7280"
+          />
+
           {/* Fecha nacimiento */}
           <Text style={styles.label}>Fecha de nacimiento</Text>
           <TextInput
