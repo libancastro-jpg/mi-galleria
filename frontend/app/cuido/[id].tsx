@@ -736,6 +736,92 @@ export default function CuidoDetailScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Modal de Detalle de Actividad */}
+      <Modal
+        visible={showDetalleModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setShowDetalleModal(false);
+          setSelectedActividad(null);
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modal}>
+            {selectedActividad && (
+              <>
+                <View style={styles.detalleHeader}>
+                  <View style={[
+                    styles.detalleIconContainer,
+                    selectedActividad.tipo === 'tope' 
+                      ? { backgroundColor: COLORS.goldLight } 
+                      : { backgroundColor: COLORS.greenLight }
+                  ]}>
+                    <Ionicons 
+                      name={selectedActividad.tipo === 'tope' ? 'flash' : 'barbell'} 
+                      size={32} 
+                      color={selectedActividad.tipo === 'tope' ? COLORS.gold : COLORS.green} 
+                    />
+                  </View>
+                  <Text style={styles.detalleTitle}>
+                    {selectedActividad.tipo === 'tope' ? 'Tope' : 'Trabajo'} {selectedActividad.numero}
+                  </Text>
+                </View>
+
+                <View style={styles.detalleInfoRow}>
+                  <View style={styles.detalleInfoItem}>
+                    <Ionicons name="calendar" size={18} color={COLORS.grayLight} />
+                    <Text style={styles.detalleInfoLabel}>Fecha</Text>
+                    <Text style={styles.detalleInfoValue}>
+                      {new Date(selectedActividad.fecha).toLocaleDateString('es-ES', {
+                        day: '2-digit',
+                        month: 'long',
+                        year: 'numeric'
+                      })}
+                    </Text>
+                  </View>
+                  
+                  {selectedActividad.tiempo_minutos && (
+                    <View style={styles.detalleInfoItem}>
+                      <Ionicons name="time" size={18} color={COLORS.grayLight} />
+                      <Text style={styles.detalleInfoLabel}>Duración</Text>
+                      <Text style={styles.detalleInfoValue}>
+                        {selectedActividad.tiempo_minutos} minutos
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                {selectedActividad.notas ? (
+                  <View style={styles.detalleNotasContainer}>
+                    <View style={styles.detalleNotasHeader}>
+                      <Ionicons name="document-text" size={18} color={COLORS.gold} />
+                      <Text style={styles.detalleNotasLabel}>Descripción / Notas</Text>
+                    </View>
+                    <Text style={styles.detalleNotasText}>{selectedActividad.notas}</Text>
+                  </View>
+                ) : (
+                  <View style={styles.detalleNotasEmpty}>
+                    <Ionicons name="document-text-outline" size={24} color={COLORS.grayLight} />
+                    <Text style={styles.detalleNotasEmptyText}>Sin notas registradas</Text>
+                  </View>
+                )}
+
+                <TouchableOpacity
+                  style={styles.detalleCerrarButton}
+                  onPress={() => {
+                    setShowDetalleModal(false);
+                    setSelectedActividad(null);
+                  }}
+                >
+                  <Text style={styles.detalleCerrarText}>Cerrar</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
