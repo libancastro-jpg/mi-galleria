@@ -288,7 +288,7 @@ export default function AveFormScreen() {
                 />
               ) : (
                 <View style={styles.photoPlaceholder}>
-                  <Ionicons name="camera" size={40} color="#a0a0a0" />
+                  <Ionicons name="camera" size={40} color="#555555" />
                   <Text style={styles.photoText}>Agregar foto</Text>
                 </View>
               )}
@@ -357,7 +357,7 @@ export default function AveFormScreen() {
             value={formData.codigo}
             onChangeText={(text) => setFormData({ ...formData, codigo: text })}
             placeholder="Ej: 12, 001, A-15"
-            placeholderTextColor="#a0a0a0"
+            placeholderTextColor="#555555"
           />
 
           {/* Nombre */}
@@ -367,7 +367,7 @@ export default function AveFormScreen() {
             value={formData.nombre}
             onChangeText={(text) => setFormData({ ...formData, nombre: text })}
             placeholder="Nombre del ave"
-            placeholderTextColor="#a0a0a0"
+            placeholderTextColor="#555555"
           />
 
           {/* Color */}
@@ -461,7 +461,7 @@ export default function AveFormScreen() {
             value={formData.linea}
             onChangeText={(text) => setFormData({ ...formData, linea: text })}
             placeholder="Línea genética"
-            placeholderTextColor="#a0a0a0"
+            placeholderTextColor="#555555"
           />
 
           {/* Castado Por */}
@@ -471,7 +471,7 @@ export default function AveFormScreen() {
             value={formData.castado_por}
             onChangeText={(text) => setFormData({ ...formData, castado_por: text })}
             placeholder="Nombre del castador"
-            placeholderTextColor="#a0a0a0"
+            placeholderTextColor="#555555"
           />
 
           {/* Fecha nacimiento */}
@@ -481,7 +481,7 @@ export default function AveFormScreen() {
             value={formData.fecha_nacimiento}
             onChangeText={(text) => setFormData({ ...formData, fecha_nacimiento: text })}
             placeholder="YYYY-MM-DD"
-            placeholderTextColor="#a0a0a0"
+            placeholderTextColor="#555555"
           />
 
           {/* Estado */}
@@ -524,7 +524,7 @@ export default function AveFormScreen() {
             <Ionicons
               name={showPadreList ? 'chevron-up' : 'chevron-down'}
               size={20}
-              color="#a0a0a0"
+              color="#555555"
             />
           </TouchableOpacity>
           {showPadreList && (
@@ -585,7 +585,7 @@ export default function AveFormScreen() {
                   setShowPadreExterno(false);
                 }}
               >
-                <Text style={[styles.selectItemText, { color: '#a0a0a0' }]}>Ninguno / Desconocido</Text>
+                <Text style={[styles.selectItemText, { color: '#555555' }]}>Ninguno / Desconocido</Text>
               </TouchableOpacity>
               
               {/* Lista de gallos registrados */}
@@ -624,7 +624,7 @@ export default function AveFormScreen() {
             <Ionicons
               name={showMadreList ? 'chevron-up' : 'chevron-down'}
               size={20}
-              color="#a0a0a0"
+              color="#555555"
             />
           </TouchableOpacity>
           {showMadreList && (
@@ -685,7 +685,7 @@ export default function AveFormScreen() {
                   setShowMadreExterno(false);
                 }}
               >
-                <Text style={[styles.selectItemText, { color: '#a0a0a0' }]}>Ninguna / Desconocida</Text>
+                <Text style={[styles.selectItemText, { color: '#555555' }]}>Ninguna / Desconocida</Text>
               </TouchableOpacity>
               
               {/* Lista de gallinas registradas */}
@@ -715,7 +715,7 @@ export default function AveFormScreen() {
             value={formData.notas}
             onChangeText={(text) => setFormData({ ...formData, notas: text })}
             placeholder="Notas adicionales..."
-            placeholderTextColor="#a0a0a0"
+            placeholderTextColor="#555555"
             multiline
             numberOfLines={4}
           />
@@ -784,7 +784,7 @@ export default function AveFormScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#f5f5f5',
   },
   loadingContainer: {
     flex: 1,
@@ -798,7 +798,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#333333',
+    borderBottomColor: '#e0e0e0',
   },
   backButton: {
     width: 40,
@@ -845,17 +845,17 @@ const styles = StyleSheet.create({
   photoPlaceholder: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#f5f5f5',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#333333',
+    borderColor: '#e0e0e0',
     borderStyle: 'dashed',
     borderRadius: 60,
   },
   photoText: {
     fontSize: 12,
-    color: '#a0a0a0',
+    color: '#555555',
     marginTop: 8,
   },
   label: {
@@ -866,13 +866,13 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   input: {
-    backgroundColor: '#242424',
+    backgroundColor: '#ffffff',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
     color: '#fff',
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: '#e0e0e0',
   },
   textArea: {
     minHeight: 100,
@@ -887,12 +887,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#242424',
+    backgroundColor: '#ffffff',
     borderRadius: 12,
     padding: 16,
     gap: 8,
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: '#e0e0e0',
   },
   tipoButtonActive: {
     backgroundColor: '#f59e0b',
@@ -915,9 +915,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
-    backgroundColor: '#242424',
+    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: '#e0e0e0',
   },
   estadoButtonActive: {
     backgroundColor: '#22c55e',
@@ -935,28 +935,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#242424',
+    backgroundColor: '#ffffff',
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: '#e0e0e0',
   },
   selectButtonText: {
     fontSize: 16,
     color: '#9ca3af',
   },
   selectList: {
-    backgroundColor: '#242424',
+    backgroundColor: '#ffffff',
     borderRadius: 12,
     marginTop: 8,
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: '#e0e0e0',
     maxHeight: 200,
   },
   selectItem: {
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#333333',
+    borderBottomColor: '#e0e0e0',
   },
   selectItemText: {
     fontSize: 16,
@@ -967,17 +967,17 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
     marginTop: 12,
-    backgroundColor: '#242424',
+    backgroundColor: '#ffffff',
     borderRadius: 12,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: '#e0e0e0',
   },
   colorOption: {
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 20,
-    backgroundColor: '#333333',
+    backgroundColor: '#e0e0e0',
     borderWidth: 1,
     borderColor: '#3a3a3a',
   },
@@ -996,7 +996,7 @@ const styles = StyleSheet.create({
   addParentOption: {
     backgroundColor: 'rgba(245, 158, 11, 0.08)',
     borderBottomWidth: 2,
-    borderBottomColor: '#333333',
+    borderBottomColor: '#e0e0e0',
   },
   addParentRow: {
     flexDirection: 'row',
@@ -1014,20 +1014,20 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   externalForm: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#f5f5f5',
     padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#333333',
+    borderBottomColor: '#e0e0e0',
   },
   externalInput: {
-    backgroundColor: '#242424',
+    backgroundColor: '#ffffff',
     borderRadius: 8,
     padding: 12,
     fontSize: 14,
     color: '#fff',
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: '#e0e0e0',
   },
   confirmExternalButton: {
     backgroundColor: '#f59e0b',
@@ -1045,7 +1045,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 5,
     right: 5,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#f5f5f5',
     borderRadius: 12,
   },
   photoModalOverlay: {
@@ -1056,7 +1056,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   photoModal: {
-    backgroundColor: '#242424',
+    backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 24,
     width: '100%',
@@ -1071,7 +1071,7 @@ const styles = StyleSheet.create({
   },
   photoModalSubtitle: {
     fontSize: 14,
-    color: '#a0a0a0',
+    color: '#555555',
     textAlign: 'center',
     marginBottom: 24,
   },
@@ -1079,7 +1079,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#f5f5f5',
     borderRadius: 12,
     marginBottom: 12,
     gap: 16,
@@ -1098,7 +1098,7 @@ const styles = StyleSheet.create({
   },
   photoModalOptionSubtext: {
     fontSize: 12,
-    color: '#a0a0a0',
+    color: '#555555',
     marginTop: 2,
   },
   photoModalCancel: {
@@ -1108,7 +1108,7 @@ const styles = StyleSheet.create({
   },
   photoModalCancelText: {
     fontSize: 16,
-    color: '#a0a0a0',
+    color: '#555555',
     fontWeight: '500',
   },
 });

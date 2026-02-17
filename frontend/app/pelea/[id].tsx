@@ -200,7 +200,7 @@ export default function PeleaFormScreen() {
             value={formData.fecha}
             onChangeText={(text) => setFormData({ ...formData, fecha: text })}
             placeholder="YYYY-MM-DD"
-            placeholderTextColor="#a0a0a0"
+            placeholderTextColor="#555555"
           />
 
           {/* Lugar */}
@@ -210,7 +210,7 @@ export default function PeleaFormScreen() {
             value={formData.lugar}
             onChangeText={(text) => setFormData({ ...formData, lugar: text })}
             placeholder="Lugar del evento"
-            placeholderTextColor="#a0a0a0"
+            placeholderTextColor="#555555"
           />
 
           {/* Resultado */}
@@ -267,7 +267,7 @@ export default function PeleaFormScreen() {
             {[
               { value: 'EXTRAORDINARIA', label: 'Extraordinaria', color: '#f59e0b' },
               { value: 'BUENA', label: 'Buena', color: '#22c55e' },
-              { value: 'REGULAR', label: 'Regular', color: '#a0a0a0' },
+              { value: 'REGULAR', label: 'Regular', color: '#555555' },
               { value: 'MALA', label: 'Mala', color: '#ef4444' },
             ].map((cal) => (
               <TouchableOpacity
@@ -307,7 +307,7 @@ export default function PeleaFormScreen() {
             value={formData.notas}
             onChangeText={(text) => setFormData({ ...formData, notas: text })}
             placeholder="Observaciones de la pelea..."
-            placeholderTextColor="#a0a0a0"
+            placeholderTextColor="#555555"
             multiline
             numberOfLines={4}
           />
@@ -322,7 +322,7 @@ export default function PeleaFormScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#f5f5f5',
   },
   loadingContainer: {
     flex: 1,
@@ -336,7 +336,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#333333',
+    borderBottomColor: '#e0e0e0',
   },
   backButton: {
     width: 40,
@@ -374,13 +374,13 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   input: {
-    backgroundColor: '#242424',
+    backgroundColor: '#ffffff',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
     color: '#fff',
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: '#e0e0e0',
   },
   textArea: {
     minHeight: 100,
@@ -390,11 +390,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#242424',
+    backgroundColor: '#ffffff',
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: '#e0e0e0',
   },
   selectButtonContent: {
     flexDirection: 'row',
@@ -406,11 +406,11 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   selectList: {
-    backgroundColor: '#242424',
+    backgroundColor: '#ffffff',
     borderRadius: 12,
     marginTop: 8,
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: '#e0e0e0',
     maxHeight: 200,
   },
   selectItem: {
@@ -419,7 +419,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#333333',
+    borderBottomColor: '#e0e0e0',
   },
   selectItemActive: {
     backgroundColor: 'rgba(245, 158, 11, 0.1)',
@@ -430,7 +430,7 @@ const styles = StyleSheet.create({
   },
   noAvesText: {
     fontSize: 14,
-    color: '#a0a0a0',
+    color: '#555555',
     textAlign: 'center',
     padding: 16,
   },
@@ -442,11 +442,11 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#242424',
+    backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 24,
     borderWidth: 2,
-    borderColor: '#333333',
+    borderColor: '#e0e0e0',
     gap: 8,
   },
   resultadoGanoActive: {
@@ -476,9 +476,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 12,
-    backgroundColor: '#242424',
+    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: '#e0e0e0',
     gap: 8,
   },
   calificacionDot: {

@@ -14,12 +14,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { api } from '../src/services/api';
 
 const COLORS = {
-  background: '#1a1a1a',
+  background: '#f5f5f5',
   gold: '#d4a017',
   goldLight: 'rgba(212, 160, 23, 0.15)',
-  grayDark: '#242424',
-  grayMedium: '#333333',
-  grayLight: '#a0a0a0',
+  grayDark: '#ffffff',
+  grayMedium: '#e0e0e0',
+  grayLight: '#555555',
   white: '#ffffff',
   blue: '#3b82f6',
   pink: '#ec4899',
@@ -107,7 +107,7 @@ export default function PedigriScreen() {
       case 'activo': return '#22c55e';
       case 'vendido': return '#3b82f6';
       case 'retirado': return '#f59e0b';
-      default: return '#a0a0a0';
+      default: return '#555555';
     }
   };
 

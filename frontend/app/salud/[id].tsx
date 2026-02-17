@@ -231,7 +231,7 @@ export default function SaludFormScreen() {
             value={formData.producto}
             onChangeText={(text) => setFormData({ ...formData, producto: text })}
             placeholder="Nombre del producto"
-            placeholderTextColor="#a0a0a0"
+            placeholderTextColor="#555555"
           />
 
           {/* Dosis */}
@@ -241,7 +241,7 @@ export default function SaludFormScreen() {
             value={formData.dosis}
             onChangeText={(text) => setFormData({ ...formData, dosis: text })}
             placeholder="Ej: 1ml, 2 gotas, 1 tableta"
-            placeholderTextColor="#a0a0a0"
+            placeholderTextColor="#555555"
           />
 
           {/* Fecha */}
@@ -251,7 +251,7 @@ export default function SaludFormScreen() {
             value={formData.fecha}
             onChangeText={(text) => setFormData({ ...formData, fecha: text })}
             placeholder="YYYY-MM-DD"
-            placeholderTextColor="#a0a0a0"
+            placeholderTextColor="#555555"
           />
 
           {/* Próxima fecha */}
@@ -261,7 +261,7 @@ export default function SaludFormScreen() {
             value={formData.proxima_fecha}
             onChangeText={(text) => setFormData({ ...formData, proxima_fecha: text })}
             placeholder="YYYY-MM-DD"
-            placeholderTextColor="#a0a0a0"
+            placeholderTextColor="#555555"
           />
 
           {/* Notas */}
@@ -271,7 +271,7 @@ export default function SaludFormScreen() {
             value={formData.notas}
             onChangeText={(text) => setFormData({ ...formData, notas: text })}
             placeholder="Observaciones..."
-            placeholderTextColor="#a0a0a0"
+            placeholderTextColor="#555555"
             multiline
             numberOfLines={4}
           />
@@ -286,7 +286,7 @@ export default function SaludFormScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#f5f5f5',
   },
   loadingContainer: {
     flex: 1,
@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#333333',
+    borderBottomColor: '#e0e0e0',
   },
   backButton: {
     width: 40,
@@ -340,13 +340,13 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   input: {
-    backgroundColor: '#242424',
+    backgroundColor: '#ffffff',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
     color: '#fff',
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: '#e0e0e0',
   },
   textArea: {
     minHeight: 100,
@@ -356,11 +356,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#242424',
+    backgroundColor: '#ffffff',
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: '#e0e0e0',
   },
   selectButtonContent: {
     flexDirection: 'row',
@@ -372,11 +372,11 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   selectList: {
-    backgroundColor: '#242424',
+    backgroundColor: '#ffffff',
     borderRadius: 12,
     marginTop: 8,
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: '#e0e0e0',
     maxHeight: 200,
   },
   selectItem: {
@@ -385,7 +385,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#333333',
+    borderBottomColor: '#e0e0e0',
   },
   selectItemActive: {
     backgroundColor: 'rgba(245, 158, 11, 0.1)',
@@ -404,12 +404,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#242424',
+    backgroundColor: '#ffffff',
     borderRadius: 12,
     padding: 16,
     gap: 8,
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: '#e0e0e0',
   },
   tipoButtonActive: {
     backgroundColor: '#f59e0b',

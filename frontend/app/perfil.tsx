@@ -25,11 +25,11 @@ const COLORS = {
   greenLight: 'rgba(34, 197, 94, 0.15)',
   redDeep: '#ef4444',
   redLight: 'rgba(239, 68, 68, 0.15)',
-  grayDark: '#1a1a1a',
-  grayMedium: '#333333',
-  grayLight: '#a0a0a0',
+  grayDark: '#f5f5f5',
+  grayMedium: '#e0e0e0',
+  grayLight: '#555555',
   white: '#ffffff',
-  background: '#1a1a1a',
+  background: '#f5f5f5',
 };
 
 export default function PerfilScreen() {

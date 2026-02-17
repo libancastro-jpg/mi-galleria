@@ -89,11 +89,11 @@ export default function PeleasScreen() {
       case 'BUENA':
         return '#22c55e';
       case 'REGULAR':
-        return '#a0a0a0';
+        return '#555555';
       case 'MALA':
         return '#ef4444';
       default:
-        return '#a0a0a0';
+        return '#555555';
     }
   };
 
@@ -251,7 +251,7 @@ export default function PeleasScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#f5f5f5',
   },
   header: {
     flexDirection: 'row',
@@ -274,12 +274,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   statsContainer: {
-    backgroundColor: '#242424',
+    backgroundColor: '#ffffff',
     marginHorizontal: 16,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: '#e0e0e0',
   },
   statsRow: {
     flexDirection: 'row',
@@ -297,13 +297,13 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 12,
-    color: '#a0a0a0',
+    color: '#555555',
     marginTop: 4,
   },
   statDivider: {
     width: 1,
     height: 40,
-    backgroundColor: '#333333',
+    backgroundColor: '#e0e0e0',
   },
   rachaContainer: {
     flexDirection: 'row',
@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#333333',
+    borderTopColor: '#e0e0e0',
     gap: 6,
   },
   rachaText: {
@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#333333',
+    borderTopColor: '#e0e0e0',
   },
   calItem: {
     alignItems: 'center',
@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
   },
   calLabel: {
     fontSize: 11,
-    color: '#a0a0a0',
+    color: '#555555',
     marginTop: 2,
   },
   loadingContainer: {
@@ -357,12 +357,12 @@ const styles = StyleSheet.create({
   peleaCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#242424',
+    backgroundColor: '#ffffff',
     borderRadius: 12,
     padding: 12,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: '#e0e0e0',
   },
   resultadoIndicator: {
     width: 44,
@@ -393,7 +393,7 @@ const styles = StyleSheet.create({
   },
   peleaFecha: {
     fontSize: 13,
-    color: '#a0a0a0',
+    color: '#555555',
     marginTop: 2,
   },
   peleaLugar: {
@@ -424,7 +424,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    color: '#a0a0a0',
+    color: '#555555',
     marginTop: 8,
   },
   emptyButton: {

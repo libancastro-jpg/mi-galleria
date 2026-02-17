@@ -81,7 +81,7 @@ export default function RegisterScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Número de teléfono *"
-                placeholderTextColor="#a0a0a0"
+                placeholderTextColor="#555555"
                 value={telefono}
                 onChangeText={setTelefono}
                 keyboardType="phone-pad"
@@ -93,7 +93,7 @@ export default function RegisterScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Correo electrónico (opcional)"
-                placeholderTextColor="#a0a0a0"
+                placeholderTextColor="#555555"
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
@@ -106,7 +106,7 @@ export default function RegisterScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Galleria (opcional)"
-                placeholderTextColor="#a0a0a0"
+                placeholderTextColor="#555555"
                 value={nombre}
                 onChangeText={setNombre}
               />
@@ -117,7 +117,7 @@ export default function RegisterScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="PIN (4-6 dígitos) *"
-                placeholderTextColor="#a0a0a0"
+                placeholderTextColor="#555555"
                 value={pin}
                 onChangeText={(text) => setPin(text.replace(/[^0-9]/g, '').slice(0, 6))}
                 keyboardType="numeric"
@@ -134,7 +134,7 @@ export default function RegisterScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Confirmar PIN *"
-                placeholderTextColor="#a0a0a0"
+                placeholderTextColor="#555555"
                 value={confirmPin}
                 onChangeText={(text) => setConfirmPin(text.replace(/[^0-9]/g, '').slice(0, 6))}
                 keyboardType="numeric"
@@ -144,7 +144,7 @@ export default function RegisterScreen() {
             </View>
 
             <Text style={styles.infoText}>
-              <Ionicons name="information-circle-outline" size={14} color="#a0a0a0" />
+              <Ionicons name="information-circle-outline" size={14} color="#555555" />
               {' '}El correo es opcional pero útil para enviar PDFs
             </Text>
 
@@ -178,7 +178,7 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#f5f5f5',
   },
   keyboardView: {
     flex: 1,
@@ -217,11 +217,11 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#f5f5f5',
     borderRadius: 12,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: '#e0e0e0',
   },
   inputIcon: {
     paddingLeft: 16,
@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   infoText: {
-    color: '#a0a0a0',
+    color: '#555555',
     fontSize: 13,
     marginBottom: 16,
     textAlign: 'center',

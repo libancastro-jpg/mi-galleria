@@ -23,11 +23,11 @@ const COLORS = {
   redLight: 'rgba(139, 26, 26, 0.15)',
   blueDark: '#1a3d5d',
   blueLight: 'rgba(26, 61, 93, 0.15)',
-  grayDark: '#1a1a1a',
-  grayMedium: '#333333',
-  grayLight: '#a0a0a0',
+  grayDark: '#f5f5f5',
+  grayMedium: '#e0e0e0',
+  grayLight: '#555555',
   white: '#ffffff',
-  background: '#1a1a1a',
+  background: '#f5f5f5',
 };
 
 interface SaludRecord {

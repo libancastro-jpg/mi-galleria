@@ -175,7 +175,7 @@ export default function CruceFormScreen() {
       case 'alto':
         return '#ef4444';
       default:
-        return '#a0a0a0';
+        return '#555555';
     }
   };
 
@@ -258,7 +258,7 @@ export default function CruceFormScreen() {
                 >
                   <Ionicons name="list" size={20} color="#3b82f6" />
                   <Text style={styles.optionButtonText}>Seleccionar de mi Gallería</Text>
-                  <Ionicons name={showPadreList ? 'chevron-up' : 'chevron-down'} size={18} color="#a0a0a0" />
+                  <Ionicons name={showPadreList ? 'chevron-up' : 'chevron-down'} size={18} color="#555555" />
                 </TouchableOpacity>
 
                 {/* Lista de gallos */}
@@ -296,7 +296,7 @@ export default function CruceFormScreen() {
                 >
                   <Ionicons name="add-circle" size={20} color="#f59e0b" />
                   <Text style={[styles.optionButtonText, { color: '#f59e0b' }]}>Agregar Padre Externo</Text>
-                  <Ionicons name={showPadreExterno ? 'chevron-up' : 'chevron-down'} size={18} color="#a0a0a0" />
+                  <Ionicons name={showPadreExterno ? 'chevron-up' : 'chevron-down'} size={18} color="#555555" />
                 </TouchableOpacity>
 
                 {/* Formulario externo */}
@@ -385,7 +385,7 @@ export default function CruceFormScreen() {
                 >
                   <Ionicons name="list" size={20} color="#ec4899" />
                   <Text style={styles.optionButtonText}>Seleccionar de mi Gallería</Text>
-                  <Ionicons name={showMadreList ? 'chevron-up' : 'chevron-down'} size={18} color="#a0a0a0" />
+                  <Ionicons name={showMadreList ? 'chevron-up' : 'chevron-down'} size={18} color="#555555" />
                 </TouchableOpacity>
 
                 {/* Lista de gallinas */}
@@ -423,7 +423,7 @@ export default function CruceFormScreen() {
                 >
                   <Ionicons name="add-circle" size={20} color="#f59e0b" />
                   <Text style={[styles.optionButtonText, { color: '#f59e0b' }]}>Agregar Madre Externa</Text>
-                  <Ionicons name={showMadreExterno ? 'chevron-up' : 'chevron-down'} size={18} color="#a0a0a0" />
+                  <Ionicons name={showMadreExterno ? 'chevron-up' : 'chevron-down'} size={18} color="#555555" />
                 </TouchableOpacity>
 
                 {/* Formulario externo */}
@@ -520,7 +520,7 @@ export default function CruceFormScreen() {
             value={formData.fecha}
             onChangeText={(text) => setFormData({ ...formData, fecha: text })}
             placeholder="YYYY-MM-DD"
-            placeholderTextColor="#a0a0a0"
+            placeholderTextColor="#555555"
           />
 
           {/* Estado */}
@@ -554,7 +554,7 @@ export default function CruceFormScreen() {
             value={formData.objetivo}
             onChangeText={(text) => setFormData({ ...formData, objetivo: text })}
             placeholder="Ej: Mejorar resistencia, color..."
-            placeholderTextColor="#a0a0a0"
+            placeholderTextColor="#555555"
           />
 
           {/* Notas */}
@@ -564,7 +564,7 @@ export default function CruceFormScreen() {
             value={formData.notas}
             onChangeText={(text) => setFormData({ ...formData, notas: text })}
             placeholder="Notas adicionales..."
-            placeholderTextColor="#a0a0a0"
+            placeholderTextColor="#555555"
             multiline
             numberOfLines={4}
           />
@@ -579,7 +579,7 @@ export default function CruceFormScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#f5f5f5',
   },
   loadingContainer: {
     flex: 1,
@@ -593,7 +593,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#333333',
+    borderBottomColor: '#e0e0e0',
   },
   backButton: {
     width: 40,
@@ -625,11 +625,11 @@ const styles = StyleSheet.create({
   },
   // Nuevo diseño de secciones
   sectionCard: {
-    backgroundColor: '#242424',
+    backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: '#e0e0e0',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -686,11 +686,11 @@ const styles = StyleSheet.create({
   optionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#f5f5f5',
     padding: 14,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: '#e0e0e0',
   },
   optionButtonExternal: {
     borderColor: 'rgba(245, 158, 11, 0.3)',
@@ -703,24 +703,24 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   optionsList: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#f5f5f5',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: '#e0e0e0',
     maxHeight: 180,
     overflow: 'hidden',
   },
   optionItem: {
     padding: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#333333',
+    borderBottomColor: '#e0e0e0',
   },
   optionItemText: {
     fontSize: 15,
     color: '#fff',
   },
   externalForm: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#f5f5f5',
     borderRadius: 12,
     padding: 12,
     gap: 10,
@@ -728,13 +728,13 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(245, 158, 11, 0.3)',
   },
   externalInput: {
-    backgroundColor: '#242424',
+    backgroundColor: '#ffffff',
     borderRadius: 10,
     padding: 14,
     fontSize: 15,
     color: '#fff',
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: '#e0e0e0',
   },
   confirmButton: {
     backgroundColor: '#f59e0b',
@@ -759,17 +759,17 @@ const styles = StyleSheet.create({
   },
   noAvesText: {
     fontSize: 14,
-    color: '#a0a0a0',
+    color: '#555555',
     textAlign: 'center',
     padding: 16,
   },
   consanguinidadCard: {
-    backgroundColor: '#242424',
+    backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 16,
     marginTop: 16,
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: '#e0e0e0',
   },
   consanguinidadTitle: {
     fontSize: 14,
@@ -799,7 +799,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#333333',
+    borderTopColor: '#e0e0e0',
   },
   ancestrosTitle: {
     fontSize: 13,
@@ -808,7 +808,7 @@ const styles = StyleSheet.create({
   },
   ancestroItem: {
     fontSize: 13,
-    color: '#a0a0a0',
+    color: '#555555',
     marginBottom: 4,
   },
   label: {
@@ -819,13 +819,13 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   input: {
-    backgroundColor: '#242424',
+    backgroundColor: '#ffffff',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
     color: '#fff',
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: '#e0e0e0',
   },
   textArea: {
     minHeight: 100,
@@ -839,10 +839,10 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     borderRadius: 12,
-    backgroundColor: '#242424',
+    backgroundColor: '#ffffff',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: '#e0e0e0',
   },
   estadoButtonActive: {
     backgroundColor: '#f59e0b',

@@ -86,7 +86,7 @@ export default function AvesScreen() {
             <Ionicons
               name={item.tipo === 'gallo' ? 'fitness' : 'egg'}
               size={32}
-              color="#a0a0a0"
+              color="#555555"
             />
           </View>
         )}
@@ -113,7 +113,7 @@ export default function AvesScreen() {
           )}
         </View>
       </View>
-      <Ionicons name="chevron-forward" size={20} color="#a0a0a0" />
+      <Ionicons name="chevron-forward" size={20} color="#555555" />
     </TouchableOpacity>
   );
 
@@ -130,17 +130,17 @@ export default function AvesScreen() {
       </View>
 
       <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color="#a0a0a0" style={styles.searchIcon} />
+        <Ionicons name="search" size={20} color="#555555" style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
           placeholder="Buscar por placa, nombre, color..."
-          placeholderTextColor="#a0a0a0"
+          placeholderTextColor="#555555"
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
         {searchQuery && (
           <TouchableOpacity onPress={() => setSearchQuery('')}>
-            <Ionicons name="close-circle" size={20} color="#a0a0a0" />
+            <Ionicons name="close-circle" size={20} color="#555555" />
           </TouchableOpacity>
         )}
       </View>
@@ -238,7 +238,7 @@ export default function AvesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#f5f5f5',
   },
   header: {
     flexDirection: 'row',
@@ -263,12 +263,12 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#242424',
+    backgroundColor: '#ffffff',
     borderRadius: 12,
     marginHorizontal: 16,
     paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: '#e0e0e0',
   },
   searchIcon: {
     marginRight: 8,
@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#f5f5f5',
     gap: 6,
   },
   filterActive: {
@@ -315,14 +315,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#f5f5f5',
   },
   estadoChipActive: {
     backgroundColor: '#22c55e',
   },
   estadoText: {
     fontSize: 12,
-    color: '#a0a0a0',
+    color: '#555555',
   },
   estadoTextActive: {
     color: '#000',
@@ -340,12 +340,12 @@ const styles = StyleSheet.create({
   aveCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#242424',
+    backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 12,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: '#e0e0e0',
   },
   aveImageContainer: {
     position: 'relative',
@@ -359,7 +359,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 12,
-    backgroundColor: '#333333',
+    backgroundColor: '#e0e0e0',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -371,7 +371,7 @@ const styles = StyleSheet.create({
     height: 16,
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: '#242424',
+    borderColor: '#ffffff',
   },
   galloIndicator: {
     backgroundColor: '#3b82f6',
@@ -403,7 +403,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 6,
-    backgroundColor: '#333333',
+    backgroundColor: '#e0e0e0',
   },
   detailText: {
     fontSize: 12,
@@ -421,7 +421,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    color: '#a0a0a0',
+    color: '#555555',
     marginTop: 8,
   },
   emptyButton: {

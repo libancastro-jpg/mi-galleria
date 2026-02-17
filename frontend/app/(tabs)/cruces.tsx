@@ -226,7 +226,7 @@ export default function CrucesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#f5f5f5',
   },
   header: {
     flexDirection: 'row',
@@ -258,7 +258,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#f5f5f5',
   },
   filterActive: {
     backgroundColor: '#f59e0b',
@@ -281,12 +281,12 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   cruceCard: {
-    backgroundColor: '#242424',
+    backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: '#e0e0e0',
   },
   cruceHeader: {
     flexDirection: 'row',
@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
-    backgroundColor: '#333333',
+    backgroundColor: '#e0e0e0',
   },
   estadoText: {
     fontSize: 12,
@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
   },
   cruceFecha: {
     fontSize: 14,
-    color: '#a0a0a0',
+    color: '#555555',
   },
   padresContainer: {
     flexDirection: 'row',
@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
   },
   consanguinidadLabel: {
     fontSize: 13,
-    color: '#a0a0a0',
+    color: '#555555',
   },
   consanguinidadBadge: {
     paddingHorizontal: 8,
@@ -381,7 +381,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    color: '#a0a0a0',
+    color: '#555555',
     marginTop: 8,
   },
   emptyButton: {

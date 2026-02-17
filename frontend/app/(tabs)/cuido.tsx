@@ -142,7 +142,7 @@ export default function CuidoScreen() {
 
         <View style={styles.cuidoFooter}>
           <Text style={styles.fechaInicio}>Inicio: {item.fecha_inicio}</Text>
-          <Ionicons name="chevron-forward" size={20} color="#a0a0a0" />
+          <Ionicons name="chevron-forward" size={20} color="#555555" />
         </View>
       </TouchableOpacity>
     );
@@ -224,7 +224,7 @@ export default function CuidoScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#f5f5f5',
   },
   header: {
     flexDirection: 'row',
@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#f5f5f5',
   },
   filterActive: {
     backgroundColor: '#f59e0b',
@@ -279,12 +279,12 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   cuidoCard: {
-    backgroundColor: '#242424',
+    backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#333333',
+    borderColor: '#e0e0e0',
   },
   cuidoHeader: {
     flexDirection: 'row',
@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#333333',
+    backgroundColor: '#e0e0e0',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
   },
   aveDetail: {
     fontSize: 12,
-    color: '#a0a0a0',
+    color: '#555555',
   },
   descansoTag: {
     flexDirection: 'row',
@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   progressSection: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#f5f5f5',
     borderRadius: 12,
     padding: 12,
     gap: 10,
@@ -354,7 +354,7 @@ const styles = StyleSheet.create({
   },
   progressLabel: {
     fontSize: 13,
-    color: '#a0a0a0',
+    color: '#555555',
     width: 60,
   },
   progressDots: {
@@ -367,7 +367,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#333333',
+    backgroundColor: '#e0e0e0',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -402,11 +402,11 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#333333',
+    borderTopColor: '#e0e0e0',
   },
   fechaInicio: {
     fontSize: 13,
-    color: '#a0a0a0',
+    color: '#555555',
   },
   emptyState: {
     alignItems: 'center',
@@ -420,7 +420,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    color: '#a0a0a0',
+    color: '#555555',
     marginTop: 8,
     textAlign: 'center',
   },
