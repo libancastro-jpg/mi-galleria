@@ -515,13 +515,11 @@ export default function CruceFormScreen() {
           )}
 
           {/* Fecha */}
-          <Text style={styles.label}>Fecha</Text>
-          <TextInput
-            style={styles.input}
+          <DatePickerField
+            label="Fecha del Cruce"
             value={formData.fecha}
-            onChangeText={(text) => setFormData({ ...formData, fecha: text })}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor="#555555"
+            onChange={(date) => setFormData({ ...formData, fecha: date })}
+            placeholder="Seleccionar fecha"
           />
 
           {/* Estado */}
