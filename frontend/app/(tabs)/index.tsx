@@ -18,6 +18,7 @@ import { useAuth } from '../../src/context/AuthContext';
 import { RoosterLogo } from '../../src/components/RoosterLogo';
 import { TrophyIcon, GeneticsIcon, EggIcon, UserIcon, RoosterIcon, HenIcon, RoosterHeadIcon, BirdIcon, AvesIcon, PedigreeIcon } from '../../src/components/BirdIcons';
 import { CamadaLogo } from '../../src/components/CamadaLogo';
+import { GalloLineaIcon } from '../../src/components/GalloLineaIcon';
 
 interface DashboardData {
   aves: {
