@@ -179,6 +179,7 @@ export default function AveFormScreen() {
       setFormData({
         tipo: ave.tipo || 'gallo',
         codigo: ave.codigo || '',
+        color_placa: ave.color_placa || '',
         nombre: ave.nombre || '',
         foto_principal: ave.foto_principal || '',
         fecha_nacimiento: ave.fecha_nacimiento || '',
