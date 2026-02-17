@@ -325,6 +325,7 @@ export default function AveFormScreen() {
         <ScrollView style={styles.form} contentContainerStyle={styles.formContent}>
           {/* Photo */}
           <View style={styles.photoSection}>
+            <Text style={styles.photoSectionTitle}>Fotos (hasta 3)</Text>
             <TouchableOpacity
               style={styles.photoContainer}
               onPress={() => {
