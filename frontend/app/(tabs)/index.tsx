@@ -273,8 +273,11 @@ export default function DashboardScreen() {
             style={styles.statCard}
             onPress={() => router.push('/(tabs)/aves')}
           >
+            {/* Icono grande arriba */}
+            <View style={styles.avesLogoContainer}>
+              <GalloLineaIcon size={70} />
+            </View>
             <View style={styles.statHeader}>
-              <GalloLineaIcon size={36} />
               <Text style={styles.statTitle}>Aves Activas</Text>
             </View>
             {(data?.aves.total_activas || 0) > 0 ? (
