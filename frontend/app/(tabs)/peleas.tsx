@@ -39,6 +39,21 @@ interface Estadisticas {
   racha_tipo: string | null;
 }
 
+interface ParentStat {
+  id: string;
+  codigo: string;
+  nombre?: string;
+  ganadas: number;
+  total: number;
+  porcentaje: number;
+  hijos_peleados: number;
+}
+
+interface EstadisticasPadres {
+  padres: ParentStat[];
+  madres: ParentStat[];
+}
+
 export default function PeleasScreen() {
   const router = useRouter();
   const [peleas, setPeleas] = useState<Pelea[]>([]);
