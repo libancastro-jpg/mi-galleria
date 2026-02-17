@@ -424,8 +424,8 @@ export default function DashboardScreen() {
                 router.push('/cruce/new');
               }}
             >
-              <View style={[styles.addMenuIcon, { backgroundColor: COLORS.goldLight }]}>
-                <CrucesIcon size={32} />
+              <View style={[styles.addMenuIconLarge, { backgroundColor: COLORS.goldLight }]}>
+                <CrucesIcon size={48} />
               </View>
               <View style={styles.addMenuItemContent}>
                 <Text style={styles.addMenuItemTitle}>Registrar Encaste</Text>
@@ -441,8 +441,8 @@ export default function DashboardScreen() {
                 router.push('/ave/new');
               }}
             >
-              <View style={[styles.addMenuIcon, { backgroundColor: COLORS.goldLight }]}>
-                <GalloLineaIcon size={28} />
+              <View style={[styles.addMenuIconLarge, { backgroundColor: COLORS.goldLight }]}>
+                <GalloLineaIcon size={44} />
               </View>
               <View style={styles.addMenuItemContent}>
                 <Text style={styles.addMenuItemTitle}>Animal Individual</Text>
@@ -458,8 +458,8 @@ export default function DashboardScreen() {
                 router.push('/camada/new');
               }}
             >
-              <View style={[styles.addMenuIcon, { backgroundColor: COLORS.goldLight }]}>
-                <CamadaLogo size={32} />
+              <View style={[styles.addMenuIconLarge, { backgroundColor: COLORS.goldLight }]}>
+                <CamadaLogo size={48} />
               </View>
               <View style={styles.addMenuItemContent}>
                 <Text style={styles.addMenuItemTitle}>Registrar Camada</Text>
