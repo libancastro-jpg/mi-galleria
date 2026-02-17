@@ -386,42 +386,90 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Acciones Rápidas */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Acciones Rápidas</Text>
-          <View style={styles.actionsGrid}>
+        <View style={{ height: 100 }} />
+      </ScrollView>
+
+      {/* Botón Flotante + */}
+      <TouchableOpacity
+        style={styles.floatingButton}
+        onPress={() => setShowAddMenu(true)}
+      >
+        <Ionicons name="add" size={32} color="#000" />
+      </TouchableOpacity>
+
+      {/* Modal de Menú */}
+      <Modal
+        visible={showAddMenu}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowAddMenu(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowAddMenu(false)}
+        >
+          <View style={styles.addMenuContainer}>
+            <View style={styles.addMenuHeader}>
+              <Text style={styles.addMenuTitle}>Registrar</Text>
+              <TouchableOpacity onPress={() => setShowAddMenu(false)}>
+                <Ionicons name="close" size={24} color={COLORS.grayLight} />
+              </TouchableOpacity>
+            </View>
+            
             <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => router.push('/ave/new')}
+              style={styles.addMenuItem}
+              onPress={() => {
+                setShowAddMenu(false);
+                router.push('/cruce/new');
+              }}
             >
-              <View style={[styles.actionIcon, { backgroundColor: COLORS.goldLight }]}>
-                <Ionicons name="add" size={28} color={COLORS.gold} />
+              <View style={[styles.addMenuIcon, { backgroundColor: 'rgba(236, 72, 153, 0.15)' }]}>
+                <GeneticsIcon size={24} color="#ec4899" />
               </View>
-              <Text style={styles.actionText}>Nueva Ave</Text>
+              <View style={styles.addMenuItemContent}>
+                <Text style={styles.addMenuItemTitle}>Registrar Encaste</Text>
+                <Text style={styles.addMenuItemDesc}>Planificar cruce entre aves</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={COLORS.grayLight} />
             </TouchableOpacity>
+
             <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => router.push('/cruce/new')}
+              style={styles.addMenuItem}
+              onPress={() => {
+                setShowAddMenu(false);
+                router.push('/ave/new');
+              }}
             >
-              <View style={[styles.actionIcon, { backgroundColor: COLORS.goldLight }]}>
-                <GeneticsIcon size={26} color={COLORS.gold} />
+              <View style={[styles.addMenuIcon, { backgroundColor: COLORS.goldLight }]}>
+                <AvesIcon size={24} />
               </View>
-              <Text style={styles.actionText}>Nuevo Cruce</Text>
+              <View style={styles.addMenuItemContent}>
+                <Text style={styles.addMenuItemTitle}>Animal Individual</Text>
+                <Text style={styles.addMenuItemDesc}>Agregar ave nueva al inventario</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={COLORS.grayLight} />
             </TouchableOpacity>
+
             <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => router.push('/pedigri')}
+              style={styles.addMenuItem}
+              onPress={() => {
+                setShowAddMenu(false);
+                router.push('/camada/new');
+              }}
             >
-              <View style={[styles.actionIcon, { backgroundColor: COLORS.goldLight }]}>
-                <PedigreeIcon size={26} color={COLORS.gold} />
+              <View style={[styles.addMenuIcon, { backgroundColor: COLORS.greenLight }]}>
+                <EggIcon size={24} color={COLORS.greenDark} />
               </View>
-              <Text style={styles.actionText}>Pedigrí</Text>
+              <View style={styles.addMenuItemContent}>
+                <Text style={styles.addMenuItemTitle}>Registrar Camada</Text>
+                <Text style={styles.addMenuItemDesc}>Nueva camada de un cruce</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={COLORS.grayLight} />
             </TouchableOpacity>
           </View>
-        </View>
-
-        <View style={{ height: 24 }} />
-      </ScrollView>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
