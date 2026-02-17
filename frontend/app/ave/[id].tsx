@@ -1456,4 +1456,52 @@ const styles = StyleSheet.create({
     color: '#555555',
     fontSize: 14,
   },
+  // Estilos para indicador de fotos
+  photoIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 8,
+  },
+  photoIndicatorText: {
+    fontSize: 12,
+    color: '#555555',
+  },
+  // Estilos para sección de padres desplegable
+  padresSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  padresSectionHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  padresSectionTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1a1a1a',
+  },
+  padresSectionContent: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  labelInSection: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#555555',
+    marginBottom: 8,
+  },
 });
