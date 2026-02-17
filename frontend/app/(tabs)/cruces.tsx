@@ -40,14 +40,30 @@ export default function CrucesScreen() {
   const fetchData = async () => {
     try {
       const params: Record<string, string> = {};
-      if (filterEstado && filterEstado !== 'todos') params.estado = filterEstado;
+      if (filterEstado && filterEstado !== 'todos' && filterEstado !== 'repetidos') {
+        params.estado = filterEstado;
+      }
       
       const [crucesData, avesData] = await Promise.all([
         api.get('/cruces', params),
         api.get('/aves'),
       ]);
       
-      setCruces(crucesData);
+      // Filtrar cruces repetidos (mismos padres)
+      let filteredCruces = crucesData;
+      if (filterEstado === 'repetidos') {
+        const parejasCount: Record<string, number> = {};
+        crucesData.forEach((c: Cruce) => {
+          const key = `${c.padre_id || c.padre_externo}-${c.madre_id || c.madre_externo}`;
+          parejasCount[key] = (parejasCount[key] || 0) + 1;
+        });
+        filteredCruces = crucesData.filter((c: Cruce) => {
+          const key = `${c.padre_id || c.padre_externo}-${c.madre_id || c.madre_externo}`;
+          return parejasCount[key] > 1;
+        });
+      }
+      
+      setCruces(filteredCruces);
       const avesMap: Record<string, Ave> = {};
       avesData.forEach((ave: Ave) => {
         avesMap[ave.id] = ave;
