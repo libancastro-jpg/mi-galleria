@@ -17,6 +17,8 @@ interface Cruce {
   id: string;
   padre_id: string;
   madre_id: string;
+  padre_externo?: string;
+  madre_externo?: string;
   fecha: string;
   objetivo?: string;
   estado: string;
