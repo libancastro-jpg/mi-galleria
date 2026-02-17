@@ -441,7 +441,7 @@ export default function DashboardScreen() {
               }}
             >
               <View style={[styles.addMenuIcon, { backgroundColor: COLORS.goldLight }]}>
-                <AvesIcon size={24} />
+                <GalloLineaIcon size={28} />
               </View>
               <View style={styles.addMenuItemContent}>
                 <Text style={styles.addMenuItemTitle}>Animal Individual</Text>
