@@ -361,6 +361,11 @@ export default function AveFormScreen() {
               </TouchableOpacity>
             )}
           </View>
+          {/* Indicador de fotos */}
+          <View style={styles.photoIndicator}>
+            <Ionicons name="images-outline" size={16} color="#555555" />
+            <Text style={styles.photoIndicatorText}>Puedes agregar hasta 3 fotos</Text>
+          </View>
 
           {/* Tipo */}
           <Text style={styles.label}>Tipo *</Text>
