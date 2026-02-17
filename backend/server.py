@@ -954,6 +954,103 @@ async def get_estadisticas_peleas(
         "racha_tipo": racha_tipo
     }
 
+@api_router.get("/peleas/estadisticas-padres")
+async def get_estadisticas_padres(current_user: dict = Depends(get_current_user)):
+    """Get fight statistics grouped by parent birds (fathers and mothers)"""
+    user_id = current_user["id"]
+    
+    # Get all fights
+    peleas = await db.peleas.find({"user_id": user_id}).to_list(10000)
+    if not peleas:
+        return {"padres": [], "madres": []}
+    
+    # Get all aves to map parents
+    aves = await db.aves.find({"user_id": user_id}).to_list(10000)
+    aves_map = {str(a["_id"]): a for a in aves}
+    
+    # Group fights by parent
+    padre_stats = {}  # padre_id -> {ganadas, total, ave_info}
+    madre_stats = {}  # madre_id -> {ganadas, total, ave_info}
+    
+    for pelea in peleas:
+        ave_id = pelea.get("ave_id")
+        ave = aves_map.get(ave_id)
+        if not ave:
+            continue
+        
+        resultado = pelea.get("resultado")
+        gano = 1 if resultado == "GANO" else 0
+        
+        # Track father stats
+        padre_id = ave.get("padre_id")
+        if padre_id and padre_id in aves_map:
+            padre = aves_map[padre_id]
+            if padre_id not in padre_stats:
+                padre_stats[padre_id] = {
+                    "id": padre_id,
+                    "codigo": padre.get("codigo"),
+                    "nombre": padre.get("nombre"),
+                    "ganadas": 0,
+                    "total": 0,
+                    "hijos_ids": set()
+                }
+            padre_stats[padre_id]["ganadas"] += gano
+            padre_stats[padre_id]["total"] += 1
+            padre_stats[padre_id]["hijos_ids"].add(ave_id)
+        
+        # Track mother stats
+        madre_id = ave.get("madre_id")
+        if madre_id and madre_id in aves_map:
+            madre = aves_map[madre_id]
+            if madre_id not in madre_stats:
+                madre_stats[madre_id] = {
+                    "id": madre_id,
+                    "codigo": madre.get("codigo"),
+                    "nombre": madre.get("nombre"),
+                    "ganadas": 0,
+                    "total": 0,
+                    "hijos_ids": set()
+                }
+            madre_stats[madre_id]["ganadas"] += gano
+            madre_stats[madre_id]["total"] += 1
+            madre_stats[madre_id]["hijos_ids"].add(ave_id)
+    
+    # Calculate percentages and sort
+    padres_list = []
+    for pid, data in padre_stats.items():
+        porcentaje = round((data["ganadas"] / data["total"] * 100) if data["total"] > 0 else 0, 1)
+        padres_list.append({
+            "id": data["id"],
+            "codigo": data["codigo"],
+            "nombre": data["nombre"],
+            "ganadas": data["ganadas"],
+            "total": data["total"],
+            "porcentaje": porcentaje,
+            "hijos_peleados": len(data["hijos_ids"])
+        })
+    
+    madres_list = []
+    for mid, data in madre_stats.items():
+        porcentaje = round((data["ganadas"] / data["total"] * 100) if data["total"] > 0 else 0, 1)
+        madres_list.append({
+            "id": data["id"],
+            "codigo": data["codigo"],
+            "nombre": data["nombre"],
+            "ganadas": data["ganadas"],
+            "total": data["total"],
+            "porcentaje": porcentaje,
+            "hijos_peleados": len(data["hijos_ids"])
+        })
+    
+    # Sort by percentage (descending), then by total fights
+    padres_list.sort(key=lambda x: (-x["porcentaje"], -x["total"]))
+    madres_list.sort(key=lambda x: (-x["porcentaje"], -x["total"]))
+    
+    return {
+        "padres": padres_list[:10],  # Top 10
+        "madres": madres_list[:10]   # Top 10
+    }
+
 @api_router.get("/peleas/{pelea_id}", response_model=PeleaResponse)
 async def get_pelea(pelea_id: str, current_user: dict = Depends(get_current_user)):
     pelea = await db.peleas.find_one({"_id": ObjectId(pelea_id), "user_id": current_user["id"]})
