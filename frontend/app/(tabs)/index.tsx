@@ -19,6 +19,7 @@ import { RoosterLogo } from '../../src/components/RoosterLogo';
 import { TrophyIcon, GeneticsIcon, EggIcon, UserIcon, RoosterIcon, HenIcon, RoosterHeadIcon, BirdIcon, AvesIcon, PedigreeIcon } from '../../src/components/BirdIcons';
 import { CamadaLogo } from '../../src/components/CamadaLogo';
 import { GalloLineaIcon } from '../../src/components/GalloLineaIcon';
+import { CrucesIcon } from '../../src/components/CrucesIcon';
 
 interface DashboardData {
   aves: {
