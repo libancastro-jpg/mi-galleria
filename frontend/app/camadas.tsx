@@ -38,15 +38,15 @@ interface Cruce {
 const COLORS = {
   gold: '#d4a017',
   goldLight: 'rgba(212, 160, 23, 0.15)',
-  background: '#1a1a1a',
-  cardBg: '#242424',
-  border: '#333333',
-  white: '#ffffff',
-  grayLight: '#a0a0a0',
+  background: '#f5f5f5',
+  cardBg: '#ffffff',
+  border: '#e0e0e0',
+  white: '#1a1a1a',
+  grayLight: '#555555',
   green: '#22c55e',
-  greenLight: 'rgba(34, 197, 94, 0.15)',
+  greenLight: 'rgba(34, 197, 94, 0.12)',
   blue: '#3b82f6',
-  blueLight: 'rgba(59, 130, 246, 0.15)',
+  blueLight: 'rgba(59, 130, 246, 0.12)',
 };
 
 export default function CamadasScreen() {
