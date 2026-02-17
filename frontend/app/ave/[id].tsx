@@ -544,15 +544,87 @@ export default function AveFormScreen() {
             placeholderTextColor="#555555"
           />
 
-          {/* Castado Por */}
-          <Text style={styles.label}>Castado Por</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.castado_por}
-            onChangeText={(text) => setFormData({ ...formData, castado_por: text })}
-            placeholder="Nombre del castador"
-            placeholderTextColor="#555555"
-          />
+          {/* Castador o Criador */}
+          <Text style={styles.label}>Castador o Criador</Text>
+          <TouchableOpacity
+            style={styles.selectButton}
+            onPress={() => setShowCastadorList(!showCastadorList)}
+          >
+            <Text style={[styles.selectButtonText, formData.castado_por && { color: '#1a1a1a' }]}>
+              {formData.castado_por || 'Seleccionar o crear nuevo'}
+            </Text>
+            <Ionicons
+              name={showCastadorList ? 'chevron-up' : 'chevron-down'}
+              size={20}
+              color="#9ca3af"
+            />
+          </TouchableOpacity>
+          {showCastadorList && (
+            <View style={styles.castadorList}>
+              {/* Opción crear nuevo */}
+              <TouchableOpacity
+                style={styles.castadorNuevoButton}
+                onPress={() => setShowNuevoCastador(!showNuevoCastador)}
+              >
+                <Ionicons name="add-circle" size={20} color="#d4a017" />
+                <Text style={styles.castadorNuevoText}>Crear nuevo castador/criador</Text>
+              </TouchableOpacity>
+              
+              {showNuevoCastador && (
+                <View style={styles.nuevoCastadorForm}>
+                  <TextInput
+                    style={styles.nuevoCastadorInput}
+                    value={nuevoCastador}
+                    onChangeText={setNuevoCastador}
+                    placeholder="Nombre del castador/criador"
+                    placeholderTextColor="#555555"
+                  />
+                  <TouchableOpacity
+                    style={styles.nuevoCastadorConfirm}
+                    onPress={() => {
+                      if (nuevoCastador.trim()) {
+                        setFormData({ ...formData, castado_por: nuevoCastador.trim() });
+                        setNuevoCastador('');
+                        setShowNuevoCastador(false);
+                        setShowCastadorList(false);
+                      }
+                    }}
+                  >
+                    <Text style={styles.nuevoCastadorConfirmText}>Agregar</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+              
+              {/* Lista de castadores existentes */}
+              {castadores.length > 0 && (
+                <View style={styles.castadoresExistentes}>
+                  <Text style={styles.castadoresTitle}>Castadores/Criadores registrados:</Text>
+                  {castadores.map((castador) => (
+                    <TouchableOpacity
+                      key={castador.nombre}
+                      style={[
+                        styles.castadorItem,
+                        formData.castado_por === castador.nombre && styles.castadorItemActive,
+                      ]}
+                      onPress={() => {
+                        setFormData({ ...formData, castado_por: castador.nombre });
+                        setShowCastadorList(false);
+                      }}
+                    >
+                      <Text style={styles.castadorNombre}>{castador.nombre}</Text>
+                      <View style={styles.castadorCantidad}>
+                        <Text style={styles.castadorCantidadText}>{castador.cantidad} aves</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+              
+              {castadores.length === 0 && !showNuevoCastador && (
+                <Text style={styles.noCastadores}>No hay castadores registrados aún</Text>
+              )}
+            </View>
+          )}
 
           {/* Fecha nacimiento */}
           <Text style={styles.label}>Fecha de nacimiento</Text>
