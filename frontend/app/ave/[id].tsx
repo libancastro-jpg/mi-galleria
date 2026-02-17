@@ -667,32 +667,50 @@ export default function AveFormScreen() {
             ))}
           </View>
 
-          {/* Padre */}
-          <Text style={[styles.label, { marginTop: 16 }]}>Padre (Gallo)</Text>
+          {/* Sección de Padres - Desplegable */}
           <TouchableOpacity
-            style={styles.selectButton}
-            onPress={() => setShowPadreList(!showPadreList)}
+            style={styles.padresSectionHeader}
+            onPress={() => setShowPadresSection(!showPadresSection)}
           >
-            <Text style={styles.selectButtonText}>
-              {formData.padre_externo
-                ? `Externo: ${formData.padre_externo}`
-                : formData.padre_id
-                  ? gallos.find((g) => g.id === formData.padre_id)?.codigo || 'Seleccionado'
-                  : 'Seleccionar padre'}
-            </Text>
+            <View style={styles.padresSectionHeaderLeft}>
+              <Ionicons name="git-network-outline" size={20} color="#d4a017" />
+              <Text style={styles.padresSectionTitle}>Padres (Opcional)</Text>
+            </View>
             <Ionicons
-              name={showPadreList ? 'chevron-up' : 'chevron-down'}
+              name={showPadresSection ? 'chevron-up' : 'chevron-down'}
               size={20}
               color="#555555"
             />
           </TouchableOpacity>
-          {showPadreList && (
-            <View style={styles.selectList}>
-              {/* Opción Agregar Padre Externo */}
+
+          {showPadresSection && (
+            <View style={styles.padresSectionContent}>
+              {/* Padre */}
+              <Text style={styles.labelInSection}>Padre (Gallo)</Text>
               <TouchableOpacity
-                style={[styles.selectItem, styles.addParentOption]}
-                onPress={() => setShowPadreExterno(!showPadreExterno)}
+                style={styles.selectButton}
+                onPress={() => setShowPadreList(!showPadreList)}
               >
+                <Text style={styles.selectButtonText}>
+                  {formData.padre_externo
+                    ? `Externo: ${formData.padre_externo}`
+                    : formData.padre_id
+                      ? gallos.find((g) => g.id === formData.padre_id)?.codigo || 'Seleccionado'
+                      : 'Seleccionar padre'}
+                </Text>
+                <Ionicons
+                  name={showPadreList ? 'chevron-up' : 'chevron-down'}
+                  size={20}
+                  color="#555555"
+                />
+              </TouchableOpacity>
+              {showPadreList && (
+                <View style={styles.selectList}>
+                  {/* Opción Agregar Padre Externo */}
+                  <TouchableOpacity
+                    style={[styles.selectItem, styles.addParentOption]}
+                    onPress={() => setShowPadreExterno(!showPadreExterno)}
+                  >
                 <View style={styles.addParentRow}>
                   <Ionicons name="add-circle" size={20} color="#f59e0b" />
                   <Text style={styles.addParentText}>Agregar Padre</Text>
