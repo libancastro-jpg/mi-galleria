@@ -676,6 +676,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
+  // Aves Logo Container
+  avesLogoContainer: {
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   camadaTitle: {
     fontSize: 14,
     color: COLORS.grayLight,
