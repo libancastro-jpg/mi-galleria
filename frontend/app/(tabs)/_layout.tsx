@@ -116,8 +116,8 @@ export default function TabLayout() {
         options={{
           title: 'Aves',
           tabBarIcon: () => (
-            <View style={{ width: 58, height: 58, alignItems: 'center', justifyContent: 'center' }}>
-              <GalloLineaIcon size={58} />
+            <View style={{ width: 30, height: 30, alignItems: 'center', justifyContent: 'center' }}>
+              <GalloLineaIcon size={30} />
             </View>
           ),
         }}
