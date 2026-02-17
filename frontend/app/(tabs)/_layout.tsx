@@ -3,7 +3,7 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Platform, View, TouchableOpacity, Text, StyleSheet, Modal, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import { AvesIcon } from '../../src/components/BirdIcons';
+import { GalloLineaIcon } from '../../src/components/GalloLineaIcon';
 
 // Color palette - Tema Claro
 const COLORS = {
@@ -14,6 +14,7 @@ const COLORS = {
   grayLight: '#555555',
   background: '#f5f5f5',
   textDark: '#1a1a1a',
+  black: '#1a1a1a',
 };
 
 // Componente del menú desplegable
