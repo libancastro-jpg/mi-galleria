@@ -91,20 +91,28 @@ export default function CamadaFormScreen() {
   };
 
   const fetchCamada = async () => {
+    if (!id || id === 'new') {
+      setLoading(false);
+      return;
+    }
     try {
       const data = await api.get(`/camadas/${id}`);
-      setFormData({
-        cruce_id: data.cruce_id || '',
-        fecha_puesta_inicio: data.fecha_puesta_inicio || '',
-        cantidad_huevos: data.cantidad_huevos?.toString() || '',
-        fecha_incubacion_inicio: data.fecha_incubacion_inicio || '',
-        metodo: data.metodo || 'gallina',
-        fecha_nacimiento: data.fecha_nacimiento || '',
-        cantidad_nacidos: data.cantidad_nacidos?.toString() || '',
-        notas: data.notas || '',
-      });
+      if (data) {
+        setFormData({
+          cruce_id: data.cruce_id || '',
+          fecha_puesta_inicio: data.fecha_puesta_inicio || '',
+          cantidad_huevos: data.cantidad_huevos?.toString() || '',
+          fecha_incubacion_inicio: data.fecha_incubacion_inicio || '',
+          metodo: data.metodo || 'gallina',
+          fecha_nacimiento: data.fecha_nacimiento || '',
+          cantidad_nacidos: data.cantidad_nacidos?.toString() || '',
+          notas: data.notas || '',
+        });
+      }
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      console.error('Error fetching camada:', error);
+      Alert.alert('Error', 'No se pudo cargar la camada');
+      router.back();
     } finally {
       setLoading(false);
     }
