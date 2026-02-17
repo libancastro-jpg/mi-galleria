@@ -985,6 +985,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
   },
+  photoSectionTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#9ca3af',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
   photoContainer: {
     width: 120,
     height: 120,
