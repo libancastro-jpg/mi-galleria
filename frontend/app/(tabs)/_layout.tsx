@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
   menuItemText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#ffffff',
+    color: '#1a1a1a',
   },
   menuArrow: {
     position: 'absolute',
