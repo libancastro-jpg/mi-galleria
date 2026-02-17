@@ -43,6 +43,7 @@ export default function AveFormScreen() {
   const [showCastadorList, setShowCastadorList] = useState(false);
   const [showPadreExterno, setShowPadreExterno] = useState(false);
   const [showMadreExterno, setShowMadreExterno] = useState(false);
+  const [showPadresSection, setShowPadresSection] = useState(false);
   const [padreExterno, setPadreExterno] = useState('');
   const [madreExterno, setMadreExterno] = useState('');
   const [showPhotoModal, setShowPhotoModal] = useState(false);
