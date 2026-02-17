@@ -184,7 +184,7 @@ export default function CamadaFormScreen() {
       >
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
+            <Ionicons name="arrow-back" size={24} color="#d4a017" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{isNew ? 'Nueva Camada' : 'Editar Camada'}</Text>
           <TouchableOpacity
