@@ -223,6 +223,22 @@ export default function CamadaFormScreen() {
 
           {showCruceList && (
             <View style={styles.selectList}>
+              {/* Opción de crear nuevo cruce */}
+              <TouchableOpacity
+                style={styles.nuevoCruceOption}
+                onPress={() => {
+                  setShowCruceList(false);
+                  router.push('/cruce/new');
+                }}
+              >
+                <Ionicons name="add-circle" size={20} color={COLORS.gold} />
+                <View style={styles.nuevoCruceContent}>
+                  <Text style={styles.nuevoCruceText}>Registrar nuevo cruce</Text>
+                  <Text style={styles.nuevoCruceSubtext}>Si los padres no aparecen en la lista</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={COLORS.grayLight} />
+              </TouchableOpacity>
+
               {cruces.length === 0 ? (
                 <Text style={styles.noDataText}>No hay cruces registrados</Text>
               ) : (
