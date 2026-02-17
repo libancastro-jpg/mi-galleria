@@ -274,7 +274,7 @@ export default function DashboardScreen() {
             onPress={() => router.push('/(tabs)/aves')}
           >
             <View style={styles.statHeader}>
-              <GalloLineaIcon size={28} />
+              <GalloLineaIcon size={36} />
               <Text style={styles.statTitle}>Aves Activas</Text>
             </View>
             {(data?.aves.total_activas || 0) > 0 ? (
