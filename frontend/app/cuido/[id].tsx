@@ -16,6 +16,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../src/services/api';
 import { RoosterIcon } from '../../src/components/BirdIcons';
+import { DatePickerField } from '../../src/components/DatePickerField';
 
 interface Ave {
   id: string;
@@ -649,13 +650,11 @@ export default function CuidoDetailScreen() {
               </>
             )}
 
-            <Text style={styles.modalLabel}>Fecha</Text>
-            <TextInput
-              style={styles.modalInput}
+            <DatePickerField
+              label="Fecha"
               value={actividadFecha}
-              onChangeText={setActividadFecha}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={COLORS.grayLight}
+              onChange={setActividadFecha}
+              placeholder="Seleccionar fecha"
             />
             
             <Text style={styles.modalLabel}>Notas (opcional)</Text>
