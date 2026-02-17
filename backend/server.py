@@ -82,6 +82,7 @@ class AveBase(BaseModel):
     tipo: str  # gallo | gallina
     codigo: str
     nombre: Optional[str] = None
+    color_placa: Optional[str] = None  # Color de la placa/anillo
     foto_principal: Optional[str] = None  # base64
     fecha_nacimiento: Optional[str] = None
     color: Optional[str] = None
@@ -103,6 +104,7 @@ class AveUpdate(BaseModel):
     tipo: Optional[str] = None
     codigo: Optional[str] = None
     nombre: Optional[str] = None
+    color_placa: Optional[str] = None
     foto_principal: Optional[str] = None
     fecha_nacimiento: Optional[str] = None
     color: Optional[str] = None

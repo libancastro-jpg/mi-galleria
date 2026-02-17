@@ -219,7 +219,9 @@ export default function CamadaFormScreen() {
               <Ionicons name="git-merge" size={20} color={COLORS.gold} />
               <Text style={styles.selectButtonText}>
                 {formData.cruce_id
-                  ? formatCruceLabel(cruces.find(c => c.id === formData.cruce_id)!)
+                  ? (cruces.find(c => c.id === formData.cruce_id) 
+                      ? formatCruceLabel(cruces.find(c => c.id === formData.cruce_id)!)
+                      : 'Cruce seleccionado')
                   : 'Seleccionar cruce'}
               </Text>
             </View>
