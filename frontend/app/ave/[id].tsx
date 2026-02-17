@@ -391,28 +391,50 @@ export default function AveFormScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Número de Placa */}
+          {/* Número de Placa con Color */}
           <Text style={styles.label}>Número de Placa *</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.codigo}
-            onChangeText={(text) => setFormData({ ...formData, codigo: text })}
-            placeholder="Ej: 12, 001, A-15"
-            placeholderTextColor="#555555"
-          />
+          <View style={styles.placaContainer}>
+            <TextInput
+              style={[styles.input, styles.placaInput]}
+              value={formData.codigo}
+              onChangeText={(text) => setFormData({ ...formData, codigo: text })}
+              placeholder="Ej: 12, 001, A-15"
+              placeholderTextColor="#555555"
+            />
+            <TouchableOpacity
+              style={[styles.colorPlacaButton, formData.color_placa && { borderColor: '#d4a017' }]}
+              onPress={() => setShowColorPlacaList(!showColorPlacaList)}
+            >
+              <View style={[styles.colorPlacaDot, { backgroundColor: getColorPlaca(formData.color_placa) }]} />
+              <Text style={styles.colorPlacaText}>
+                {formData.color_placa || 'Color'}
+              </Text>
+              <Ionicons name="chevron-down" size={16} color="#555555" />
+            </TouchableOpacity>
+          </View>
+          {showColorPlacaList && (
+            <View style={styles.colorPlacaGrid}>
+              {COLORES_PLACA.map((color) => (
+                <TouchableOpacity
+                  key={color}
+                  style={[
+                    styles.colorPlacaOption,
+                    formData.color_placa === color && styles.colorPlacaOptionActive,
+                  ]}
+                  onPress={() => {
+                    setFormData({ ...formData, color_placa: color });
+                    setShowColorPlacaList(false);
+                  }}
+                >
+                  <View style={[styles.colorPlacaDotSmall, { backgroundColor: getColorPlaca(color) }]} />
+                  <Text style={styles.colorPlacaOptionText}>{color}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
 
-          {/* Nombre */}
-          <Text style={styles.label}>Nombre (opcional)</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.nombre}
-            onChangeText={(text) => setFormData({ ...formData, nombre: text })}
-            placeholder="Nombre del ave"
-            placeholderTextColor="#555555"
-          />
-
-          {/* Color */}
-          <Text style={styles.label}>Color</Text>
+          {/* Color del Ave */}
+          <Text style={styles.label}>Color del Ave</Text>
           <TouchableOpacity
             style={styles.selectButton}
             onPress={() => setShowColorList(!showColorList)}
