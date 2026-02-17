@@ -93,6 +93,38 @@ export default function DashboardScreen() {
     fetchDashboard();
   }, []);
 
+  // Función de búsqueda por placa
+  const handleSearch = async (query: string) => {
+    setSearchQuery(query);
+    if (query.length < 1) {
+      setSearchResults([]);
+      setShowSearchResults(false);
+      return;
+    }
+    
+    setSearching(true);
+    try {
+      const aves = await api.get('/aves');
+      const filtered = aves.filter((ave: any) => 
+        ave.codigo?.toLowerCase().includes(query.toLowerCase()) ||
+        ave.nombre?.toLowerCase().includes(query.toLowerCase())
+      );
+      setSearchResults(filtered.slice(0, 5)); // Máximo 5 resultados
+      setShowSearchResults(true);
+    } catch (error) {
+      console.error('Error searching:', error);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleSelectAve = (aveId: string) => {
+    setSearchQuery('');
+    setSearchResults([]);
+    setShowSearchResults(false);
+    router.push(`/ave/detail/${aveId}`);
+  };
+
   const getAlertStatus = () => {
     const count = data?.recordatorios_salud || 0;
     if (count === 0) return { color: COLORS.greenDark, bg: COLORS.greenLight, text: 'Todo al día', icon: 'checkmark-circle' };
