@@ -524,4 +524,66 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#000',
   },
+  // Parent Stats Compact Section
+  parentStatsSection: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
+  parentStatsTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#9ca3af',
+    textAlign: 'center',
+    marginBottom: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  parentStatsRow: {
+    flexDirection: 'row',
+  },
+  parentColumn: {
+    flex: 1,
+  },
+  parentColumnHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    marginBottom: 6,
+  },
+  parentColumnTitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#555555',
+  },
+  parentItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 3,
+    paddingHorizontal: 4,
+  },
+  parentRank: {
+    fontSize: 11,
+    color: '#9ca3af',
+    width: 16,
+  },
+  parentCode: {
+    flex: 1,
+    fontSize: 12,
+    color: '#1a1a1a',
+    fontWeight: '500',
+  },
+  parentPercent: {
+    fontSize: 12,
+    fontWeight: '700',
+    minWidth: 36,
+    textAlign: 'right',
+  },
+  parentDivider: {
+    width: 1,
+    backgroundColor: '#e0e0e0',
+    marginHorizontal: 8,
+  },
 });
