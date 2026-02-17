@@ -203,6 +203,67 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         )}
 
+        {/* Barra de Búsqueda */}
+        <View style={styles.searchSection}>
+          <View style={styles.searchContainer}>
+            <Ionicons name="search" size={20} color={COLORS.grayLight} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Buscar por placa o nombre..."
+              placeholderTextColor={COLORS.grayLight}
+              value={searchQuery}
+              onChangeText={handleSearch}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => {
+                setSearchQuery('');
+                setSearchResults([]);
+                setShowSearchResults(false);
+              }}>
+                <Ionicons name="close-circle" size={20} color={COLORS.grayLight} />
+              </TouchableOpacity>
+            )}
+            {searching && <ActivityIndicator size="small" color={COLORS.gold} />}
+          </View>
+          
+          {/* Resultados de búsqueda */}
+          {showSearchResults && searchResults.length > 0 && (
+            <View style={styles.searchResults}>
+              {searchResults.map((ave) => (
+                <TouchableOpacity
+                  key={ave.id}
+                  style={styles.searchResultItem}
+                  onPress={() => handleSelectAve(ave.id)}
+                >
+                  <View style={styles.searchResultIcon}>
+                    <Ionicons 
+                      name={ave.tipo === 'gallo' ? 'male' : 'female'} 
+                      size={18} 
+                      color={ave.tipo === 'gallo' ? '#3b82f6' : '#ec4899'} 
+                    />
+                  </View>
+                  <View style={styles.searchResultInfo}>
+                    <Text style={styles.searchResultPlaca}>Placa: {ave.codigo}</Text>
+                    {ave.nombre && (
+                      <Text style={styles.searchResultName}>{ave.nombre}</Text>
+                    )}
+                  </View>
+                  <View style={styles.searchResultAction}>
+                    <Text style={styles.searchResultActionText}>Ver pedigrí</Text>
+                    <Ionicons name="chevron-forward" size={16} color={COLORS.gold} />
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+          
+          {showSearchResults && searchQuery.length > 0 && searchResults.length === 0 && !searching && (
+            <View style={styles.searchNoResults}>
+              <Text style={styles.searchNoResultsText}>No se encontraron aves con "{searchQuery}"</Text>
+            </View>
+          )}
+        </View>
+
         {/* Stats Cards */}
         <View style={styles.statsGrid}>
           {/* Aves Activas */}
