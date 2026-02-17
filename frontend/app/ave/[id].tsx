@@ -635,13 +635,11 @@ export default function AveFormScreen() {
           )}
 
           {/* Fecha nacimiento */}
-          <Text style={styles.label}>Fecha de nacimiento</Text>
-          <TextInput
-            style={styles.input}
+          <DatePickerField
+            label="Fecha de Nacimiento"
             value={formData.fecha_nacimiento}
-            onChangeText={(text) => setFormData({ ...formData, fecha_nacimiento: text })}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor="#555555"
+            onChange={(date) => setFormData({ ...formData, fecha_nacimiento: date })}
+            placeholder="Seleccionar fecha"
           />
 
           {/* Estado */}
