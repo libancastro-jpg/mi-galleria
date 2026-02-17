@@ -126,7 +126,7 @@ export default function PeleaFormScreen() {
       >
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#fff" />
+            <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
           </TouchableOpacity>
           <Text style={styles.title}>{isEdit ? 'Editar Pelea' : 'Nueva Pelea'}</Text>
           <TouchableOpacity
