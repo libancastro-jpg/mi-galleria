@@ -224,6 +224,70 @@ export default function PeleasScreen() {
               </View>
             ))}
           </View>
+
+          {/* Promedio de Reproductores - Sección Compacta */}
+          {parentStats && (parentStats.padres.length > 0 || parentStats.madres.length > 0) && (
+            <View style={styles.parentStatsSection}>
+              <Text style={styles.parentStatsTitle}>Promedio Reproductores</Text>
+              
+              <View style={styles.parentStatsRow}>
+                {/* Top Padres */}
+                {parentStats.padres.length > 0 && (
+                  <View style={styles.parentColumn}>
+                    <View style={styles.parentColumnHeader}>
+                      <Ionicons name="male" size={14} color="#3b82f6" />
+                      <Text style={styles.parentColumnTitle}>Padres</Text>
+                    </View>
+                    {parentStats.padres.slice(0, 3).map((padre, idx) => (
+                      <TouchableOpacity 
+                        key={padre.id} 
+                        style={styles.parentItem}
+                        onPress={() => router.push(`/ave/detail/${padre.id}`)}
+                      >
+                        <Text style={styles.parentRank}>{idx + 1}.</Text>
+                        <Text style={styles.parentCode} numberOfLines={1}>
+                          {padre.nombre || padre.codigo}
+                        </Text>
+                        <Text style={[styles.parentPercent, { color: padre.porcentaje >= 50 ? '#22c55e' : '#ef4444' }]}>
+                          {padre.porcentaje}%
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+
+                {/* Separador */}
+                {parentStats.padres.length > 0 && parentStats.madres.length > 0 && (
+                  <View style={styles.parentDivider} />
+                )}
+
+                {/* Top Madres */}
+                {parentStats.madres.length > 0 && (
+                  <View style={styles.parentColumn}>
+                    <View style={styles.parentColumnHeader}>
+                      <Ionicons name="female" size={14} color="#ec4899" />
+                      <Text style={styles.parentColumnTitle}>Madres</Text>
+                    </View>
+                    {parentStats.madres.slice(0, 3).map((madre, idx) => (
+                      <TouchableOpacity 
+                        key={madre.id} 
+                        style={styles.parentItem}
+                        onPress={() => router.push(`/ave/detail/${madre.id}`)}
+                      >
+                        <Text style={styles.parentRank}>{idx + 1}.</Text>
+                        <Text style={styles.parentCode} numberOfLines={1}>
+                          {madre.nombre || madre.codigo}
+                        </Text>
+                        <Text style={[styles.parentPercent, { color: madre.porcentaje >= 50 ? '#22c55e' : '#ef4444' }]}>
+                          {madre.porcentaje}%
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </View>
+            </View>
+          )}
         </View>
       )}
 
