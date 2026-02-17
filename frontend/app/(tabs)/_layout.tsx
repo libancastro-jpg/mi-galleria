@@ -5,14 +5,15 @@ import { Platform, View, TouchableOpacity, Text, StyleSheet, Modal, Pressable } 
 import { useRouter } from 'expo-router';
 import { AvesIcon } from '../../src/components/BirdIcons';
 
-// Color palette
+// Color palette - Tema Claro
 const COLORS = {
   gold: '#d4a017',
   goldLight: 'rgba(212, 160, 23, 0.15)',
-  grayDark: '#242424',
-  grayMedium: '#333333',
-  grayLight: '#a0a0a0',
-  background: '#0a0a0a',
+  grayDark: '#ffffff',
+  grayMedium: '#e0e0e0',
+  grayLight: '#555555',
+  background: '#f5f5f5',
+  textDark: '#1a1a1a',
 };
 
 // Componente del menú desplegable
