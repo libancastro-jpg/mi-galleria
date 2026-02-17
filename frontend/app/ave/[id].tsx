@@ -39,11 +39,29 @@ export default function AveFormScreen() {
   const [showMadreList, setShowMadreList] = useState(false);
   const [showColorList, setShowColorList] = useState(false);
   const [showCrestaList, setShowCrestaList] = useState(false);
+  const [showColorPlacaList, setShowColorPlacaList] = useState(false);
+  const [showCastadorList, setShowCastadorList] = useState(false);
   const [showPadreExterno, setShowPadreExterno] = useState(false);
   const [showMadreExterno, setShowMadreExterno] = useState(false);
   const [padreExterno, setPadreExterno] = useState('');
   const [madreExterno, setMadreExterno] = useState('');
   const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [castadores, setCastadores] = useState<{nombre: string, cantidad: number}[]>([]);
+  const [nuevoCastador, setNuevoCastador] = useState('');
+  const [showNuevoCastador, setShowNuevoCastador] = useState(false);
+
+  const COLORES_PLACA = [
+    'Amarillo',
+    'Azul',
+    'Rojo',
+    'Verde',
+    'Blanco',
+    'Negro',
+    'Naranja',
+    'Morado',
+    'Rosado',
+    'Gris',
+  ];
 
   const COLORES = [
     'Jabao',
