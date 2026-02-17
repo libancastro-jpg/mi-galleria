@@ -105,8 +105,8 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Inicio',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size} color={color} />
+          tabBarIcon: ({ size }) => (
+            <Ionicons name="home" size={size} color={COLORS.black} />
           ),
         }}
       />
@@ -115,7 +115,7 @@ export default function TabLayout() {
         options={{
           title: 'Aves',
           tabBarIcon: ({ size }) => (
-            <AvesIcon size={size} />
+            <GalloLineaIcon size={size} />
           ),
         }}
       />
