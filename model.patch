@@ -1,0 +1,26 @@
+diff --git a/frontend/app/ave/[id].tsx b/frontend/app/ave/[id].tsx
+index 55833fe..a5735a0 100644
+--- a/frontend/app/ave/[id].tsx
++++ b/frontend/app/ave/[id].tsx
+@@ -325,6 +325,7 @@ export default function AveFormScreen() {
+         <ScrollView style={styles.form} contentContainerStyle={styles.formContent}>
+           {/* Photo */}
+           <View style={styles.photoSection}>
++            <Text style={styles.photoSectionTitle}>Fotos (hasta 3)</Text>
+             <TouchableOpacity
+               style={styles.photoContainer}
+               onPress={() => {
+@@ -984,6 +985,13 @@ const styles = StyleSheet.create({
+     alignItems: 'center',
+     marginBottom: 24,
+   },
++  photoSectionTitle: {
++    fontSize: 14,
++    fontWeight: '500',
++    color: '#9ca3af',
++    marginBottom: 12,
++    textAlign: 'center',
++  },
+   photoContainer: {
+     width: 120,
+     height: 120,
