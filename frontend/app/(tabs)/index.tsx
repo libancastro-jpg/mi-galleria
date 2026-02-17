@@ -584,6 +584,15 @@ const styles = StyleSheet.create({
     borderColor: COLORS.grayMedium,
     minHeight: 140,
   },
+  statCardCompact: {
+    flex: 1,
+    backgroundColor: COLORS.grayDark,
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: COLORS.grayMedium,
+    alignItems: 'center',
+  },
   statHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -595,19 +604,26 @@ const styles = StyleSheet.create({
     color: COLORS.grayLight,
     fontWeight: '600',
   },
+  statTitleCentered: {
+    fontSize: 13,
+    color: COLORS.grayLight,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 6,
+  },
   statNumber: {
-    fontSize: 42,
+    fontSize: 32,
     fontWeight: 'bold',
     color: COLORS.white,
-    marginBottom: 8,
+    marginBottom: 4,
   },
   statDetails: {
-    gap: 6,
+    gap: 4,
   },
   statDetailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   statDetailText: {
     fontSize: 13,
