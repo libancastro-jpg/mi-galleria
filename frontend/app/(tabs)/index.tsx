@@ -28,7 +28,9 @@ interface DashboardData {
     gallinas: number;
   };
   cruces_planeados: number;
+  cruces_total?: number;
   camadas_activas: number;
+  camadas_total?: number;
   peleas: {
     total: number;
     ganadas: number;
@@ -347,19 +349,15 @@ export default function DashboardScreen() {
               <CrucesIcon size={80} />
             </View>
             <Text style={styles.statTitleCentered}>Cruces</Text>
-            {(data?.cruces_planeados || 0) > 0 ? (
+            {(data?.cruces_total || data?.cruces_planeados || 0) > 0 ? (
               <View style={styles.cruceStats}>
                 <View style={styles.cruceRow}>
-                  <Text style={styles.cruceLabel}>Planeados:</Text>
-                  <Text style={styles.cruceValue}>{data?.cruces_planeados || 0}</Text>
-                </View>
-                <View style={styles.cruceRow}>
-                  <Text style={styles.cruceLabel}>Activos:</Text>
-                  <Text style={styles.cruceValue}>0</Text>
+                  <Text style={styles.cruceLabel}>Total:</Text>
+                  <Text style={styles.cruceValue}>{data?.cruces_total || data?.cruces_planeados || 0}</Text>
                 </View>
               </View>
             ) : (
-              <Text style={styles.emptyCardText}>No hay cruces activos.</Text>
+              <Text style={styles.emptyCardText}>Sin cruces registrados.</Text>
             )}
           </TouchableOpacity>
 
@@ -369,19 +367,15 @@ export default function DashboardScreen() {
               <CamadaLogo size={66} />
             </View>
             <Text style={styles.statTitleCentered}>Camadas</Text>
-            {(data?.camadas_activas || 0) > 0 ? (
+            {(data?.camadas_total || data?.camadas_activas || 0) > 0 ? (
               <View style={styles.camadaStats}>
                 <View style={styles.camadaRow}>
-                  <Text style={styles.camadaLabel}>Activas:</Text>
-                  <Text style={styles.camadaValue}>{data?.camadas_activas || 0}</Text>
-                </View>
-                <View style={styles.camadaRow}>
-                  <Text style={styles.camadaLabel}>En incubación:</Text>
-                  <Text style={styles.camadaValue}>0</Text>
+                  <Text style={styles.camadaLabel}>Total:</Text>
+                  <Text style={styles.camadaValue}>{data?.camadas_total || data?.camadas_activas || 0}</Text>
                 </View>
               </View>
             ) : (
-              <Text style={styles.emptyCardText}>No hay camadas activas.</Text>
+              <Text style={styles.emptyCardText}>Sin camadas registradas.</Text>
             )}
           </TouchableOpacity>
         </View>
