@@ -424,8 +424,8 @@ export default function DashboardScreen() {
                 router.push('/cruce/new');
               }}
             >
-              <View style={[styles.addMenuIcon, { backgroundColor: 'rgba(236, 72, 153, 0.15)' }]}>
-                <GeneticsIcon size={24} color="#ec4899" />
+              <View style={[styles.addMenuIcon, { backgroundColor: COLORS.goldLight }]}>
+                <CrucesIcon size={32} />
               </View>
               <View style={styles.addMenuItemContent}>
                 <Text style={styles.addMenuItemTitle}>Registrar Encaste</Text>
@@ -458,8 +458,8 @@ export default function DashboardScreen() {
                 router.push('/camada/new');
               }}
             >
-              <View style={[styles.addMenuIcon, { backgroundColor: COLORS.greenLight }]}>
-                <EggIcon size={24} color={COLORS.greenDark} />
+              <View style={[styles.addMenuIcon, { backgroundColor: COLORS.goldLight }]}>
+                <CamadaLogo size={32} />
               </View>
               <View style={styles.addMenuItemContent}>
                 <Text style={styles.addMenuItemTitle}>Registrar Camada</Text>
