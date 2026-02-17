@@ -366,10 +366,10 @@ export default function DashboardScreen() {
 
           {/* Camadas */}
           <TouchableOpacity style={styles.statCard} onPress={() => router.push('/camadas')}>
-            <View style={styles.statHeader}>
-              <EggIcon size={24} color={COLORS.gold} />
-              <Text style={styles.statTitle}>Camadas</Text>
+            <View style={styles.camadaLogoContainer}>
+              <CamadaLogo size={56} />
             </View>
+            <Text style={styles.camadaTitle}>Camadas</Text>
             {(data?.camadas_activas || 0) > 0 ? (
               <View style={styles.camadaStats}>
                 <View style={styles.camadaRow}>
