@@ -94,6 +94,7 @@ export default function AveFormScreen() {
   const [formData, setFormData] = useState({
     tipo: 'gallo',
     codigo: '',
+    color_placa: '',
     nombre: '',
     foto_principal: '',
     fecha_nacimiento: '',
