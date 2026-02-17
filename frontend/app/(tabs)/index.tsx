@@ -668,6 +668,17 @@ const styles = StyleSheet.create({
     color: COLORS.white,
   },
   // Camadas
+  camadaLogoContainer: {
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  camadaTitle: {
+    fontSize: 14,
+    color: COLORS.grayLight,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
   camadaStats: {
     gap: 8,
     marginTop: 8,
