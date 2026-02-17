@@ -272,13 +272,11 @@ export default function CamadaFormScreen() {
               <Text style={styles.sectionTitle}>Información de Puesta</Text>
             </View>
 
-            <Text style={styles.inputLabel}>Fecha inicio de puesta</Text>
-            <TextInput
-              style={styles.input}
+            <DatePickerField
+              label="Fecha inicio de puesta"
               value={formData.fecha_puesta_inicio}
-              onChangeText={(text) => setFormData({ ...formData, fecha_puesta_inicio: text })}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={COLORS.grayLight}
+              onChange={(date) => setFormData({ ...formData, fecha_puesta_inicio: date })}
+              placeholder="Seleccionar fecha"
             />
 
             <Text style={styles.inputLabel}>Cantidad de huevos</Text>
