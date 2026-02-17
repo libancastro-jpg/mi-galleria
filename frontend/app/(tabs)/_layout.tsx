@@ -115,7 +115,7 @@ export default function TabLayout() {
         options={{
           title: 'Aves',
           tabBarIcon: () => (
-            <GalloLineaIcon size={28} />
+            <GalloLineaIcon size={50} />
           ),
         }}
       />
