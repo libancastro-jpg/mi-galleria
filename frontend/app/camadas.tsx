@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../src/services/api';
+import { CamadaLogo } from '../src/components/CamadaLogo';
 
 interface Camada {
   id: string;
