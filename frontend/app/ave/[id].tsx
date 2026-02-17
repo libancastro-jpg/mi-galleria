@@ -116,6 +116,7 @@ export default function AveFormScreen() {
 
   useEffect(() => {
     fetchAves();
+    fetchCastadores();
     if (isEdit) {
       fetchAve();
     }
@@ -128,6 +129,27 @@ export default function AveFormScreen() {
       setGallinas(aves.filter((a: Ave) => a.tipo === 'gallina'));
     } catch (error) {
       console.error('Error fetching aves:', error);
+    }
+  };
+
+  const fetchCastadores = async () => {
+    try {
+      const aves = await api.get('/aves');
+      // Obtener castadores únicos y contar aves por cada uno
+      const castadoresMap: { [key: string]: number } = {};
+      aves.forEach((ave: any) => {
+        if (ave.castado_por && ave.castado_por.trim() !== '') {
+          const nombre = ave.castado_por.trim();
+          castadoresMap[nombre] = (castadoresMap[nombre] || 0) + 1;
+        }
+      });
+      // Convertir a array y ordenar por cantidad
+      const castadoresList = Object.entries(castadoresMap)
+        .map(([nombre, cantidad]) => ({ nombre, cantidad }))
+        .sort((a, b) => b.cantidad - a.cantidad);
+      setCastadores(castadoresList);
+    } catch (error) {
+      console.error('Error fetching castadores:', error);
     }
   };
 
