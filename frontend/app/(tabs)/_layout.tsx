@@ -106,7 +106,7 @@ export default function TabLayout() {
         options={{
           title: 'Inicio',
           tabBarIcon: ({ size }) => (
-            <Ionicons name="home" size={size} color={COLORS.black} />
+            <Ionicons name="home" size={26} color={COLORS.black} />
           ),
         }}
       />
@@ -114,8 +114,8 @@ export default function TabLayout() {
         name="aves"
         options={{
           title: 'Aves',
-          tabBarIcon: ({ size }) => (
-            <GalloLineaIcon size={size} />
+          tabBarIcon: () => (
+            <GalloLineaIcon size={28} />
           ),
         }}
       />
@@ -123,8 +123,8 @@ export default function TabLayout() {
         name="ajustes"
         options={{
           title: 'Salud',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="medical" size={size} color={color} />
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="medical" size={26} color={color} />
           ),
         }}
       />
