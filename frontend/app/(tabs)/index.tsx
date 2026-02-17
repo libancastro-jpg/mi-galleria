@@ -344,7 +344,7 @@ export default function DashboardScreen() {
             onPress={() => router.push('/(tabs)/cruces')}
           >
             <View style={styles.crucesLogoContainer}>
-              <CrucesIcon size={66} />
+              <CrucesIcon size={80} />
             </View>
             <Text style={styles.statTitleCentered}>Cruces</Text>
             {(data?.cruces_planeados || 0) > 0 ? (
