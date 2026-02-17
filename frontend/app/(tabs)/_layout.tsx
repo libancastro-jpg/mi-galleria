@@ -85,19 +85,20 @@ export default function TabLayout() {
           backgroundColor: COLORS.grayDark,
           borderTopColor: COLORS.grayMedium,
           borderTopWidth: 1,
-          height: Platform.OS === 'ios' ? 80 : 60,
-          paddingBottom: Platform.OS === 'ios' ? 20 : 6,
-          paddingTop: 6,
+          height: Platform.OS === 'ios' ? 85 : 70,
+          paddingBottom: Platform.OS === 'ios' ? 20 : 8,
+          paddingTop: 8,
         },
         tabBarActiveTintColor: COLORS.gold,
         tabBarInactiveTintColor: COLORS.grayLight,
         tabBarLabelStyle: {
           fontSize: 10,
           fontWeight: '600',
-          marginTop: -2,
+          marginTop: 2,
         },
         tabBarIconStyle: {
-          marginTop: 2,
+          width: 32,
+          height: 32,
         },
       }}
     >
@@ -105,8 +106,8 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Inicio',
-          tabBarIcon: ({ size }) => (
-            <Ionicons name="home" size={26} color={COLORS.black} />
+          tabBarIcon: () => (
+            <Ionicons name="home" size={28} color={COLORS.black} />
           ),
         }}
       />
@@ -115,7 +116,9 @@ export default function TabLayout() {
         options={{
           title: 'Aves',
           tabBarIcon: () => (
-            <GalloLineaIcon size={50} />
+            <View style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center' }}>
+              <GalloLineaIcon size={32} />
+            </View>
           ),
         }}
       />
