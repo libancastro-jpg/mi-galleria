@@ -59,19 +59,22 @@ export default function PeleasScreen() {
   const [peleas, setPeleas] = useState<Pelea[]>([]);
   const [aves, setAves] = useState<Record<string, Ave>>({});
   const [stats, setStats] = useState<Estadisticas | null>(null);
+  const [parentStats, setParentStats] = useState<EstadisticasPadres | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchData = async () => {
     try {
-      const [peleasData, avesData, statsData] = await Promise.all([
+      const [peleasData, avesData, statsData, parentStatsData] = await Promise.all([
         api.get('/peleas'),
         api.get('/aves'),
         api.get('/peleas/estadisticas'),
+        api.get('/peleas/estadisticas-padres'),
       ]);
 
       setPeleas(peleasData);
       setStats(statsData);
+      setParentStats(parentStatsData);
 
       const avesMap: Record<string, Ave> = {};
       avesData.forEach((ave: Ave) => {
