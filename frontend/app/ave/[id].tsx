@@ -326,10 +326,10 @@ export default function AveFormScreen() {
         </View>
 
         <ScrollView style={styles.form} contentContainerStyle={styles.formContent}>
-          {/* Photo - Compacto */}
-          <View style={styles.photoSectionCompact}>
+          {/* Photo - Circular centrado con + */}
+          <View style={styles.photoSectionCentered}>
             <TouchableOpacity
-              style={styles.photoContainerSmall}
+              style={styles.photoContainerCircle}
               onPress={() => {
                 if (Platform.OS === 'web') {
                   setShowPhotoModal(true);
@@ -345,26 +345,25 @@ export default function AveFormScreen() {
               {formData.foto_principal ? (
                 <Image
                   source={{ uri: formData.foto_principal }}
-                  style={styles.photoSmall}
+                  style={styles.photoCircle}
                 />
               ) : (
-                <View style={styles.photoPlaceholderSmall}>
-                  <Ionicons name="camera" size={28} color="#555555" />
+                <View style={styles.photoPlaceholderCircle}>
+                  <Ionicons name="camera" size={36} color="#d4a017" />
+                  <View style={styles.photoPlusIcon}>
+                    <Ionicons name="add" size={16} color="#fff" />
+                  </View>
                 </View>
               )}
               {formData.foto_principal && (
                 <TouchableOpacity
-                  style={styles.removePhotoButtonSmall}
+                  style={styles.removePhotoButtonCircle}
                   onPress={() => setFormData({ ...formData, foto_principal: '' })}
                 >
-                  <Ionicons name="close-circle" size={20} color="#ef4444" />
+                  <Ionicons name="close-circle" size={24} color="#ef4444" />
                 </TouchableOpacity>
               )}
             </TouchableOpacity>
-            <View style={styles.photoInfo}>
-              <Text style={styles.photoInfoTitle}>Foto del Ave</Text>
-              <Text style={styles.photoInfoText}>Hasta 3 fotos</Text>
-            </View>
           </View>
 
           {/* Tipo */}
