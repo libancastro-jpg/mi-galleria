@@ -273,6 +273,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  logoHeader: {
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingVertical: 10,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
