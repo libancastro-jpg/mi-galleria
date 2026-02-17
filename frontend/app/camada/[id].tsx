@@ -339,13 +339,11 @@ export default function CamadaFormScreen() {
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.inputLabel}>Fecha inicio incubación</Text>
-            <TextInput
-              style={styles.input}
+            <DatePickerField
+              label="Fecha inicio incubación"
               value={formData.fecha_incubacion_inicio}
-              onChangeText={(text) => setFormData({ ...formData, fecha_incubacion_inicio: text })}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={COLORS.grayLight}
+              onChange={(date) => setFormData({ ...formData, fecha_incubacion_inicio: date })}
+              placeholder="Seleccionar fecha"
             />
           </View>
 
@@ -356,13 +354,11 @@ export default function CamadaFormScreen() {
               <Text style={styles.sectionTitle}>Nacimiento</Text>
             </View>
 
-            <Text style={styles.inputLabel}>Fecha de nacimiento</Text>
-            <TextInput
-              style={styles.input}
+            <DatePickerField
+              label="Fecha de nacimiento"
               value={formData.fecha_nacimiento}
-              onChangeText={(text) => setFormData({ ...formData, fecha_nacimiento: text })}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={COLORS.grayLight}
+              onChange={(date) => setFormData({ ...formData, fecha_nacimiento: date })}
+              placeholder="Seleccionar fecha"
             />
 
             <Text style={styles.inputLabel}>Cantidad de nacidos</Text>
