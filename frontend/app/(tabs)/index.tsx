@@ -270,16 +270,14 @@ export default function DashboardScreen() {
         <View style={styles.statsGrid}>
           {/* Aves Activas */}
           <TouchableOpacity
-            style={styles.statCard}
+            style={styles.statCardCompact}
             onPress={() => router.push('/(tabs)/aves')}
           >
-            {/* Icono grande arriba */}
+            {/* Icono del gallo centrado sin círculo */}
             <View style={styles.avesLogoContainer}>
-              <GalloLineaIcon size={70} />
+              <GalloLineaIcon size={55} />
             </View>
-            <View style={styles.statHeader}>
-              <Text style={styles.statTitle}>Aves Activas</Text>
-            </View>
+            <Text style={styles.statTitleCentered}>Aves Activas</Text>
             {(data?.aves.total_activas || 0) > 0 ? (
               <>
                 <Text style={styles.statNumber}>{data?.aves.total_activas || 0}</Text>
