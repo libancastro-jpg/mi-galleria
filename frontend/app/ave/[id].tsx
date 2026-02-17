@@ -114,6 +114,23 @@ export default function AveFormScreen() {
   const [padreNombre, setPadreNombre] = useState('');
   const [madreNombre, setMadreNombre] = useState('');
 
+  // Función para obtener color hex de la placa
+  const getColorPlaca = (color: string) => {
+    const colores: { [key: string]: string } = {
+      'Amarillo': '#fbbf24',
+      'Azul': '#3b82f6',
+      'Rojo': '#ef4444',
+      'Verde': '#22c55e',
+      'Blanco': '#f5f5f5',
+      'Negro': '#1a1a1a',
+      'Naranja': '#f97316',
+      'Morado': '#a855f7',
+      'Rosado': '#ec4899',
+      'Gris': '#6b7280',
+    };
+    return colores[color] || '#d4a017';
+  };
+
   useEffect(() => {
     fetchAves();
     fetchCastadores();
