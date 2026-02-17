@@ -899,6 +899,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  addMenuIconLarge: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   addMenuItemContent: {
     flex: 1,
     marginLeft: 14,
