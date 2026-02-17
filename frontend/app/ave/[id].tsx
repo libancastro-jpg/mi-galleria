@@ -639,6 +639,16 @@ export default function AveFormScreen() {
             placeholder="Seleccionar fecha"
           />
 
+          {/* Nombre del Ave */}
+          <Text style={styles.label}>Nombre del Ave (opcional)</Text>
+          <TextInput
+            style={styles.input}
+            value={formData.nombre}
+            onChangeText={(text) => setFormData({ ...formData, nombre: text })}
+            placeholder="Ej: Campeón, Rey, etc."
+            placeholderTextColor="#555555"
+          />
+
           {/* Estado */}
           <Text style={styles.label}>Estado</Text>
           <View style={styles.estadoContainer}>
