@@ -35,12 +35,12 @@ export default function CrucesScreen() {
   const [aves, setAves] = useState<Record<string, Ave>>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [filterEstado, setFilterEstado] = useState<string | null>('planeado');
+  const [filterEstado, setFilterEstado] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
       const params: Record<string, string> = {};
-      if (filterEstado) params.estado = filterEstado;
+      if (filterEstado && filterEstado !== 'todos') params.estado = filterEstado;
       
       const [crucesData, avesData] = await Promise.all([
         api.get('/cruces', params),
@@ -163,6 +163,22 @@ export default function CrucesScreen() {
       </View>
 
       <View style={styles.filters}>
+        <TouchableOpacity
+          style={[
+            styles.filterButton,
+            (filterEstado === null || filterEstado === 'todos') && styles.filterActive,
+          ]}
+          onPress={() => setFilterEstado(null)}
+        >
+          <Text
+            style={[
+              styles.filterText,
+              (filterEstado === null || filterEstado === 'todos') && styles.filterTextActive,
+            ]}
+          >
+            Todos
+          </Text>
+        </TouchableOpacity>
         {['planeado', 'hecho', 'cancelado'].map((estado) => (
           <TouchableOpacity
             key={estado}
@@ -178,7 +194,7 @@ export default function CrucesScreen() {
                 filterEstado === estado && styles.filterTextActive,
               ]}
             >
-              {estado.charAt(0).toUpperCase() + estado.slice(1)}
+              {estado === 'planeado' ? 'Planeado' : estado === 'hecho' ? 'Hecho' : 'Cancelado'}
             </Text>
           </TouchableOpacity>
         ))}
