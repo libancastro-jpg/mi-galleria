@@ -475,7 +475,29 @@ const styles = StyleSheet.create({
     marginTop: 8,
     borderWidth: 1,
     borderColor: COLORS.border,
-    maxHeight: 200,
+    maxHeight: 280,
+  },
+  nuevoCruceOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    backgroundColor: 'rgba(212, 160, 23, 0.08)',
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    gap: 10,
+  },
+  nuevoCruceContent: {
+    flex: 1,
+  },
+  nuevoCruceText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.gold,
+  },
+  nuevoCruceSubtext: {
+    fontSize: 11,
+    color: COLORS.grayLight,
+    marginTop: 2,
   },
   selectItem: {
     flexDirection: 'row',
