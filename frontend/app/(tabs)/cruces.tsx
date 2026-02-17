@@ -179,7 +179,7 @@ export default function CrucesScreen() {
             Todos
           </Text>
         </TouchableOpacity>
-        {['planeado', 'hecho', 'cancelado'].map((estado) => (
+        {['planeado', 'hecho', 'cancelado', 'repetidos'].map((estado) => (
           <TouchableOpacity
             key={estado}
             style={[
@@ -194,7 +194,7 @@ export default function CrucesScreen() {
                 filterEstado === estado && styles.filterTextActive,
               ]}
             >
-              {estado === 'planeado' ? 'Planeado' : estado === 'hecho' ? 'Hecho' : 'Cancelado'}
+              {estado === 'planeado' ? 'Planeado' : estado === 'hecho' ? 'Hecho' : estado === 'cancelado' ? 'Cancelado' : 'Repetidos'}
             </Text>
           </TouchableOpacity>
         ))}
