@@ -340,13 +340,13 @@ export default function DashboardScreen() {
         <View style={styles.statsGrid}>
           {/* Cruces */}
           <TouchableOpacity
-            style={styles.statCard}
+            style={styles.statCardCompact}
             onPress={() => router.push('/(tabs)/cruces')}
           >
-            <View style={styles.statHeader}>
-              <GeneticsIcon size={24} color={COLORS.gold} />
-              <Text style={styles.statTitle}>Cruces</Text>
+            <View style={styles.crucesLogoContainer}>
+              <CrucesIcon size={66} />
             </View>
+            <Text style={styles.statTitleCentered}>Cruces</Text>
             {(data?.cruces_planeados || 0) > 0 ? (
               <View style={styles.cruceStats}>
                 <View style={styles.cruceRow}>
