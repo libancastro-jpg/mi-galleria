@@ -367,7 +367,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: COLORS.white,
+    color: '#1a1a1a',
   },
   // Alert Summary
   alertSummary: {
@@ -393,7 +393,7 @@ const styles = StyleSheet.create({
   alertSummaryTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.white,
+    color: '#1a1a1a',
   },
   alertSummaryText: {
     fontSize: 13,
@@ -461,7 +461,7 @@ const styles = StyleSheet.create({
   recordatorioProducto: {
     fontSize: 16,
     fontWeight: '600',
-    color: COLORS.white,
+    color: '#1a1a1a',
   },
   recordatorioAve: {
     fontSize: 13,
@@ -511,7 +511,7 @@ const styles = StyleSheet.create({
   historialProducto: {
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.white,
+    color: '#1a1a1a',
   },
   historialDetails: {
     fontSize: 12,
@@ -542,7 +542,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: COLORS.white,
+    color: '#1a1a1a',
   },
   emptySubtitle: {
     fontSize: 13,
@@ -603,7 +603,7 @@ const styles = StyleSheet.create({
   configItemText: {
     flex: 1,
     fontSize: 15,
-    color: COLORS.white,
+    color: '#1a1a1a',
     marginLeft: 12,
   },
   appInfo: {

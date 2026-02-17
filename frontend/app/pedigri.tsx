@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: COLORS.white,
+    color: '#1a1a1a',
   },
   content: {
     flex: 1,
@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: COLORS.white,
+    color: '#1a1a1a',
     marginBottom: 12,
   },
   avesList: {
@@ -476,7 +476,7 @@ const styles = StyleSheet.create({
   aveCodigo: {
     fontSize: 11,
     fontWeight: '600',
-    color: COLORS.white,
+    color: '#1a1a1a',
     textAlign: 'center',
   },
   aveNombre: {
@@ -519,7 +519,7 @@ const styles = StyleSheet.create({
   detailCodigo: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: COLORS.white,
+    color: '#1a1a1a',
   },
   detailNombre: {
     fontSize: 14,
@@ -560,7 +560,7 @@ const styles = StyleSheet.create({
   infoValue: {
     fontSize: 13,
     fontWeight: '600',
-    color: COLORS.white,
+    color: '#1a1a1a',
   },
   estadoBadge: {
     alignSelf: 'flex-start',
@@ -581,7 +581,7 @@ const styles = StyleSheet.create({
   parentsTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.white,
+    color: '#1a1a1a',
     marginBottom: 12,
   },
   parentsRow: {
@@ -611,7 +611,7 @@ const styles = StyleSheet.create({
   parentValue: {
     fontSize: 13,
     fontWeight: '600',
-    color: COLORS.white,
+    color: '#1a1a1a',
     textAlign: 'center',
   },
   externalLabel: {
@@ -632,7 +632,7 @@ const styles = StyleSheet.create({
   notesTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.white,
+    color: '#1a1a1a',
     marginBottom: 8,
   },
   notesText: {
@@ -699,7 +699,7 @@ const styles = StyleSheet.create({
   pedigriNodeCode: {
     fontSize: 11,
     fontWeight: '600',
-    color: COLORS.white,
+    color: '#1a1a1a',
     textAlign: 'center',
   },
   pedigriNodeName: {
@@ -732,7 +732,7 @@ const styles = StyleSheet.create({
   emptyStateTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: COLORS.white,
+    color: '#1a1a1a',
     marginTop: 16,
   },
   emptyStateText: {

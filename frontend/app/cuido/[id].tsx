@@ -863,7 +863,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: COLORS.white,
+    color: '#1a1a1a',
   },
   saveButton: {
     backgroundColor: COLORS.gold,
@@ -899,7 +899,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: COLORS.white,
+    color: '#1a1a1a',
   },
   addButton: {
     width: 36,
@@ -928,7 +928,7 @@ const styles = StyleSheet.create({
   },
   selectButtonText: {
     fontSize: 16,
-    color: COLORS.white,
+    color: '#1a1a1a',
   },
   selectList: {
     backgroundColor: COLORS.grayDark,
@@ -973,7 +973,7 @@ const styles = StyleSheet.create({
   galloCodigo: {
     fontSize: 16,
     fontWeight: '600',
-    color: COLORS.white,
+    color: '#1a1a1a',
   },
   galloNombre: {
     fontSize: 13,
@@ -1029,7 +1029,7 @@ const styles = StyleSheet.create({
   galloDetailCodigo: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: COLORS.white,
+    color: '#1a1a1a',
   },
   galloDetailNombre: {
     fontSize: 15,
@@ -1081,7 +1081,7 @@ const styles = StyleSheet.create({
   },
   descansoInfo: {
     fontSize: 14,
-    color: COLORS.white,
+    color: '#1a1a1a',
     marginBottom: 4,
   },
   descansoFecha: {
@@ -1098,7 +1098,7 @@ const styles = StyleSheet.create({
   finalizarDescansoText: {
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.white,
+    color: '#1a1a1a',
   },
   // Actividades Grid
   actividadesGrid: {
@@ -1192,7 +1192,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: COLORS.white,
+    color: '#1a1a1a',
     marginBottom: 20,
     textAlign: 'center',
   },
@@ -1206,7 +1206,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 14,
     fontSize: 16,
-    color: COLORS.white,
+    color: '#1a1a1a',
     marginBottom: 16,
   },
   modalInputMultiline: {
@@ -1233,7 +1233,7 @@ const styles = StyleSheet.create({
   },
   tipoButtonText: {
     fontSize: 14,
-    color: COLORS.white,
+    color: '#1a1a1a',
     marginTop: 8,
     fontWeight: '600',
   },
@@ -1279,7 +1279,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   diasButtonTextActive: {
-    color: COLORS.white,
+    color: '#1a1a1a',
   },
   modalButtons: {
     flexDirection: 'row',
@@ -1331,7 +1331,7 @@ const styles = StyleSheet.create({
   detalleTitle: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: COLORS.white,
+    color: '#1a1a1a',
   },
   detalleInfoRow: {
     flexDirection: 'row',
@@ -1352,7 +1352,7 @@ const styles = StyleSheet.create({
   },
   detalleInfoValue: {
     fontSize: 14,
-    color: COLORS.white,
+    color: '#1a1a1a',
     fontWeight: '600',
     marginTop: 4,
     textAlign: 'center',
@@ -1378,7 +1378,7 @@ const styles = StyleSheet.create({
   },
   detalleNotasText: {
     fontSize: 15,
-    color: COLORS.white,
+    color: '#1a1a1a',
     lineHeight: 22,
   },
   detalleNotasEmpty: {
@@ -1399,7 +1399,7 @@ const styles = StyleSheet.create({
   },
   detalleCerrarText: {
     fontSize: 16,
-    color: COLORS.white,
+    color: '#1a1a1a',
     fontWeight: '600',
   },
 });

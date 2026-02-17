@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#1a1a1a',
   },
   addButton: {
     width: 44,
@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#1a1a1a',
   },
   statLabel: {
     fontSize: 12,
@@ -339,7 +339,7 @@ const styles = StyleSheet.create({
   calCount: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: '#1a1a1a',
   },
   calLabel: {
     fontSize: 11,
@@ -380,7 +380,7 @@ const styles = StyleSheet.create({
   resultadoText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#1a1a1a',
   },
   peleaInfo: {
     flex: 1,
@@ -389,7 +389,7 @@ const styles = StyleSheet.create({
   aveCodigo: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: '#1a1a1a',
   },
   peleaFecha: {
     fontSize: 13,
@@ -419,7 +419,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#fff',
+    color: '#1a1a1a',
     marginTop: 16,
   },
   emptyText: {

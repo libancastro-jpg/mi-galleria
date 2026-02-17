@@ -347,7 +347,7 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: COLORS.white,
+    color: '#1a1a1a',
   },
   userRole: {
     fontSize: 14,
@@ -399,7 +399,7 @@ const styles = StyleSheet.create({
   },
   infoValue: {
     fontSize: 15,
-    color: COLORS.white,
+    color: '#1a1a1a',
     fontWeight: '500',
   },
   divider: {
@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
   actionText: {
     flex: 1,
     fontSize: 15,
-    color: COLORS.white,
+    color: '#1a1a1a',
     marginLeft: 14,
   },
   // Logout
@@ -482,7 +482,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: COLORS.white,
+    color: '#1a1a1a',
     marginBottom: 20,
     textAlign: 'center',
   },
@@ -496,7 +496,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 14,
     fontSize: 16,
-    color: COLORS.white,
+    color: '#1a1a1a',
     marginBottom: 20,
   },
   modalButtons: {

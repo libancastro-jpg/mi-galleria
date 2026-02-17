@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#1a1a1a',
   },
   addButton: {
     width: 44,
@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
   aveCodigo: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#fff',
+    color: '#1a1a1a',
   },
   aveNombre: {
     fontSize: 14,
@@ -415,7 +415,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#fff',
+    color: '#1a1a1a',
     marginTop: 16,
   },
   emptyText: {

@@ -408,7 +408,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: COLORS.white,
+    color: '#1a1a1a',
   },
   saveButton: {
     backgroundColor: COLORS.gold,
@@ -451,7 +451,7 @@ const styles = StyleSheet.create({
   },
   selectButtonText: {
     fontSize: 16,
-    color: COLORS.white,
+    color: '#1a1a1a',
   },
   selectList: {
     backgroundColor: COLORS.cardBg,
@@ -474,7 +474,7 @@ const styles = StyleSheet.create({
   },
   selectItemText: {
     fontSize: 15,
-    color: COLORS.white,
+    color: '#1a1a1a',
   },
   noDataText: {
     fontSize: 14,
@@ -499,7 +499,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: COLORS.white,
+    color: '#1a1a1a',
   },
   inputLabel: {
     fontSize: 13,
@@ -512,7 +512,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 14,
     fontSize: 15,
-    color: COLORS.white,
+    color: '#1a1a1a',
     borderWidth: 1,
     borderColor: COLORS.border,
   },

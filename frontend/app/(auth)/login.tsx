@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#1a1a1a',
     marginBottom: 8,
   },
   subtitle: {
@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
     fontSize: 16,
-    color: '#fff',
+    color: '#1a1a1a',
   },
   eyeIcon: {
     padding: 16,

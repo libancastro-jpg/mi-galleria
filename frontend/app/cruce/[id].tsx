@@ -604,7 +604,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#fff',
+    color: '#1a1a1a',
   },
   saveButton: {
     backgroundColor: '#f59e0b',
@@ -657,7 +657,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: '#1a1a1a',
   },
   selectedParent: {
     flexDirection: 'row',
@@ -698,7 +698,7 @@ const styles = StyleSheet.create({
   },
   optionButtonText: {
     fontSize: 15,
-    color: '#fff',
+    color: '#1a1a1a',
     flex: 1,
     marginLeft: 10,
   },
@@ -717,7 +717,7 @@ const styles = StyleSheet.create({
   },
   optionItemText: {
     fontSize: 15,
-    color: '#fff',
+    color: '#1a1a1a',
   },
   externalForm: {
     backgroundColor: '#f5f5f5',
@@ -732,7 +732,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 14,
     fontSize: 15,
-    color: '#fff',
+    color: '#1a1a1a',
     borderWidth: 1,
     borderColor: '#e0e0e0',
   },
@@ -823,7 +823,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: '#fff',
+    color: '#1a1a1a',
     borderWidth: 1,
     borderColor: '#e0e0e0',
   },

@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: COLORS.white,
+    color: '#1a1a1a',
   },
   addButton: {
     width: 40,
@@ -329,7 +329,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: COLORS.white,
+    color: '#1a1a1a',
     marginBottom: 8,
   },
   emptySubtitle: {
@@ -386,7 +386,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: COLORS.white,
+    color: '#1a1a1a',
     marginBottom: 12,
   },
   // Camada Card
@@ -417,7 +417,7 @@ const styles = StyleSheet.create({
   camadaTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: COLORS.white,
+    color: '#1a1a1a',
   },
   camadaSubtitle: {
     fontSize: 13,

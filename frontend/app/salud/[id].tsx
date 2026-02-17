@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: '#1a1a1a',
     flex: 1,
     textAlign: 'center',
   },
@@ -344,7 +344,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: '#fff',
+    color: '#1a1a1a',
     borderWidth: 1,
     borderColor: '#e0e0e0',
   },
@@ -369,7 +369,7 @@ const styles = StyleSheet.create({
   },
   selectButtonText: {
     fontSize: 16,
-    color: '#fff',
+    color: '#1a1a1a',
   },
   selectList: {
     backgroundColor: '#ffffff',
@@ -392,7 +392,7 @@ const styles = StyleSheet.create({
   },
   selectItemText: {
     fontSize: 16,
-    color: '#fff',
+    color: '#1a1a1a',
   },
   tipoGrid: {
     flexDirection: 'row',

@@ -376,7 +376,7 @@ export default function AveFormScreen() {
             style={styles.selectButton}
             onPress={() => setShowColorList(!showColorList)}
           >
-            <Text style={[styles.selectButtonText, formData.color && { color: '#fff' }]}>
+            <Text style={[styles.selectButtonText, formData.color && { color: '#1a1a1a' }]}>
               {formData.color || 'Seleccionar color'}
             </Text>
             <Ionicons
@@ -418,7 +418,7 @@ export default function AveFormScreen() {
             style={styles.selectButton}
             onPress={() => setShowCrestaList(!showCrestaList)}
           >
-            <Text style={[styles.selectButtonText, formData.cresta && { color: '#fff' }]}>
+            <Text style={[styles.selectButtonText, formData.cresta && { color: '#1a1a1a' }]}>
               {formData.cresta || 'Seleccionar cresta'}
             </Text>
             <Ionicons
@@ -809,7 +809,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#fff',
+    color: '#1a1a1a',
   },
   saveButton: {
     backgroundColor: '#f59e0b',
@@ -870,7 +870,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: '#fff',
+    color: '#1a1a1a',
     borderWidth: 1,
     borderColor: '#e0e0e0',
   },
@@ -960,7 +960,7 @@ const styles = StyleSheet.create({
   },
   selectItemText: {
     fontSize: 16,
-    color: '#fff',
+    color: '#1a1a1a',
   },
   colorGrid: {
     flexDirection: 'row',
@@ -1024,7 +1024,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     fontSize: 14,
-    color: '#fff',
+    color: '#1a1a1a',
     marginBottom: 8,
     borderWidth: 1,
     borderColor: '#e0e0e0',
@@ -1065,7 +1065,7 @@ const styles = StyleSheet.create({
   photoModalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#1a1a1a',
     textAlign: 'center',
     marginBottom: 4,
   },
@@ -1094,7 +1094,7 @@ const styles = StyleSheet.create({
   photoModalOptionText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: '#1a1a1a',
   },
   photoModalOptionSubtext: {
     fontSize: 12,
