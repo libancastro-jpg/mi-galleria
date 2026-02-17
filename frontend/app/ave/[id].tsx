@@ -884,6 +884,8 @@ export default function AveFormScreen() {
               ))}
             </View>
           )}
+            </View>
+          )}
 
           {/* Notas */}
           <Text style={styles.label}>Notas</Text>
