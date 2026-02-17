@@ -139,7 +139,7 @@ export default function CamadasScreen() {
         {camadas.length === 0 ? (
           <View style={styles.emptyState}>
             <View style={styles.emptyIcon}>
-              <Ionicons name="egg-outline" size={48} color={COLORS.grayLight} />
+              <CamadaLogo size={72} />
             </View>
             <Text style={styles.emptyTitle}>Sin camadas registradas</Text>
             <Text style={styles.emptySubtitle}>
@@ -155,6 +155,11 @@ export default function CamadasScreen() {
           </View>
         ) : (
           <>
+            {/* Logo Header */}
+            <View style={styles.logoHeader}>
+              <CamadaLogo size={80} />
+            </View>
+
             {/* Resumen */}
             <View style={styles.summaryCard}>
               <View style={styles.summaryItem}>
