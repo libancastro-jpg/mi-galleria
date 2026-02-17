@@ -325,11 +325,10 @@ export default function AveFormScreen() {
         </View>
 
         <ScrollView style={styles.form} contentContainerStyle={styles.formContent}>
-          {/* Photo */}
-          <View style={styles.photoSection}>
-            <Text style={styles.photoSectionTitle}>Fotos (hasta 3)</Text>
+          {/* Photo - Compacto */}
+          <View style={styles.photoSectionCompact}>
             <TouchableOpacity
-              style={styles.photoContainer}
+              style={styles.photoContainerSmall}
               onPress={() => {
                 if (Platform.OS === 'web') {
                   setShowPhotoModal(true);
@@ -345,28 +344,26 @@ export default function AveFormScreen() {
               {formData.foto_principal ? (
                 <Image
                   source={{ uri: formData.foto_principal }}
-                  style={styles.photo}
+                  style={styles.photoSmall}
                 />
               ) : (
-                <View style={styles.photoPlaceholder}>
-                  <Ionicons name="camera" size={40} color="#555555" />
-                  <Text style={styles.photoText}>Agregar foto</Text>
+                <View style={styles.photoPlaceholderSmall}>
+                  <Ionicons name="camera" size={28} color="#555555" />
                 </View>
               )}
+              {formData.foto_principal && (
+                <TouchableOpacity
+                  style={styles.removePhotoButtonSmall}
+                  onPress={() => setFormData({ ...formData, foto_principal: '' })}
+                >
+                  <Ionicons name="close-circle" size={20} color="#ef4444" />
+                </TouchableOpacity>
+              )}
             </TouchableOpacity>
-            {formData.foto_principal && (
-              <TouchableOpacity
-                style={styles.removePhotoButton}
-                onPress={() => setFormData({ ...formData, foto_principal: '' })}
-              >
-                <Ionicons name="close-circle" size={24} color="#ef4444" />
-              </TouchableOpacity>
-            )}
-          </View>
-          {/* Indicador de fotos */}
-          <View style={styles.photoIndicator}>
-            <Ionicons name="images-outline" size={16} color="#555555" />
-            <Text style={styles.photoIndicatorText}>Puedes agregar hasta 3 fotos</Text>
+            <View style={styles.photoInfo}>
+              <Text style={styles.photoInfoTitle}>Foto del Ave</Text>
+              <Text style={styles.photoInfoText}>Hasta 3 fotos</Text>
+            </View>
           </View>
 
           {/* Tipo */}
