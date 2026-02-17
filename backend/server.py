@@ -1341,10 +1341,12 @@ async def get_dashboard(current_user: dict = Depends(get_current_user)):
     gallos = await db.aves.count_documents({"user_id": user_id, "estado": "activo", "tipo": "gallo"})
     gallinas = await db.aves.count_documents({"user_id": user_id, "estado": "activo", "tipo": "gallina"})
     
-    # Planned cruces
+    # Total cruces and planned cruces
+    cruces_total = await db.cruces.count_documents({"user_id": user_id})
     cruces_planeados = await db.cruces.count_documents({"user_id": user_id, "estado": "planeado"})
     
-    # Active camadas (with incubation date but no birth date)
+    # Total camadas and active camadas
+    camadas_total = await db.camadas.count_documents({"user_id": user_id})
     camadas_activas = await db.camadas.count_documents({
         "user_id": user_id,
         "fecha_incubacion_inicio": {"$ne": None},
@@ -1384,7 +1386,9 @@ async def get_dashboard(current_user: dict = Depends(get_current_user)):
             "gallinas": gallinas
         },
         "cruces_planeados": cruces_planeados,
+        "cruces_total": cruces_total,
         "camadas_activas": camadas_activas,
+        "camadas_total": camadas_total,
         "peleas": {
             "total": total_peleas,
             "ganadas": peleas_ganadas,
