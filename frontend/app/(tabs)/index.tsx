@@ -44,19 +44,19 @@ interface DashboardData {
   recordatorios_salud: number;
 }
 
-// Color palette - Professional (Tema más claro)
+// Color palette - Tema Claro
 const COLORS = {
-  gold: '#F5A623',           // Dorado principal
-  goldLight: 'rgba(245, 166, 35, 0.2)',
-  greenDark: '#22c55e',      // Verde éxito
-  greenLight: 'rgba(34, 197, 94, 0.2)',
-  redDeep: '#ef4444',        // Rojo alertas
-  redLight: 'rgba(239, 68, 68, 0.2)',
-  grayDark: '#242424',       // Gris oscuro (tarjetas)
-  grayMedium: '#333333',     // Gris medio (bordes)
-  grayLight: '#a0a0a0',      // Gris claro (texto secundario más visible)
-  white: '#ffffff',
-  background: '#1a1a1a',     // Fondo principal más claro
+  gold: '#d4a017',             // Dorado principal
+  goldLight: 'rgba(212, 160, 23, 0.15)',
+  greenDark: '#22c55e',        // Verde éxito
+  greenLight: 'rgba(34, 197, 94, 0.12)',
+  redDeep: '#ef4444',          // Rojo alertas
+  redLight: 'rgba(239, 68, 68, 0.12)',
+  grayDark: '#ffffff',         // Blanco (tarjetas)
+  grayMedium: '#e0e0e0',       // Gris claro (bordes)
+  grayLight: '#555555',        // Gris oscuro (texto secundario)
+  white: '#1a1a1a',            // Texto oscuro
+  background: '#f5f5f5',       // Fondo claro
 };
 
 export default function DashboardScreen() {
