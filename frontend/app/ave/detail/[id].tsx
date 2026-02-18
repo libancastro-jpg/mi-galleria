@@ -195,11 +195,19 @@ export default function AveDetailScreen() {
   const renderConnectedTree = () => {
     if (!pedigri) return null;
 
-    // Función para recolectar todos los IDs del árbol y detectar duplicados
+    // Función para recolectar todos los IDs/códigos del árbol y detectar duplicados
+    // Solo considera aves con ID válido o código externo válido
     const collectIds = (node: any, ids: Map<string, number> = new Map()): Map<string, number> => {
       if (!node || node.unknown) return ids;
-      const currentCount = ids.get(node.id) || 0;
-      ids.set(node.id, currentCount + 1);
+      
+      // Usar ID si existe, o código si es externo
+      const identifier = node.id || (node.externo && node.codigo ? `ext_${node.codigo}` : null);
+      
+      if (identifier) {
+        const currentCount = ids.get(identifier) || 0;
+        ids.set(identifier, currentCount + 1);
+      }
+      
       if (node.padre) collectIds(node.padre, ids);
       if (node.madre) collectIds(node.madre, ids);
       return ids;
@@ -207,8 +215,11 @@ export default function AveDetailScreen() {
 
     const allIds = collectIds(pedigri);
     const duplicateIds = new Set<string>();
-    allIds.forEach((count, id) => {
-      if (count > 1) duplicateIds.add(id);
+    allIds.forEach((count, identifier) => {
+      // Solo marcar como duplicado si aparece más de una vez y tiene un identificador válido
+      if (count > 1 && identifier) {
+        duplicateIds.add(identifier);
+      }
     });
 
     const renderTreeNode = (node: any, label: string, isMain: boolean = false, isParent: boolean = false) => {
@@ -222,7 +233,9 @@ export default function AveDetailScreen() {
         </View>
       );
 
-      const isDuplicate = duplicateIds.has(node.id);
+      // Determinar el identificador para verificar duplicados
+      const nodeIdentifier = node.id || (node.externo && node.codigo ? `ext_${node.codigo}` : null);
+      const isDuplicate = nodeIdentifier ? duplicateIds.has(nodeIdentifier) : false;
       const isExternal = node.externo || (!node.id && node.codigo);
 
       return (
