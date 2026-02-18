@@ -59,6 +59,8 @@ export default function AveDetailScreen() {
   const [activeTab, setActiveTab] = useState('pedigri');
   const [padre, setPadre] = useState<Ave | null>(null);
   const [madre, setMadre] = useState<Ave | null>(null);
+  const [expandedNode, setExpandedNode] = useState<string | null>(null);
+  const [showAbuelos, setShowAbuelos] = useState(false);
 
   const tabs = [
     { key: 'pedigri', label: 'Pedigrí', icon: 'git-branch' },
