@@ -309,10 +309,10 @@ export default function AveDetailScreen() {
         {/* Nivel 1: Padres */}
         <View style={styles.treeLevel}>
           <View style={styles.treeBranch}>
-            {renderTreeNode(pedigri?.padre, 'Padre')}
+            {renderTreeNode(pedigri?.padre, 'Padre', false, true)}
           </View>
           <View style={styles.treeBranch}>
-            {renderTreeNode(pedigri?.madre, 'Madre')}
+            {renderTreeNode(pedigri?.madre, 'Madre', false, true)}
           </View>
         </View>
 
