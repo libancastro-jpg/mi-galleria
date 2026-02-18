@@ -608,13 +608,13 @@ export default function AveDetailScreen() {
             <View style={styles.treeLevelGrandparents}>
               {/* Abuelos paternos */}
               <View style={styles.treeGrandparentPair}>
-                {renderAbueloNode(pedigri?.padre?.padre, 'Abuelo P.', 'abuelo_p')}
-                {renderAbueloNode(pedigri?.padre?.madre, 'Abuela P.', 'abuela_p')}
+                {renderAbueloNode(pedigri?.padre?.padre, 'Abuelo P.', 'abuelo_p', 'padre')}
+                {renderAbueloNode(pedigri?.padre?.madre, 'Abuela P.', 'abuela_p', 'padre')}
               </View>
               {/* Abuelos maternos */}
               <View style={styles.treeGrandparentPair}>
-                {renderAbueloNode(pedigri?.madre?.padre, 'Abuelo M.', 'abuelo_m')}
-                {renderAbueloNode(pedigri?.madre?.madre, 'Abuela M.', 'abuela_m')}
+                {renderAbueloNode(pedigri?.madre?.padre, 'Abuelo M.', 'abuelo_m', 'madre')}
+                {renderAbueloNode(pedigri?.madre?.madre, 'Abuela M.', 'abuela_m', 'madre')}
               </View>
             </View>
           </View>
