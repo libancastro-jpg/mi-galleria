@@ -697,8 +697,9 @@ export default function AveFormScreen() {
             <View style={styles.padresSectionContent}>
               {/* Vista de Árbol Genealógico */}
               <View style={styles.treeFormContainer}>
-                {/* Etiqueta del Ave Actual */}
+                {/* Etiqueta del Ave Actual - Descendencia */}
                 <View style={styles.treeFormCurrentBird}>
+                  <Text style={styles.treeFormLabelMain}>DESCENDENCIA</Text>
                   <View style={styles.treeFormNodeMain}>
                     {formData.foto_principal ? (
                       <Image source={{ uri: formData.foto_principal }} style={styles.treeFormPhoto} />
@@ -712,7 +713,7 @@ export default function AveFormScreen() {
                       </View>
                     )}
                     <Text style={styles.treeFormNodeCode}>
-                      {formData.codigo || 'Nueva Ave'}
+                      {formData.codigo || 'PL: ---'}
                     </Text>
                   </View>
                 </View>
@@ -752,6 +753,7 @@ export default function AveFormScreen() {
                           <Text style={styles.treeFormNodeCode} numberOfLines={1}>
                             {formData.padre_externo}
                           </Text>
+                          {padreGalleria && <Text style={styles.treeFormNodeGalleria}>{padreGalleria}</Text>}
                           <Text style={styles.treeFormNodeExternal}>Externo</Text>
                         </>
                       ) : (
@@ -763,6 +765,17 @@ export default function AveFormScreen() {
                         </>
                       )}
                     </TouchableOpacity>
+                    
+                    {/* Botón + para abuelos paternos */}
+                    {(formData.padre_id || formData.padre_externo) && (
+                      <TouchableOpacity
+                        style={styles.treeFormAddAbueloBtn}
+                        onPress={() => setShowAbuelosPaternos(!showAbuelosPaternos)}
+                      >
+                        <Ionicons name={showAbuelosPaternos ? "chevron-up" : "add"} size={16} color="#d4a017" />
+                        <Text style={styles.treeFormAddAbueloText}>Abuelos</Text>
+                      </TouchableOpacity>
+                    )}
                     
                     {/* Lista desplegable padre */}
                     {showPadreList && (
@@ -776,17 +789,27 @@ export default function AveFormScreen() {
                         </TouchableOpacity>
                         
                         {showPadreExterno && (
-                          <View style={styles.treeFormExternalInput}>
+                          <View style={styles.treeFormExternalInputContainer}>
                             <TextInput
                               style={styles.treeFormInput}
-                              value={formData.padre_externo}
-                              onChangeText={(text) => setFormData({ ...formData, padre_externo: text, padre_id: '' })}
-                              placeholder="Placa del padre"
+                              value={padreExterno}
+                              onChangeText={setPadreExterno}
+                              placeholder="Placa"
+                              placeholderTextColor="#9ca3af"
+                            />
+                            <TextInput
+                              style={styles.treeFormInput}
+                              value={padreGalleria}
+                              onChangeText={setPadreGalleria}
+                              placeholder="Gallería"
                               placeholderTextColor="#9ca3af"
                             />
                             <TouchableOpacity
                               style={styles.treeFormConfirmBtn}
                               onPress={() => {
+                                if (padreExterno) {
+                                  setFormData({ ...formData, padre_externo: padreExterno, padre_id: '' });
+                                }
                                 setShowPadreList(false);
                                 setShowPadreExterno(false);
                               }}
@@ -800,6 +823,8 @@ export default function AveFormScreen() {
                           style={styles.treeFormSelectOption}
                           onPress={() => {
                             setFormData({ ...formData, padre_id: '', padre_externo: '' });
+                            setPadreExterno('');
+                            setPadreGalleria('');
                             setShowPadreList(false);
                           }}
                         >
@@ -816,6 +841,8 @@ export default function AveFormScreen() {
                             ]}
                             onPress={() => {
                               setFormData({ ...formData, padre_id: gallo.id, padre_externo: '' });
+                              setPadreExterno('');
+                              setPadreGalleria('');
                               setShowPadreList(false);
                             }}
                           >
@@ -857,6 +884,7 @@ export default function AveFormScreen() {
                           <Text style={styles.treeFormNodeCode} numberOfLines={1}>
                             {formData.madre_externo}
                           </Text>
+                          {madreGalleria && <Text style={styles.treeFormNodeGalleria}>{madreGalleria}</Text>}
                           <Text style={styles.treeFormNodeExternal}>Externa</Text>
                         </>
                       ) : (
@@ -868,6 +896,17 @@ export default function AveFormScreen() {
                         </>
                       )}
                     </TouchableOpacity>
+                    
+                    {/* Botón + para abuelos maternos */}
+                    {(formData.madre_id || formData.madre_externo) && (
+                      <TouchableOpacity
+                        style={styles.treeFormAddAbueloBtn}
+                        onPress={() => setShowAbuelosMaternos(!showAbuelosMaternos)}
+                      >
+                        <Ionicons name={showAbuelosMaternos ? "chevron-up" : "add"} size={16} color="#d4a017" />
+                        <Text style={styles.treeFormAddAbueloText}>Abuelos</Text>
+                      </TouchableOpacity>
+                    )}
                     
                     {/* Lista desplegable madre */}
                     {showMadreList && (
@@ -881,17 +920,27 @@ export default function AveFormScreen() {
                         </TouchableOpacity>
                         
                         {showMadreExterno && (
-                          <View style={styles.treeFormExternalInput}>
+                          <View style={styles.treeFormExternalInputContainer}>
                             <TextInput
                               style={styles.treeFormInput}
-                              value={formData.madre_externo}
-                              onChangeText={(text) => setFormData({ ...formData, madre_externo: text, madre_id: '' })}
-                              placeholder="Placa de la madre"
+                              value={madreExterno}
+                              onChangeText={setMadreExterno}
+                              placeholder="Placa"
+                              placeholderTextColor="#9ca3af"
+                            />
+                            <TextInput
+                              style={styles.treeFormInput}
+                              value={madreGalleria}
+                              onChangeText={setMadreGalleria}
+                              placeholder="Gallería"
                               placeholderTextColor="#9ca3af"
                             />
                             <TouchableOpacity
                               style={[styles.treeFormConfirmBtn, { backgroundColor: '#ec4899' }]}
                               onPress={() => {
+                                if (madreExterno) {
+                                  setFormData({ ...formData, madre_externo: madreExterno, madre_id: '' });
+                                }
                                 setShowMadreList(false);
                                 setShowMadreExterno(false);
                               }}
@@ -905,6 +954,8 @@ export default function AveFormScreen() {
                           style={styles.treeFormSelectOption}
                           onPress={() => {
                             setFormData({ ...formData, madre_id: '', madre_externo: '' });
+                            setMadreExterno('');
+                            setMadreGalleria('');
                             setShowMadreList(false);
                           }}
                         >
@@ -921,6 +972,8 @@ export default function AveFormScreen() {
                             ]}
                             onPress={() => {
                               setFormData({ ...formData, madre_id: gallina.id, madre_externo: '' });
+                              setMadreExterno('');
+                              setMadreGalleria('');
                               setShowMadreList(false);
                             }}
                           >
@@ -932,6 +985,56 @@ export default function AveFormScreen() {
                     )}
                   </View>
                 </View>
+
+                {/* Sección de Abuelos Paternos */}
+                {showAbuelosPaternos && (formData.padre_id || formData.padre_externo) && (
+                  <View style={styles.abuelosSection}>
+                    <Text style={styles.abuelosSectionTitle}>Abuelos Paternos</Text>
+                    <View style={styles.abuelosRow}>
+                      <View style={styles.abueloItem}>
+                        <Text style={styles.abueloLabel}>Abuelo ♂</Text>
+                        <TextInput
+                          style={styles.abueloInput}
+                          placeholder="Placa"
+                          placeholderTextColor="#9ca3af"
+                        />
+                      </View>
+                      <View style={styles.abueloItem}>
+                        <Text style={styles.abueloLabel}>Abuela ♀</Text>
+                        <TextInput
+                          style={styles.abueloInput}
+                          placeholder="Placa"
+                          placeholderTextColor="#9ca3af"
+                        />
+                      </View>
+                    </View>
+                  </View>
+                )}
+
+                {/* Sección de Abuelos Maternos */}
+                {showAbuelosMaternos && (formData.madre_id || formData.madre_externo) && (
+                  <View style={styles.abuelosSection}>
+                    <Text style={styles.abuelosSectionTitle}>Abuelos Maternos</Text>
+                    <View style={styles.abuelosRow}>
+                      <View style={styles.abueloItem}>
+                        <Text style={styles.abueloLabel}>Abuelo ♂</Text>
+                        <TextInput
+                          style={styles.abueloInput}
+                          placeholder="Placa"
+                          placeholderTextColor="#9ca3af"
+                        />
+                      </View>
+                      <View style={styles.abueloItem}>
+                        <Text style={styles.abueloLabel}>Abuela ♀</Text>
+                        <TextInput
+                          style={styles.abueloInput}
+                          placeholder="Placa"
+                          placeholderTextColor="#9ca3af"
+                        />
+                      </View>
+                    </View>
+                  </View>
+                )}
               </View>
             </View>
           )}
