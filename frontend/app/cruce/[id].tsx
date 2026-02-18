@@ -635,6 +635,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1a1a1a',
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  deleteButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderRadius: 8,
+  },
   saveButton: {
     backgroundColor: '#f59e0b',
     paddingHorizontal: 16,
