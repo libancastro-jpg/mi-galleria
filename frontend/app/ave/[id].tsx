@@ -47,6 +47,10 @@ export default function AveFormScreen() {
   const [showPadresSection, setShowPadresSection] = useState(false);
   const [padreExterno, setPadreExterno] = useState('');
   const [madreExterno, setMadreExterno] = useState('');
+  const [padreGalleria, setPadreGalleria] = useState('');
+  const [madreGalleria, setMadreGalleria] = useState('');
+  const [showAbuelosPaternos, setShowAbuelosPaternos] = useState(false);
+  const [showAbuelosMaternos, setShowAbuelosMaternos] = useState(false);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [castadores, setCastadores] = useState<{nombre: string, cantidad: number}[]>([]);
   const [nuevoCastador, setNuevoCastador] = useState('');
