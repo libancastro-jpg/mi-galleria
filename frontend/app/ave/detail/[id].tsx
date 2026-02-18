@@ -1084,6 +1084,45 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
+  // Estilos para consanguinidad
+  consanguinidadAlert: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 16,
+    gap: 8,
+  },
+  consanguinidadText: {
+    fontSize: 11,
+    color: '#f59e0b',
+    flex: 1,
+  },
+  treeNodeDuplicate: {
+    borderColor: '#f59e0b',
+    borderWidth: 2,
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+  },
+  treePhotoPlaceholderDuplicate: {
+    backgroundColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  treeCodeDuplicate: {
+    color: '#f59e0b',
+    fontWeight: '700',
+  },
+  duplicateBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    backgroundColor: '#f59e0b',
+    borderRadius: 10,
+    width: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
   statsRow: {
     flexDirection: 'row',
     gap: 12,
