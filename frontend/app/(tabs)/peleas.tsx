@@ -603,6 +603,12 @@ const styles = StyleSheet.create({
     color: '#1a1a1a',
     fontWeight: '500',
   },
+  parentName: {
+    fontSize: 11,
+    color: '#666666',
+    fontWeight: '400',
+    marginTop: 1,
+  },
   parentHijos: {
     fontSize: 10,
     color: '#9ca3af',
