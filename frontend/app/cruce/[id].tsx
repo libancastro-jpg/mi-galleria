@@ -167,6 +167,29 @@ export default function CruceFormScreen() {
     }
   };
 
+  const handleDelete = () => {
+    Alert.alert(
+      'Eliminar Cruce',
+      '¿Estás seguro de que deseas eliminar este cruce? Esta acción no se puede deshacer.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.delete(`/cruces/${id}`);
+              Alert.alert('Éxito', 'Cruce eliminado correctamente');
+              router.back();
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'No se pudo eliminar el cruce');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const getConsangColor = (nivel: string) => {
     switch (nivel) {
       case 'bajo':
