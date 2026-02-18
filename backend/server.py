@@ -118,6 +118,15 @@ class AveUpdate(BaseModel):
     padre_externo: Optional[str] = None
     madre_externo: Optional[str] = None
     marcaje_qr: Optional[str] = None
+    # Campos para abuelos externos
+    abuelo_paterno_padre: Optional[str] = None
+    abuelo_paterno_padre_galleria: Optional[str] = None
+    abuelo_paterno_madre: Optional[str] = None
+    abuelo_paterno_madre_galleria: Optional[str] = None
+    abuelo_materno_padre: Optional[str] = None
+    abuelo_materno_padre_galleria: Optional[str] = None
+    abuelo_materno_madre: Optional[str] = None
+    abuelo_materno_madre_galleria: Optional[str] = None
 
 class AveResponse(AveBase):
     id: str
