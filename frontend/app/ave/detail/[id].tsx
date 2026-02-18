@@ -211,12 +211,13 @@ export default function AveDetailScreen() {
       if (count > 1) duplicateIds.add(id);
     });
 
-    const renderTreeNode = (node: any, label: string, isMain: boolean = false) => {
+    const renderTreeNode = (node: any, label: string, isMain: boolean = false, isParent: boolean = false) => {
       if (!node) return (
-        <View style={styles.treeNodeContainer}>
-          <Text style={styles.treeLabel}>{label}</Text>
-          <View style={[styles.treeNode, styles.treeNodeUnknown]}>
+        <View style={[styles.treeNodeContainer, isParent && styles.treeNodeContainerParent]}>
+          <Text style={[styles.treeLabel, isParent && styles.treeLabelParent]}>{label}</Text>
+          <View style={[styles.treeNode, styles.treeNodeUnknown, isParent && styles.treeNodeParent]}>
             <Text style={styles.treeNodeUnknownText}>?</Text>
+            <Text style={styles.treeNodeUnknownSubtext}>Desconocido</Text>
           </View>
         </View>
       );
@@ -225,14 +226,15 @@ export default function AveDetailScreen() {
 
       return (
         <TouchableOpacity 
-          style={styles.treeNodeContainer}
+          style={[styles.treeNodeContainer, isParent && styles.treeNodeContainerParent]}
           onPress={() => !node.unknown && node.id !== id && router.push(`/ave/detail/${node.id}`)}
           disabled={node.unknown || node.id === id}
         >
-          <Text style={styles.treeLabel}>{label}</Text>
+          <Text style={[styles.treeLabel, isParent && styles.treeLabelParent]}>{label}</Text>
           <View style={[
             styles.treeNode, 
             isMain && styles.treeNodeMain,
+            isParent && styles.treeNodeParent,
             node.unknown && styles.treeNodeUnknown,
             isDuplicate && !isMain && styles.treeNodeDuplicate
           ]}>
@@ -242,21 +244,36 @@ export default function AveDetailScreen() {
               </View>
             )}
             {node.foto_principal ? (
-              <Image source={{ uri: node.foto_principal }} style={styles.treePhoto} />
+              <Image source={{ uri: node.foto_principal }} style={[styles.treePhoto, isParent && styles.treePhotoParent]} />
             ) : (
-              <View style={[styles.treePhotoPlaceholder, isDuplicate && !isMain && styles.treePhotoPlaceholderDuplicate]}>
+              <View style={[
+                styles.treePhotoPlaceholder, 
+                isParent && styles.treePhotoPlaceholderParent,
+                isDuplicate && !isMain && styles.treePhotoPlaceholderDuplicate
+              ]}>
                 <Ionicons
                   name={node.tipo === 'gallo' ? 'male' : 'female'}
-                  size={isMain ? 24 : 16}
+                  size={isMain ? 28 : (isParent ? 24 : 18)}
                   color={isDuplicate && !isMain ? '#f59e0b' : (node.tipo === 'gallo' ? '#3b82f6' : '#ec4899')}
                 />
               </View>
             )}
-            <Text style={[styles.treeCode, isMain && styles.treeCodeMain, isDuplicate && !isMain && styles.treeCodeDuplicate]} numberOfLines={1}>
-              {node.unknown ? '?' : node.codigo}
+            <Text style={[
+              styles.treeCode, 
+              isMain && styles.treeCodeMain, 
+              isParent && styles.treeCodeParent,
+              isDuplicate && !isMain && styles.treeCodeDuplicate
+            ]} numberOfLines={1}>
+              {node.unknown ? '?' : `PL: ${node.codigo}`}
             </Text>
             {node.nombre && (
-              <Text style={styles.treeName} numberOfLines={1}>{node.nombre}</Text>
+              <Text style={[styles.treeName, isParent && styles.treeNameParent]} numberOfLines={1}>{node.nombre}</Text>
+            )}
+            {isParent && node.color && (
+              <Text style={styles.treeParentDetail}>{node.color}</Text>
+            )}
+            {isParent && node.linea && (
+              <Text style={styles.treeParentDetail}>{node.linea}</Text>
             )}
           </View>
         </TouchableOpacity>
