@@ -1076,6 +1076,33 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 2,
   },
+  treeGalleriaContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+    backgroundColor: 'rgba(156, 163, 175, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  treeGalleriaText: {
+    fontSize: 10,
+    color: '#9ca3af',
+    fontWeight: '500',
+  },
+  treeExternalBadge: {
+    marginTop: 4,
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  treeExternalText: {
+    fontSize: 9,
+    color: '#f59e0b',
+    fontWeight: '600',
+  },
   treeConnectorVertical: {
     width: 2,
     height: 20,
