@@ -389,44 +389,6 @@ export default function AveDetailScreen() {
         </View>
       </View>
 
-      {/* Padres */}
-      <Text style={styles.sectionTitle}>Padres</Text>
-      <View style={styles.parentsRow}>
-        <TouchableOpacity
-          style={styles.parentCard}
-          onPress={() => padre && router.push(`/ave/detail/${padre.id}`)}
-          disabled={!padre && !ave?.padre_externo}
-        >
-          <View style={[styles.parentIcon, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
-            <Ionicons name="male" size={20} color="#3b82f6" />
-          </View>
-          <Text style={styles.parentLabel}>Padre</Text>
-          <Text style={styles.parentCode}>
-            {padre?.codigo || ave?.padre_externo || 'Desconocido'}
-          </Text>
-          {ave?.padre_externo && !padre && (
-            <Text style={styles.parentExternal}>Externo</Text>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.parentCard}
-          onPress={() => madre && router.push(`/ave/detail/${madre.id}`)}
-          disabled={!madre && !ave?.madre_externo}
-        >
-          <View style={[styles.parentIcon, { backgroundColor: 'rgba(236, 72, 153, 0.1)' }]}>
-            <Ionicons name="female" size={20} color="#ec4899" />
-          </View>
-          <Text style={styles.parentLabel}>Madre</Text>
-          <Text style={styles.parentCode}>
-            {madre?.codigo || ave?.madre_externo || 'Desconocida'}
-          </Text>
-          {ave?.madre_externo && !madre && (
-            <Text style={styles.parentExternal}>Externa</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-
       {ave?.notas && (
         <>
           <Text style={styles.sectionTitle}>Notas</Text>
