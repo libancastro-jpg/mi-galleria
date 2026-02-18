@@ -1950,6 +1950,68 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     gap: 12,
   },
+  // Estilos para árbol de abuelos en formulario
+  abuelosTreeSection: {
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  abuelosTreeConnectorFromParent: {
+    width: 2,
+    height: 12,
+    backgroundColor: '#d4a017',
+  },
+  abuelosTreeHorizontal: {
+    width: 100,
+    height: 2,
+    backgroundColor: '#d4a017',
+    marginBottom: 8,
+  },
+  abuelosTreeRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  abueloTreeItem: {
+    alignItems: 'center',
+  },
+  abueloTreeLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#9ca3af',
+    marginBottom: 6,
+  },
+  abueloTreeNode: {
+    backgroundColor: '#f9f9f9',
+    borderRadius: 10,
+    padding: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    minWidth: 80,
+  },
+  abueloTreeIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  abueloTreeInput: {
+    backgroundColor: '#ffffff',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    fontSize: 11,
+    color: '#1a1a1a',
+    textAlign: 'center',
+    width: 70,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  abueloItem: {
+    gap: 12,
+  },
   abueloItem: {
     flex: 1,
     alignItems: 'center',
