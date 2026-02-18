@@ -673,7 +673,7 @@ export default function AveFormScreen() {
             ))}
           </View>
 
-          {/* Sección de Padres - Desplegable */}
+          {/* Sección de Padres - Árbol Genealógico */}
           <TouchableOpacity
             style={styles.padresSectionHeader}
             onPress={() => setShowPadresSection(!showPadresSection)}
@@ -691,205 +691,244 @@ export default function AveFormScreen() {
 
           {showPadresSection && (
             <View style={styles.padresSectionContent}>
-              {/* Padre */}
-              <Text style={styles.labelInSection}>Padre (Gallo)</Text>
-              <TouchableOpacity
-                style={styles.selectButton}
-                onPress={() => setShowPadreList(!showPadreList)}
-              >
-                <Text style={styles.selectButtonText}>
-                  {formData.padre_externo
-                    ? `Externo: ${formData.padre_externo}`
-                    : formData.padre_id
-                      ? gallos.find((g) => g.id === formData.padre_id)?.codigo || 'Seleccionado'
-                      : 'Seleccionar padre'}
-                </Text>
-                <Ionicons
-                  name={showPadreList ? 'chevron-up' : 'chevron-down'}
-                  size={20}
-                  color="#555555"
-                />
-              </TouchableOpacity>
-              {showPadreList && (
-                <View style={styles.selectList}>
-                  {/* Opción Agregar Padre Externo */}
-                  <TouchableOpacity
-                    style={[styles.selectItem, styles.addParentOption]}
-                    onPress={() => setShowPadreExterno(!showPadreExterno)}
-                  >
-                <View style={styles.addParentRow}>
-                  <Ionicons name="add-circle" size={20} color="#f59e0b" />
-                  <Text style={styles.addParentText}>Agregar Padre</Text>
+              {/* Vista de Árbol Genealógico */}
+              <View style={styles.treeFormContainer}>
+                {/* Etiqueta del Ave Actual */}
+                <View style={styles.treeFormCurrentBird}>
+                  <View style={styles.treeFormNodeMain}>
+                    {formData.foto_principal ? (
+                      <Image source={{ uri: formData.foto_principal }} style={styles.treeFormPhoto} />
+                    ) : (
+                      <View style={styles.treeFormPhotoPlaceholder}>
+                        <Ionicons 
+                          name={formData.tipo === 'gallo' ? 'male' : 'female'} 
+                          size={20} 
+                          color="#d4a017" 
+                        />
+                      </View>
+                    )}
+                    <Text style={styles.treeFormNodeCode}>
+                      {formData.codigo || 'Nueva Ave'}
+                    </Text>
+                  </View>
                 </View>
-                <Text style={styles.addParentSubtext}>De otra gallería</Text>
-              </TouchableOpacity>
-              
-              {showPadreExterno && (
-                <View style={styles.externalForm}>
-                  <TextInput
-                    style={styles.externalInput}
-                    value={formData.padre_externo}
-                    onChangeText={(text) => setFormData({ ...formData, padre_externo: text, padre_id: '' })}
-                    placeholder="Placa del padre"
-                    placeholderTextColor="#707070"
-                  />
-                  <TextInput
-                    style={styles.externalInput}
-                    value={padreExterno}
-                    onChangeText={setPadreExterno}
-                    placeholder="Gallería / Castador (opcional)"
-                    placeholderTextColor="#707070"
-                  />
-                  <TouchableOpacity
-                    style={styles.confirmExternalButton}
-                    onPress={() => {
-                      if (formData.padre_externo) {
-                        const placaConGalleria = padreExterno 
-                          ? `${formData.padre_externo} (${padreExterno})`
-                          : formData.padre_externo;
-                        setFormData({ ...formData, padre_externo: placaConGalleria, padre_id: '' });
-                      }
-                      setShowPadreList(false);
-                      setShowPadreExterno(false);
-                    }}
-                  >
-                    <Text style={styles.confirmExternalText}>Confirmar</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-              
-              {/* Limpiar selección */}
-              <TouchableOpacity
-                style={styles.selectItem}
-                onPress={() => {
-                  setFormData({ ...formData, padre_id: '', padre_externo: '' });
-                  setPadreExterno('');
-                  setShowPadreList(false);
-                  setShowPadreExterno(false);
-                }}
-              >
-                <Text style={[styles.selectItemText, { color: '#555555' }]}>Ninguno / Desconocido</Text>
-              </TouchableOpacity>
-              
-              {/* Lista de gallos registrados */}
-              {gallos.filter((g) => g.id !== id).map((gallo) => (
-                <TouchableOpacity
-                  key={gallo.id}
-                  style={styles.selectItem}
-                  onPress={() => {
-                    setFormData({ ...formData, padre_id: gallo.id, padre_externo: '' });
-                    setPadreExterno('');
-                    setShowPadreList(false);
-                    setShowPadreExterno(false);
-                  }}
-                >
-                  <Text style={styles.selectItemText}>
-                    {gallo.codigo} {gallo.nombre ? `- ${gallo.nombre}` : ''}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
 
-          {/* Madre */}
-          <Text style={[styles.label, { marginTop: 16 }]}>Madre (Gallina)</Text>
-          <TouchableOpacity
-            style={styles.selectButton}
-            onPress={() => setShowMadreList(!showMadreList)}
-          >
-            <Text style={styles.selectButtonText}>
-              {formData.madre_externo
-                ? `Externa: ${formData.madre_externo}`
-                : formData.madre_id
-                  ? gallinas.find((g) => g.id === formData.madre_id)?.codigo || 'Seleccionada'
-                  : 'Seleccionar madre'}
-            </Text>
-            <Ionicons
-              name={showMadreList ? 'chevron-up' : 'chevron-down'}
-              size={20}
-              color="#555555"
-            />
-          </TouchableOpacity>
-          {showMadreList && (
-            <View style={styles.selectList}>
-              {/* Opción Agregar Madre Externa */}
-              <TouchableOpacity
-                style={[styles.selectItem, styles.addParentOption]}
-                onPress={() => setShowMadreExterno(!showMadreExterno)}
-              >
-                <View style={styles.addParentRow}>
-                  <Ionicons name="add-circle" size={20} color="#ec4899" />
-                  <Text style={[styles.addParentText, { color: '#ec4899' }]}>Agregar Madre</Text>
+                {/* Conector vertical */}
+                <View style={styles.treeFormConnectorVertical} />
+                
+                {/* Conector horizontal */}
+                <View style={styles.treeFormConnectorHorizontal} />
+
+                {/* Padres */}
+                <View style={styles.treeFormParentsRow}>
+                  {/* Padre */}
+                  <View style={styles.treeFormParentColumn}>
+                    <Text style={styles.treeFormLabel}>Padre</Text>
+                    <TouchableOpacity
+                      style={[
+                        styles.treeFormNode,
+                        (formData.padre_id || formData.padre_externo) && styles.treeFormNodeSelected
+                      ]}
+                      onPress={() => setShowPadreList(!showPadreList)}
+                    >
+                      {formData.padre_id ? (
+                        <>
+                          <View style={[styles.treeFormPhotoPlaceholder, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
+                            <Ionicons name="male" size={18} color="#3b82f6" />
+                          </View>
+                          <Text style={styles.treeFormNodeCode} numberOfLines={1}>
+                            {gallos.find((g) => g.id === formData.padre_id)?.codigo || 'Seleccionado'}
+                          </Text>
+                        </>
+                      ) : formData.padre_externo ? (
+                        <>
+                          <View style={[styles.treeFormPhotoPlaceholder, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
+                            <Ionicons name="male" size={18} color="#f59e0b" />
+                          </View>
+                          <Text style={styles.treeFormNodeCode} numberOfLines={1}>
+                            {formData.padre_externo}
+                          </Text>
+                          <Text style={styles.treeFormNodeExternal}>Externo</Text>
+                        </>
+                      ) : (
+                        <>
+                          <View style={styles.treeFormPhotoPlaceholderEmpty}>
+                            <Ionicons name="add" size={20} color="#9ca3af" />
+                          </View>
+                          <Text style={styles.treeFormNodePlaceholder}>Seleccionar</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                    
+                    {/* Lista desplegable padre */}
+                    {showPadreList && (
+                      <View style={styles.treeFormSelectList}>
+                        <TouchableOpacity
+                          style={styles.treeFormSelectOption}
+                          onPress={() => setShowPadreExterno(!showPadreExterno)}
+                        >
+                          <Ionicons name="add-circle" size={18} color="#f59e0b" />
+                          <Text style={styles.treeFormSelectOptionTextAdd}>Padre Externo</Text>
+                        </TouchableOpacity>
+                        
+                        {showPadreExterno && (
+                          <View style={styles.treeFormExternalInput}>
+                            <TextInput
+                              style={styles.treeFormInput}
+                              value={formData.padre_externo}
+                              onChangeText={(text) => setFormData({ ...formData, padre_externo: text, padre_id: '' })}
+                              placeholder="Placa del padre"
+                              placeholderTextColor="#9ca3af"
+                            />
+                            <TouchableOpacity
+                              style={styles.treeFormConfirmBtn}
+                              onPress={() => {
+                                setShowPadreList(false);
+                                setShowPadreExterno(false);
+                              }}
+                            >
+                              <Text style={styles.treeFormConfirmText}>OK</Text>
+                            </TouchableOpacity>
+                          </View>
+                        )}
+                        
+                        <TouchableOpacity
+                          style={styles.treeFormSelectOption}
+                          onPress={() => {
+                            setFormData({ ...formData, padre_id: '', padre_externo: '' });
+                            setShowPadreList(false);
+                          }}
+                        >
+                          <Ionicons name="close-circle" size={18} color="#9ca3af" />
+                          <Text style={styles.treeFormSelectOptionText}>Ninguno</Text>
+                        </TouchableOpacity>
+                        
+                        {gallos.filter((g) => g.id !== id).map((gallo) => (
+                          <TouchableOpacity
+                            key={gallo.id}
+                            style={[
+                              styles.treeFormSelectOption,
+                              formData.padre_id === gallo.id && styles.treeFormSelectOptionActive
+                            ]}
+                            onPress={() => {
+                              setFormData({ ...formData, padre_id: gallo.id, padre_externo: '' });
+                              setShowPadreList(false);
+                            }}
+                          >
+                            <Ionicons name="male" size={16} color="#3b82f6" />
+                            <Text style={styles.treeFormSelectOptionText}>{gallo.codigo}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Separador */}
+                  <View style={styles.treeFormDivider} />
+
+                  {/* Madre */}
+                  <View style={styles.treeFormParentColumn}>
+                    <Text style={styles.treeFormLabel}>Madre</Text>
+                    <TouchableOpacity
+                      style={[
+                        styles.treeFormNode,
+                        (formData.madre_id || formData.madre_externo) && styles.treeFormNodeSelected
+                      ]}
+                      onPress={() => setShowMadreList(!showMadreList)}
+                    >
+                      {formData.madre_id ? (
+                        <>
+                          <View style={[styles.treeFormPhotoPlaceholder, { backgroundColor: 'rgba(236, 72, 153, 0.15)' }]}>
+                            <Ionicons name="female" size={18} color="#ec4899" />
+                          </View>
+                          <Text style={styles.treeFormNodeCode} numberOfLines={1}>
+                            {gallinas.find((g) => g.id === formData.madre_id)?.codigo || 'Seleccionada'}
+                          </Text>
+                        </>
+                      ) : formData.madre_externo ? (
+                        <>
+                          <View style={[styles.treeFormPhotoPlaceholder, { backgroundColor: 'rgba(236, 72, 153, 0.15)' }]}>
+                            <Ionicons name="female" size={18} color="#ec4899" />
+                          </View>
+                          <Text style={styles.treeFormNodeCode} numberOfLines={1}>
+                            {formData.madre_externo}
+                          </Text>
+                          <Text style={styles.treeFormNodeExternal}>Externa</Text>
+                        </>
+                      ) : (
+                        <>
+                          <View style={styles.treeFormPhotoPlaceholderEmpty}>
+                            <Ionicons name="add" size={20} color="#9ca3af" />
+                          </View>
+                          <Text style={styles.treeFormNodePlaceholder}>Seleccionar</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                    
+                    {/* Lista desplegable madre */}
+                    {showMadreList && (
+                      <View style={styles.treeFormSelectList}>
+                        <TouchableOpacity
+                          style={styles.treeFormSelectOption}
+                          onPress={() => setShowMadreExterno(!showMadreExterno)}
+                        >
+                          <Ionicons name="add-circle" size={18} color="#ec4899" />
+                          <Text style={[styles.treeFormSelectOptionTextAdd, { color: '#ec4899' }]}>Madre Externa</Text>
+                        </TouchableOpacity>
+                        
+                        {showMadreExterno && (
+                          <View style={styles.treeFormExternalInput}>
+                            <TextInput
+                              style={styles.treeFormInput}
+                              value={formData.madre_externo}
+                              onChangeText={(text) => setFormData({ ...formData, madre_externo: text, madre_id: '' })}
+                              placeholder="Placa de la madre"
+                              placeholderTextColor="#9ca3af"
+                            />
+                            <TouchableOpacity
+                              style={[styles.treeFormConfirmBtn, { backgroundColor: '#ec4899' }]}
+                              onPress={() => {
+                                setShowMadreList(false);
+                                setShowMadreExterno(false);
+                              }}
+                            >
+                              <Text style={styles.treeFormConfirmText}>OK</Text>
+                            </TouchableOpacity>
+                          </View>
+                        )}
+                        
+                        <TouchableOpacity
+                          style={styles.treeFormSelectOption}
+                          onPress={() => {
+                            setFormData({ ...formData, madre_id: '', madre_externo: '' });
+                            setShowMadreList(false);
+                          }}
+                        >
+                          <Ionicons name="close-circle" size={18} color="#9ca3af" />
+                          <Text style={styles.treeFormSelectOptionText}>Ninguna</Text>
+                        </TouchableOpacity>
+                        
+                        {gallinas.filter((g) => g.id !== id).map((gallina) => (
+                          <TouchableOpacity
+                            key={gallina.id}
+                            style={[
+                              styles.treeFormSelectOption,
+                              formData.madre_id === gallina.id && styles.treeFormSelectOptionActive
+                            ]}
+                            onPress={() => {
+                              setFormData({ ...formData, madre_id: gallina.id, madre_externo: '' });
+                              setShowMadreList(false);
+                            }}
+                          >
+                            <Ionicons name="female" size={16} color="#ec4899" />
+                            <Text style={styles.treeFormSelectOptionText}>{gallina.codigo}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+                  </View>
                 </View>
-                <Text style={styles.addParentSubtext}>De otra gallería</Text>
-              </TouchableOpacity>
-              
-              {showMadreExterno && (
-                <View style={styles.externalForm}>
-                  <TextInput
-                    style={styles.externalInput}
-                    value={formData.madre_externo}
-                    onChangeText={(text) => setFormData({ ...formData, madre_externo: text, madre_id: '' })}
-                    placeholder="Placa de la madre"
-                    placeholderTextColor="#707070"
-                  />
-                  <TextInput
-                    style={styles.externalInput}
-                    value={madreExterno}
-                    onChangeText={setMadreExterno}
-                    placeholder="Gallería / Castador (opcional)"
-                    placeholderTextColor="#707070"
-                  />
-                  <TouchableOpacity
-                    style={[styles.confirmExternalButton, { backgroundColor: '#ec4899' }]}
-                    onPress={() => {
-                      if (formData.madre_externo) {
-                        const placaConGalleria = madreExterno 
-                          ? `${formData.madre_externo} (${madreExterno})`
-                          : formData.madre_externo;
-                        setFormData({ ...formData, madre_externo: placaConGalleria, madre_id: '' });
-                      }
-                      setShowMadreList(false);
-                      setShowMadreExterno(false);
-                    }}
-                  >
-                    <Text style={styles.confirmExternalText}>Confirmar</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-              
-              {/* Limpiar selección */}
-              <TouchableOpacity
-                style={styles.selectItem}
-                onPress={() => {
-                  setFormData({ ...formData, madre_id: '', madre_externo: '' });
-                  setMadreExterno('');
-                  setShowMadreList(false);
-                  setShowMadreExterno(false);
-                }}
-              >
-                <Text style={[styles.selectItemText, { color: '#555555' }]}>Ninguna / Desconocida</Text>
-              </TouchableOpacity>
-              
-              {/* Lista de gallinas registradas */}
-              {gallinas.filter((g) => g.id !== id).map((gallina) => (
-                <TouchableOpacity
-                  key={gallina.id}
-                  style={styles.selectItem}
-                  onPress={() => {
-                    setFormData({ ...formData, madre_id: gallina.id, madre_externo: '' });
-                    setMadreExterno('');
-                    setShowMadreList(false);
-                    setShowMadreExterno(false);
-                  }}
-                >
-                  <Text style={styles.selectItemText}>
-                    {gallina.codigo} {gallina.nombre ? `- ${gallina.nombre}` : ''}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
+              </View>
             </View>
           )}
 
