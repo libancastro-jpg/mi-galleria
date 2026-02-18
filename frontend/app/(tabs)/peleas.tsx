@@ -282,11 +282,8 @@ export default function PeleasScreen() {
                     <Text style={styles.parentRank}>{idx + 1}.</Text>
                     <View style={styles.parentInfo}>
                       <Text style={styles.parentCode} numberOfLines={1}>
-                        {madre.codigo}
+                        PL: {madre.codigo}
                       </Text>
-                      {madre.nombre && (
-                        <Text style={styles.parentName} numberOfLines={1}>{madre.nombre}</Text>
-                      )}
                       <Text style={styles.parentHijos}>{madre.hijos_peleados} hijos</Text>
                     </View>
                     <Text style={[styles.parentPercent, { color: madre.porcentaje >= 50 ? '#22c55e' : '#ef4444' }]}>
