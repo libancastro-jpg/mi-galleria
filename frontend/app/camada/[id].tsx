@@ -152,6 +152,29 @@ export default function CamadaFormScreen() {
     }
   };
 
+  const handleDelete = () => {
+    Alert.alert(
+      'Eliminar Camada',
+      '¿Estás seguro de que deseas eliminar esta camada? Esta acción no se puede deshacer.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.delete(`/camadas/${id}`);
+              Alert.alert('Éxito', 'Camada eliminada correctamente');
+              router.back();
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'No se pudo eliminar la camada');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const formatCruceLabel = (cruce: Cruce) => {
     // Obtener información del padre
     let padreLabel = 'Desconocido';
