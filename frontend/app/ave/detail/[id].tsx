@@ -191,6 +191,106 @@ export default function AveDetailScreen() {
     );
   };
 
+  // Nuevo renderizado del árbol genealógico conectado
+  const renderConnectedTree = () => {
+    if (!pedigri) return null;
+
+    const renderTreeNode = (node: any, label: string, isMain: boolean = false) => {
+      if (!node) return (
+        <View style={styles.treeNodeContainer}>
+          <Text style={styles.treeLabel}>{label}</Text>
+          <View style={[styles.treeNode, styles.treeNodeUnknown]}>
+            <Text style={styles.treeNodeUnknownText}>?</Text>
+          </View>
+        </View>
+      );
+
+      return (
+        <TouchableOpacity 
+          style={styles.treeNodeContainer}
+          onPress={() => !node.unknown && node.id !== id && router.push(`/ave/detail/${node.id}`)}
+          disabled={node.unknown || node.id === id}
+        >
+          <Text style={styles.treeLabel}>{label}</Text>
+          <View style={[
+            styles.treeNode, 
+            isMain && styles.treeNodeMain,
+            node.unknown && styles.treeNodeUnknown
+          ]}>
+            {node.foto_principal ? (
+              <Image source={{ uri: node.foto_principal }} style={styles.treePhoto} />
+            ) : (
+              <View style={styles.treePhotoPlaceholder}>
+                <Ionicons
+                  name={node.tipo === 'gallo' ? 'male' : 'female'}
+                  size={isMain ? 24 : 16}
+                  color={node.tipo === 'gallo' ? '#3b82f6' : '#ec4899'}
+                />
+              </View>
+            )}
+            <Text style={[styles.treeCode, isMain && styles.treeCodeMain]} numberOfLines={1}>
+              {node.unknown ? '?' : node.codigo}
+            </Text>
+            {node.nombre && (
+              <Text style={styles.treeName} numberOfLines={1}>{node.nombre}</Text>
+            )}
+          </View>
+        </TouchableOpacity>
+      );
+    };
+
+    return (
+      <View style={styles.treeContainer}>
+        {/* Nivel 0: Ave Principal */}
+        <View style={styles.treeLevel}>
+          {renderTreeNode(pedigri, '', true)}
+        </View>
+
+        {/* Conector vertical */}
+        <View style={styles.treeConnectorVertical} />
+
+        {/* Conector horizontal */}
+        <View style={styles.treeConnectorHorizontal} />
+
+        {/* Nivel 1: Padres */}
+        <View style={styles.treeLevel}>
+          <View style={styles.treeBranch}>
+            {renderTreeNode(pedigri?.padre, 'Padre')}
+          </View>
+          <View style={styles.treeBranch}>
+            {renderTreeNode(pedigri?.madre, 'Madre')}
+          </View>
+        </View>
+
+        {/* Conectores a abuelos */}
+        <View style={styles.treeGrandparentConnectors}>
+          <View style={styles.treeConnectorVerticalSmall} />
+          <View style={styles.treeConnectorVerticalSmall} />
+        </View>
+
+        {/* Conectores horizontales abuelos */}
+        <View style={styles.treeGrandparentHorizontal}>
+          <View style={styles.treeConnectorHorizontalSmall} />
+          <View style={styles.treeConnectorHorizontalSmall} />
+        </View>
+
+        {/* Nivel 2: Abuelos */}
+        <View style={styles.treeLevelGrandparents}>
+          {/* Abuelos paternos */}
+          <View style={styles.treeGrandparentPair}>
+            {renderTreeNode(pedigri?.padre?.padre, 'Abuelo P.')}
+            {renderTreeNode(pedigri?.padre?.madre, 'Abuela P.')}
+          </View>
+          {/* Abuelos maternos */}
+          <View style={styles.treeGrandparentPair}>
+            {renderTreeNode(pedigri?.madre?.padre, 'Abuelo M.')}
+            {renderTreeNode(pedigri?.madre?.madre, 'Abuela M.')}
+          </View>
+        </View>
+      </View>
+    );
+  };
+
   const renderPedigriTab = () => (
     <View style={styles.tabContent}>
       {/* Información del Ave */}
