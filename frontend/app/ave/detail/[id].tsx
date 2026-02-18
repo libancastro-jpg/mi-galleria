@@ -1081,6 +1081,11 @@ const styles = StyleSheet.create({
     height: 20,
     backgroundColor: '#444444',
   },
+  treeConnectorVerticalLong: {
+    width: 2,
+    height: 30,
+    backgroundColor: '#f59e0b',
+  },
   treeConnectorHorizontal: {
     width: 180,
     height: 2,
