@@ -1,77 +1,112 @@
-diff --git a/frontend/app/(tabs)/cruces.tsx b/frontend/app/(tabs)/cruces.tsx
-index 80b69ab..17412f9 100644
---- a/frontend/app/(tabs)/cruces.tsx
-+++ b/frontend/app/(tabs)/cruces.tsx
-@@ -17,6 +17,8 @@ interface Cruce {
-   id: string;
-   padre_id: string;
-   madre_id: string;
-+  padre_externo?: string;
-+  madre_externo?: string;
-   fecha: string;
-   objetivo?: string;
-   estado: string;
-@@ -40,14 +42,30 @@ export default function CrucesScreen() {
-   const fetchData = async () => {
-     try {
-       const params: Record<string, string> = {};
--      if (filterEstado && filterEstado !== 'todos') params.estado = filterEstado;
-+      if (filterEstado && filterEstado !== 'todos' && filterEstado !== 'repetidos') {
-+        params.estado = filterEstado;
-+      }
-       
-       const [crucesData, avesData] = await Promise.all([
-         api.get('/cruces', params),
-         api.get('/aves'),
-       ]);
-       
--      setCruces(crucesData);
-+      // Filtrar cruces repetidos (mismos padres)
-+      let filteredCruces = crucesData;
-+      if (filterEstado === 'repetidos') {
-+        const parejasCount: Record<string, number> = {};
-+        crucesData.forEach((c: Cruce) => {
-+          const key = `${c.padre_id || c.padre_externo}-${c.madre_id || c.madre_externo}`;
-+          parejasCount[key] = (parejasCount[key] || 0) + 1;
-+        });
-+        filteredCruces = crucesData.filter((c: Cruce) => {
-+          const key = `${c.padre_id || c.padre_externo}-${c.madre_id || c.madre_externo}`;
-+          return parejasCount[key] > 1;
-+        });
-+      }
-+      
-+      setCruces(filteredCruces);
-       const avesMap: Record<string, Ave> = {};
-       avesData.forEach((ave: Ave) => {
-         avesMap[ave.id] = ave;
+diff --git a/frontend/app/(tabs)/peleas.tsx b/frontend/app/(tabs)/peleas.tsx
+index 02ec9b3..4fc02dd 100644
+--- a/frontend/app/(tabs)/peleas.tsx
++++ b/frontend/app/(tabs)/peleas.tsx
+@@ -285,8 +285,11 @@ export default function PeleasScreen() {
+                     <Text style={styles.parentRank}>{idx + 1}.</Text>
+                     <View style={styles.parentInfo}>
+                       <Text style={styles.parentCode} numberOfLines={1}>
+-                        {madre.nombre || madre.codigo}
++                        {madre.codigo}
+                       </Text>
++                      {madre.nombre && (
++                        <Text style={styles.parentName} numberOfLines={1}>{madre.nombre}</Text>
++                      )}
+                       <Text style={styles.parentHijos}>{madre.hijos_peleados} hijos</Text>
+                     </View>
+                     <Text style={[styles.parentPercent, { color: madre.porcentaje >= 50 ? '#22c55e' : '#ef4444' }]}>
+@@ -603,6 +606,12 @@ const styles = StyleSheet.create({
+     color: '#1a1a1a',
+     fontWeight: '500',
+   },
++  parentName: {
++    fontSize: 11,
++    color: '#666666',
++    fontWeight: '400',
++    marginTop: 1,
++  },
+   parentHijos: {
+     fontSize: 10,
+     color: '#9ca3af',
 diff --git a/model.patch b/model.patch
-index e716717..e69de29 100644
+index d317871..e69de29 100644
 --- a/model.patch
 +++ b/model.patch
-@@ -1,26 +0,0 @@
--diff --git a/frontend/app/ave/[id].tsx b/frontend/app/ave/[id].tsx
--index 55833fe..a5735a0 100644
----- a/frontend/app/ave/[id].tsx
--+++ b/frontend/app/ave/[id].tsx
--@@ -325,6 +325,7 @@ export default function AveFormScreen() {
--         <ScrollView style={styles.form} contentContainerStyle={styles.formContent}>
--           {/* Photo */}
--           <View style={styles.photoSection}>
--+            <Text style={styles.photoSectionTitle}>Fotos (hasta 3)</Text>
--             <TouchableOpacity
--               style={styles.photoContainer}
--               onPress={() => {
--@@ -984,6 +985,13 @@ const styles = StyleSheet.create({
--     alignItems: 'center',
--     marginBottom: 24,
--   },
--+  photoSectionTitle: {
--+    fontSize: 14,
--+    fontWeight: '500',
--+    color: '#9ca3af',
--+    marginBottom: 12,
--+    textAlign: 'center',
--+  },
--   photoContainer: {
--     width: 120,
--     height: 120,
+@@ -1,77 +0,0 @@
+-diff --git a/frontend/app/(tabs)/cruces.tsx b/frontend/app/(tabs)/cruces.tsx
+-index 80b69ab..17412f9 100644
+---- a/frontend/app/(tabs)/cruces.tsx
+-+++ b/frontend/app/(tabs)/cruces.tsx
+-@@ -17,6 +17,8 @@ interface Cruce {
+-   id: string;
+-   padre_id: string;
+-   madre_id: string;
+-+  padre_externo?: string;
+-+  madre_externo?: string;
+-   fecha: string;
+-   objetivo?: string;
+-   estado: string;
+-@@ -40,14 +42,30 @@ export default function CrucesScreen() {
+-   const fetchData = async () => {
+-     try {
+-       const params: Record<string, string> = {};
+--      if (filterEstado && filterEstado !== 'todos') params.estado = filterEstado;
+-+      if (filterEstado && filterEstado !== 'todos' && filterEstado !== 'repetidos') {
+-+        params.estado = filterEstado;
+-+      }
+-       
+-       const [crucesData, avesData] = await Promise.all([
+-         api.get('/cruces', params),
+-         api.get('/aves'),
+-       ]);
+-       
+--      setCruces(crucesData);
+-+      // Filtrar cruces repetidos (mismos padres)
+-+      let filteredCruces = crucesData;
+-+      if (filterEstado === 'repetidos') {
+-+        const parejasCount: Record<string, number> = {};
+-+        crucesData.forEach((c: Cruce) => {
+-+          const key = `${c.padre_id || c.padre_externo}-${c.madre_id || c.madre_externo}`;
+-+          parejasCount[key] = (parejasCount[key] || 0) + 1;
+-+        });
+-+        filteredCruces = crucesData.filter((c: Cruce) => {
+-+          const key = `${c.padre_id || c.padre_externo}-${c.madre_id || c.madre_externo}`;
+-+          return parejasCount[key] > 1;
+-+        });
+-+      }
+-+      
+-+      setCruces(filteredCruces);
+-       const avesMap: Record<string, Ave> = {};
+-       avesData.forEach((ave: Ave) => {
+-         avesMap[ave.id] = ave;
+-diff --git a/model.patch b/model.patch
+-index e716717..e69de29 100644
+---- a/model.patch
+-+++ b/model.patch
+-@@ -1,26 +0,0 @@
+--diff --git a/frontend/app/ave/[id].tsx b/frontend/app/ave/[id].tsx
+--index 55833fe..a5735a0 100644
+----- a/frontend/app/ave/[id].tsx
+--+++ b/frontend/app/ave/[id].tsx
+--@@ -325,6 +325,7 @@ export default function AveFormScreen() {
+--         <ScrollView style={styles.form} contentContainerStyle={styles.formContent}>
+--           {/* Photo */}
+--           <View style={styles.photoSection}>
+--+            <Text style={styles.photoSectionTitle}>Fotos (hasta 3)</Text>
+--             <TouchableOpacity
+--               style={styles.photoContainer}
+--               onPress={() => {
+--@@ -984,6 +985,13 @@ const styles = StyleSheet.create({
+--     alignItems: 'center',
+--     marginBottom: 24,
+--   },
+--+  photoSectionTitle: {
+--+    fontSize: 14,
+--+    fontWeight: '500',
+--+    color: '#9ca3af',
+--+    marginBottom: 12,
+--+    textAlign: 'center',
+--+  },
+--   photoContainer: {
+--     width: 120,
+--     height: 120,
