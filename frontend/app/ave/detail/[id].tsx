@@ -195,6 +195,22 @@ export default function AveDetailScreen() {
   const renderConnectedTree = () => {
     if (!pedigri) return null;
 
+    // Función para recolectar todos los IDs del árbol y detectar duplicados
+    const collectIds = (node: any, ids: Map<string, number> = new Map()): Map<string, number> => {
+      if (!node || node.unknown) return ids;
+      const currentCount = ids.get(node.id) || 0;
+      ids.set(node.id, currentCount + 1);
+      if (node.padre) collectIds(node.padre, ids);
+      if (node.madre) collectIds(node.madre, ids);
+      return ids;
+    };
+
+    const allIds = collectIds(pedigri);
+    const duplicateIds = new Set<string>();
+    allIds.forEach((count, id) => {
+      if (count > 1) duplicateIds.add(id);
+    });
+
     const renderTreeNode = (node: any, label: string, isMain: boolean = false) => {
       if (!node) return (
         <View style={styles.treeNodeContainer}>
@@ -204,6 +220,8 @@ export default function AveDetailScreen() {
           </View>
         </View>
       );
+
+      const isDuplicate = duplicateIds.has(node.id);
 
       return (
         <TouchableOpacity 
@@ -215,20 +233,26 @@ export default function AveDetailScreen() {
           <View style={[
             styles.treeNode, 
             isMain && styles.treeNodeMain,
-            node.unknown && styles.treeNodeUnknown
+            node.unknown && styles.treeNodeUnknown,
+            isDuplicate && !isMain && styles.treeNodeDuplicate
           ]}>
+            {isDuplicate && !isMain && (
+              <View style={styles.duplicateBadge}>
+                <Ionicons name="git-merge" size={10} color="#fff" />
+              </View>
+            )}
             {node.foto_principal ? (
               <Image source={{ uri: node.foto_principal }} style={styles.treePhoto} />
             ) : (
-              <View style={styles.treePhotoPlaceholder}>
+              <View style={[styles.treePhotoPlaceholder, isDuplicate && !isMain && styles.treePhotoPlaceholderDuplicate]}>
                 <Ionicons
                   name={node.tipo === 'gallo' ? 'male' : 'female'}
                   size={isMain ? 24 : 16}
-                  color={node.tipo === 'gallo' ? '#3b82f6' : '#ec4899'}
+                  color={isDuplicate && !isMain ? '#f59e0b' : (node.tipo === 'gallo' ? '#3b82f6' : '#ec4899')}
                 />
               </View>
             )}
-            <Text style={[styles.treeCode, isMain && styles.treeCodeMain]} numberOfLines={1}>
+            <Text style={[styles.treeCode, isMain && styles.treeCodeMain, isDuplicate && !isMain && styles.treeCodeDuplicate]} numberOfLines={1}>
               {node.unknown ? '?' : node.codigo}
             </Text>
             {node.nombre && (
@@ -239,8 +263,21 @@ export default function AveDetailScreen() {
       );
     };
 
+    // Verificar si hay consanguinidad
+    const hasConsanguinidad = duplicateIds.size > 0;
+
     return (
       <View style={styles.treeContainer}>
+        {/* Alerta de consanguinidad */}
+        {hasConsanguinidad && (
+          <View style={styles.consanguinidadAlert}>
+            <Ionicons name="warning" size={16} color="#f59e0b" />
+            <Text style={styles.consanguinidadText}>
+              Consanguinidad detectada - Aves repetidas marcadas en dorado
+            </Text>
+          </View>
+        )}
+
         {/* Nivel 0: Ave Principal */}
         <View style={styles.treeLevel}>
           {renderTreeNode(pedigri, '', true)}
