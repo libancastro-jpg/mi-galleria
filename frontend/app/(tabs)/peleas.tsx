@@ -604,7 +604,7 @@ const styles = StyleSheet.create({
   parentCode: {
     fontSize: 12,
     color: '#1a1a1a',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   parentName: {
     fontSize: 11,
