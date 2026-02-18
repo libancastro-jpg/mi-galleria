@@ -602,21 +602,59 @@ async def get_pedigri(ave_id: str, generations: int = 5, current_user: dict = De
             if bird.get("padre_id"):
                 result["padre"] = await get_ancestors(bird.get("padre_id"), gen + 1)
             elif bird.get("padre_externo"):
-                result["padre"] = await get_ancestors(None, gen + 1, {
+                padre_ext = await get_ancestors(None, gen + 1, {
                     "codigo": bird.get("padre_externo"),
                     "tipo": "gallo",
                     "galleria": bird.get("padre_galleria")
                 })
+                # Agregar abuelos paternos si existen
+                if gen + 1 < generations:
+                    if bird.get("abuelo_paterno_padre"):
+                        padre_ext["padre"] = {
+                            "codigo": bird.get("abuelo_paterno_padre"),
+                            "galleria": bird.get("abuelo_paterno_padre_galleria"),
+                            "tipo": "gallo",
+                            "externo": True,
+                            "generation": gen + 2
+                        }
+                    if bird.get("abuelo_paterno_madre"):
+                        padre_ext["madre"] = {
+                            "codigo": bird.get("abuelo_paterno_madre"),
+                            "galleria": bird.get("abuelo_paterno_madre_galleria"),
+                            "tipo": "gallina",
+                            "externo": True,
+                            "generation": gen + 2
+                        }
+                result["padre"] = padre_ext
             
             # Verificar si tiene madre_id o madre_externo
             if bird.get("madre_id"):
                 result["madre"] = await get_ancestors(bird.get("madre_id"), gen + 1)
             elif bird.get("madre_externo"):
-                result["madre"] = await get_ancestors(None, gen + 1, {
+                madre_ext = await get_ancestors(None, gen + 1, {
                     "codigo": bird.get("madre_externo"),
                     "tipo": "gallina",
                     "galleria": bird.get("madre_galleria")
                 })
+                # Agregar abuelos maternos si existen
+                if gen + 1 < generations:
+                    if bird.get("abuelo_materno_padre"):
+                        madre_ext["padre"] = {
+                            "codigo": bird.get("abuelo_materno_padre"),
+                            "galleria": bird.get("abuelo_materno_padre_galleria"),
+                            "tipo": "gallo",
+                            "externo": True,
+                            "generation": gen + 2
+                        }
+                    if bird.get("abuelo_materno_madre"):
+                        madre_ext["madre"] = {
+                            "codigo": bird.get("abuelo_materno_madre"),
+                            "galleria": bird.get("abuelo_materno_madre_galleria"),
+                            "tipo": "gallina",
+                            "externo": True,
+                            "generation": gen + 2
+                        }
+                result["madre"] = madre_ext
         
         return result
     
