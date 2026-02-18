@@ -483,20 +483,6 @@ export default function AveDetailScreen() {
         )}
       </View>
     );
-  };>
-          {/* Abuelos paternos */}
-          <View style={styles.treeGrandparentPair}>
-            {renderTreeNode(pedigri?.padre?.padre, 'Abuelo P.')}
-            {renderTreeNode(pedigri?.padre?.madre, 'Abuela P.')}
-          </View>
-          {/* Abuelos maternos */}
-          <View style={styles.treeGrandparentPair}>
-            {renderTreeNode(pedigri?.madre?.padre, 'Abuelo M.')}
-            {renderTreeNode(pedigri?.madre?.madre, 'Abuela M.')}
-          </View>
-        </View>
-      </View>
-    );
   };
 
   const renderPedigriTab = () => (
