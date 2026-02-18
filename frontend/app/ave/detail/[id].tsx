@@ -348,16 +348,143 @@ export default function AveDetailScreen() {
     };
 
     // Renderizar nodo de abuelo con opción de agregar
-    const renderAbueloNode = (node: any, label: string, nodeKey: string) => {
+    const renderAbueloNode = (node: any, label: string, nodeKey: string, parentKey: string, isAbuelo: boolean = true) => {
       const isExpanded = expandedNode === nodeKey;
+      const isEditing = editingAbuelo === nodeKey;
+
+      // Determinar el tipo basado en el label
+      const tipo = label.includes('Abuelo') ? 'gallo' : 'gallina';
 
       if (!node) {
         return (
           <View style={styles.abueloNodeContainer}>
             <Text style={styles.abueloLabel}>{label}</Text>
-            <TouchableOpacity style={styles.abueloAddBtn}>
-              <Ionicons name="add" size={18} color="#9ca3af" />
-            </TouchableOpacity>
+            {isEditing ? (
+              <View style={styles.abueloEditForm}>
+                <TextInput
+                  style={styles.abueloInput}
+                  placeholder="Placa *"
+                  placeholderTextColor="#666"
+                  value={abueloForm.codigo}
+                  onChangeText={(text) => setAbueloForm({...abueloForm, codigo: text})}
+                />
+                <TextInput
+                  style={styles.abueloInput}
+                  placeholder="Gallería"
+                  placeholderTextColor="#666"
+                  value={abueloForm.galleria}
+                  onChangeText={(text) => setAbueloForm({...abueloForm, galleria: text})}
+                />
+                <TextInput
+                  style={styles.abueloInput}
+                  placeholder="Nombre"
+                  placeholderTextColor="#666"
+                  value={abueloForm.nombre}
+                  onChangeText={(text) => setAbueloForm({...abueloForm, nombre: text})}
+                />
+                <TextInput
+                  style={styles.abueloInput}
+                  placeholder="Color"
+                  placeholderTextColor="#666"
+                  value={abueloForm.color}
+                  onChangeText={(text) => setAbueloForm({...abueloForm, color: text})}
+                />
+                <TextInput
+                  style={styles.abueloInput}
+                  placeholder="Línea"
+                  placeholderTextColor="#666"
+                  value={abueloForm.linea}
+                  onChangeText={(text) => setAbueloForm({...abueloForm, linea: text})}
+                />
+                <View style={styles.abueloFormButtons}>
+                  <TouchableOpacity
+                    style={styles.abueloCancelBtn}
+                    onPress={() => {
+                      setEditingAbuelo(null);
+                      setAbueloForm({ codigo: '', galleria: '', nombre: '', color: '', linea: '' });
+                    }}
+                  >
+                    <Text style={styles.abueloCancelBtnText}>Cancelar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.abueloSaveBtn, !abueloForm.codigo && styles.abueloSaveBtnDisabled]}
+                    disabled={!abueloForm.codigo}
+                    onPress={async () => {
+                      if (!abueloForm.codigo) return;
+                      try {
+                        // Guardar el abuelo en el padre correspondiente
+                        const updateData: any = {};
+                        if (parentKey === 'padre') {
+                          if (nodeKey === 'abuelo_p') {
+                            updateData.abuelo_paterno_padre = abueloForm.codigo;
+                            updateData.abuelo_paterno_padre_galleria = abueloForm.galleria;
+                          } else {
+                            updateData.abuelo_paterno_madre = abueloForm.codigo;
+                            updateData.abuelo_paterno_madre_galleria = abueloForm.galleria;
+                          }
+                        } else {
+                          if (nodeKey === 'abuelo_m') {
+                            updateData.abuelo_materno_padre = abueloForm.codigo;
+                            updateData.abuelo_materno_padre_galleria = abueloForm.galleria;
+                          } else {
+                            updateData.abuelo_materno_madre = abueloForm.codigo;
+                            updateData.abuelo_materno_madre_galleria = abueloForm.galleria;
+                          }
+                        }
+                        
+                        await api.put(`/aves/${id}`, updateData);
+                        
+                        // Actualizar el pedigri localmente
+                        const newAbuelo = {
+                          codigo: abueloForm.codigo,
+                          galleria: abueloForm.galleria,
+                          nombre: abueloForm.nombre,
+                          color: abueloForm.color,
+                          linea: abueloForm.linea,
+                          tipo: tipo,
+                          externo: true
+                        };
+                        
+                        const newPedigri = { ...pedigri };
+                        if (parentKey === 'padre' && newPedigri.padre) {
+                          if (nodeKey === 'abuelo_p') {
+                            newPedigri.padre.padre = newAbuelo;
+                          } else {
+                            newPedigri.padre.madre = newAbuelo;
+                          }
+                        } else if (parentKey === 'madre' && newPedigri.madre) {
+                          if (nodeKey === 'abuelo_m') {
+                            newPedigri.madre.padre = newAbuelo;
+                          } else {
+                            newPedigri.madre.madre = newAbuelo;
+                          }
+                        }
+                        setPedigri(newPedigri);
+                        
+                        setEditingAbuelo(null);
+                        setAbueloForm({ codigo: '', galleria: '', nombre: '', color: '', linea: '' });
+                        Alert.alert('Éxito', 'Abuelo agregado correctamente');
+                      } catch (error: any) {
+                        Alert.alert('Error', error.message || 'No se pudo guardar');
+                      }
+                    }}
+                  >
+                    <Text style={styles.abueloSaveBtnText}>Guardar</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <TouchableOpacity 
+                style={styles.abueloAddBtn}
+                onPress={() => {
+                  setAbueloForm({ codigo: '', galleria: '', nombre: '', color: '', linea: '' });
+                  setEditingAbuelo(nodeKey);
+                }}
+              >
+                <Ionicons name="add" size={18} color="#9ca3af" />
+                <Text style={styles.abueloAddText}>Agregar</Text>
+              </TouchableOpacity>
+            )}
           </View>
         );
       }
@@ -383,6 +510,7 @@ export default function AveDetailScreen() {
             <Text style={[styles.abueloCode, isDuplicate && { color: '#f59e0b' }]} numberOfLines={1}>
               {node.codigo}
             </Text>
+            <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={12} color="#9ca3af" />
           </TouchableOpacity>
 
           {/* Panel expandido para abuelo */}
