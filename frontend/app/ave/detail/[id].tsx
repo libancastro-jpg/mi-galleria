@@ -223,12 +223,13 @@ export default function AveDetailScreen() {
       );
 
       const isDuplicate = duplicateIds.has(node.id);
+      const isExternal = node.externo || (!node.id && node.codigo);
 
       return (
         <TouchableOpacity 
           style={[styles.treeNodeContainer, isParent && styles.treeNodeContainerParent]}
-          onPress={() => !node.unknown && node.id !== id && router.push(`/ave/detail/${node.id}`)}
-          disabled={node.unknown || node.id === id}
+          onPress={() => !node.unknown && !isExternal && node.id !== id && router.push(`/ave/detail/${node.id}`)}
+          disabled={node.unknown || isExternal || node.id === id}
         >
           <Text style={[styles.treeLabel, isParent && styles.treeLabelParent]}>{label}</Text>
           <View style={[
@@ -258,6 +259,7 @@ export default function AveDetailScreen() {
                 />
               </View>
             )}
+            {/* Placa */}
             <Text style={[
               styles.treeCode, 
               isMain && styles.treeCodeMain, 
@@ -266,12 +268,28 @@ export default function AveDetailScreen() {
             ]} numberOfLines={1}>
               {node.unknown ? '?' : `PL: ${node.codigo}`}
             </Text>
+            {/* Nombre */}
             {node.nombre && (
               <Text style={[styles.treeName, isParent && styles.treeNameParent]} numberOfLines={1}>{node.nombre}</Text>
             )}
+            {/* Gallería - solo para padres */}
+            {isParent && node.galleria && (
+              <View style={styles.treeGalleriaContainer}>
+                <Ionicons name="business-outline" size={10} color="#9ca3af" />
+                <Text style={styles.treeGalleriaText}>{node.galleria}</Text>
+              </View>
+            )}
+            {/* Indicador de externo */}
+            {isParent && isExternal && (
+              <View style={styles.treeExternalBadge}>
+                <Text style={styles.treeExternalText}>Externo</Text>
+              </View>
+            )}
+            {/* Color */}
             {isParent && node.color && (
               <Text style={styles.treeParentDetail}>{node.color}</Text>
             )}
+            {/* Línea */}
             {isParent && node.linea && (
               <Text style={styles.treeParentDetail}>{node.linea}</Text>
             )}
