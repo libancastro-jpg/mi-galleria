@@ -295,13 +295,8 @@ export default function AveDetailScreen() {
           </View>
         )}
 
-        {/* Nivel 0: Ave Principal */}
-        <View style={styles.treeLevel}>
-          {renderTreeNode(pedigri, '', true)}
-        </View>
-
-        {/* Conector vertical */}
-        <View style={styles.treeConnectorVertical} />
+        {/* Conector vertical inicial (sin cuadro del ave principal) */}
+        <View style={styles.treeConnectorVerticalLong} />
 
         {/* Conector horizontal */}
         <View style={styles.treeConnectorHorizontal} />
