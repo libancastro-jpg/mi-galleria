@@ -399,11 +399,11 @@ export default function AveDetailScreen() {
         </>
       )}
 
-      {/* Árbol de Pedigrí */}
+      {/* Árbol de Pedigrí Conectado */}
       <Text style={styles.sectionTitle}>Árbol Genealógico</Text>
-      <ScrollView horizontal style={styles.pedigriScroll}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pedigriScroll}>
         <View style={styles.pedigriContainer}>
-          {pedigri ? renderPedigriNode(pedigri) : (
+          {pedigri ? renderConnectedTree() : (
             <Text style={styles.emptyText}>Sin información de pedigrí</Text>
           )}
         </View>
