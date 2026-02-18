@@ -596,4 +596,22 @@ const styles = StyleSheet.create({
     backgroundColor: '#e0e0e0',
     marginHorizontal: 8,
   },
+  parentEmptyText: {
+    fontSize: 11,
+    color: '#9ca3af',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    paddingVertical: 8,
+  },
+  parentEmptyContainer: {
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+  },
+  parentEmptyMessage: {
+    fontSize: 12,
+    color: '#9ca3af',
+    textAlign: 'center',
+    fontStyle: 'italic',
+    lineHeight: 18,
+  },
 });
