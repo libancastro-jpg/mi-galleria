@@ -224,17 +224,24 @@ export default function CruceFormScreen() {
             <Ionicons name="arrow-back" size={24} color="#d4a017" />
           </TouchableOpacity>
           <Text style={styles.title}>{isEdit ? 'Editar Cruce' : 'Nuevo Cruce'}</Text>
-          <TouchableOpacity
-            onPress={handleSave}
-            disabled={saving}
-            style={styles.saveButton}
-          >
-            {saving ? (
-              <ActivityIndicator size="small" color="#000" />
-            ) : (
-              <Text style={styles.saveButtonText}>Guardar</Text>
+          <View style={styles.headerActions}>
+            {isEdit && (
+              <TouchableOpacity onPress={handleDelete} style={styles.deleteButton}>
+                <Ionicons name="trash-outline" size={22} color="#ef4444" />
+              </TouchableOpacity>
             )}
-          </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleSave}
+              disabled={saving}
+              style={styles.saveButton}
+            >
+              {saving ? (
+                <ActivityIndicator size="small" color="#000" />
+              ) : (
+                <Text style={styles.saveButtonText}>Guardar</Text>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
 
         <ScrollView style={styles.form} contentContainerStyle={styles.formContent}>
