@@ -61,6 +61,16 @@ export default function AveDetailScreen() {
   const [madre, setMadre] = useState<Ave | null>(null);
   const [expandedNode, setExpandedNode] = useState<string | null>(null);
   const [showAbuelos, setShowAbuelos] = useState(false);
+  
+  // Estado para agregar abuelos
+  const [editingAbuelo, setEditingAbuelo] = useState<string | null>(null);
+  const [abueloForm, setAbueloForm] = useState({
+    codigo: '',
+    galleria: '',
+    nombre: '',
+    color: '',
+    linea: '',
+  });
 
   const tabs = [
     { key: 'pedigri', label: 'Pedigrí', icon: 'git-branch' },
