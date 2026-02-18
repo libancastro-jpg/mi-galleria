@@ -986,51 +986,73 @@ export default function AveFormScreen() {
                   </View>
                 </View>
 
-                {/* Sección de Abuelos Paternos */}
+                {/* Sección de Abuelos Paternos - Árbol */}
                 {showAbuelosPaternos && (formData.padre_id || formData.padre_externo) && (
-                  <View style={styles.abuelosSection}>
-                    <Text style={styles.abuelosSectionTitle}>Abuelos Paternos</Text>
-                    <View style={styles.abuelosRow}>
-                      <View style={styles.abueloItem}>
-                        <Text style={styles.abueloLabel}>Abuelo ♂</Text>
-                        <TextInput
-                          style={styles.abueloInput}
-                          placeholder="Placa"
-                          placeholderTextColor="#9ca3af"
-                        />
+                  <View style={styles.abuelosTreeSection}>
+                    <View style={styles.abuelosTreeConnectorFromParent} />
+                    <View style={styles.abuelosTreeHorizontal} />
+                    <View style={styles.abuelosTreeRow}>
+                      <View style={styles.abueloTreeItem}>
+                        <Text style={styles.abueloTreeLabel}>Abuelo ♂</Text>
+                        <View style={styles.abueloTreeNode}>
+                          <View style={[styles.abueloTreeIcon, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
+                            <Ionicons name="male" size={16} color="#3b82f6" />
+                          </View>
+                          <TextInput
+                            style={styles.abueloTreeInput}
+                            placeholder="Placa"
+                            placeholderTextColor="#9ca3af"
+                          />
+                        </View>
                       </View>
-                      <View style={styles.abueloItem}>
-                        <Text style={styles.abueloLabel}>Abuela ♀</Text>
-                        <TextInput
-                          style={styles.abueloInput}
-                          placeholder="Placa"
-                          placeholderTextColor="#9ca3af"
-                        />
+                      <View style={styles.abueloTreeItem}>
+                        <Text style={styles.abueloTreeLabel}>Abuela ♀</Text>
+                        <View style={styles.abueloTreeNode}>
+                          <View style={[styles.abueloTreeIcon, { backgroundColor: 'rgba(236, 72, 153, 0.15)' }]}>
+                            <Ionicons name="female" size={16} color="#ec4899" />
+                          </View>
+                          <TextInput
+                            style={styles.abueloTreeInput}
+                            placeholder="Placa"
+                            placeholderTextColor="#9ca3af"
+                          />
+                        </View>
                       </View>
                     </View>
                   </View>
                 )}
 
-                {/* Sección de Abuelos Maternos */}
+                {/* Sección de Abuelos Maternos - Árbol */}
                 {showAbuelosMaternos && (formData.madre_id || formData.madre_externo) && (
-                  <View style={styles.abuelosSection}>
-                    <Text style={styles.abuelosSectionTitle}>Abuelos Maternos</Text>
-                    <View style={styles.abuelosRow}>
-                      <View style={styles.abueloItem}>
-                        <Text style={styles.abueloLabel}>Abuelo ♂</Text>
-                        <TextInput
-                          style={styles.abueloInput}
-                          placeholder="Placa"
-                          placeholderTextColor="#9ca3af"
-                        />
+                  <View style={styles.abuelosTreeSection}>
+                    <View style={styles.abuelosTreeConnectorFromParent} />
+                    <View style={styles.abuelosTreeHorizontal} />
+                    <View style={styles.abuelosTreeRow}>
+                      <View style={styles.abueloTreeItem}>
+                        <Text style={styles.abueloTreeLabel}>Abuelo ♂</Text>
+                        <View style={styles.abueloTreeNode}>
+                          <View style={[styles.abueloTreeIcon, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
+                            <Ionicons name="male" size={16} color="#3b82f6" />
+                          </View>
+                          <TextInput
+                            style={styles.abueloTreeInput}
+                            placeholder="Placa"
+                            placeholderTextColor="#9ca3af"
+                          />
+                        </View>
                       </View>
-                      <View style={styles.abueloItem}>
-                        <Text style={styles.abueloLabel}>Abuela ♀</Text>
-                        <TextInput
-                          style={styles.abueloInput}
-                          placeholder="Placa"
-                          placeholderTextColor="#9ca3af"
-                        />
+                      <View style={styles.abueloTreeItem}>
+                        <Text style={styles.abueloTreeLabel}>Abuela ♀</Text>
+                        <View style={styles.abueloTreeNode}>
+                          <View style={[styles.abueloTreeIcon, { backgroundColor: 'rgba(236, 72, 153, 0.15)' }]}>
+                            <Ionicons name="female" size={16} color="#ec4899" />
+                          </View>
+                          <TextInput
+                            style={styles.abueloTreeInput}
+                            placeholder="Placa"
+                            placeholderTextColor="#9ca3af"
+                          />
+                        </View>
                       </View>
                     </View>
                   </View>
