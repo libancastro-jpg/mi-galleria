@@ -198,18 +198,13 @@ export default function AveDetailScreen() {
     if (!pedigri) return null;
 
     // Función para recolectar todos los IDs/códigos del árbol y detectar duplicados
-    // Solo considera aves con ID válido o código externo válido
     const collectIds = (node: any, ids: Map<string, number> = new Map()): Map<string, number> => {
       if (!node || node.unknown) return ids;
-      
-      // Usar ID si existe, o código si es externo
       const identifier = node.id || (node.externo && node.codigo ? `ext_${node.codigo}` : null);
-      
       if (identifier) {
         const currentCount = ids.get(identifier) || 0;
         ids.set(identifier, currentCount + 1);
       }
-      
       if (node.padre) collectIds(node.padre, ids);
       if (node.madre) collectIds(node.madre, ids);
       return ids;
@@ -218,43 +213,43 @@ export default function AveDetailScreen() {
     const allIds = collectIds(pedigri);
     const duplicateIds = new Set<string>();
     allIds.forEach((count, identifier) => {
-      // Solo marcar como duplicado si aparece más de una vez y tiene un identificador válido
-      if (count > 1 && identifier) {
-        duplicateIds.add(identifier);
-      }
+      if (count > 1 && identifier) duplicateIds.add(identifier);
     });
 
-    const renderTreeNode = (node: any, label: string, isMain: boolean = false, isParent: boolean = false) => {
-      if (!node) return (
-        <View style={[styles.treeNodeContainer, isParent && styles.treeNodeContainerParent]}>
-          <Text style={[styles.treeLabel, isParent && styles.treeLabelParent]}>{label}</Text>
-          <View style={[styles.treeNode, styles.treeNodeUnknown, isParent && styles.treeNodeParent]}>
-            <Text style={styles.treeNodeUnknownText}>?</Text>
-            <Text style={styles.treeNodeUnknownSubtext}>Desconocido</Text>
-          </View>
-        </View>
-      );
+    const hasConsanguinidad = duplicateIds.size > 0;
 
-      // Determinar el identificador para verificar duplicados
-      const nodeIdentifier = node.id || (node.externo && node.codigo ? `ext_${node.codigo}` : null);
+    // Renderizar nodo expandible
+    const renderExpandableNode = (node: any, label: string, nodeKey: string, isParent: boolean = false) => {
+      const isExpanded = expandedNode === nodeKey;
+      const nodeIdentifier = node?.id || (node?.externo && node?.codigo ? `ext_${node?.codigo}` : null);
       const isDuplicate = nodeIdentifier ? duplicateIds.has(nodeIdentifier) : false;
-      const isExternal = node.externo || (!node.id && node.codigo);
+      const isExternal = node?.externo || (!node?.id && node?.codigo);
+
+      if (!node) {
+        return (
+          <View style={[styles.treeNodeContainer, isParent && styles.treeNodeContainerParent]}>
+            <Text style={[styles.treeLabel, isParent && styles.treeLabelParent]}>{label}</Text>
+            <View style={[styles.treeNode, styles.treeNodeUnknown, isParent && styles.treeNodeParent]}>
+              <Text style={styles.treeNodeUnknownText}>?</Text>
+              <Text style={styles.treeNodeUnknownSubtext}>Desconocido</Text>
+            </View>
+          </View>
+        );
+      }
 
       return (
-        <TouchableOpacity 
-          style={[styles.treeNodeContainer, isParent && styles.treeNodeContainerParent]}
-          onPress={() => !node.unknown && !isExternal && node.id !== id && router.push(`/ave/detail/${node.id}`)}
-          disabled={node.unknown || isExternal || node.id === id}
-        >
+        <View style={[styles.treeNodeContainer, isParent && styles.treeNodeContainerParent]}>
           <Text style={[styles.treeLabel, isParent && styles.treeLabelParent]}>{label}</Text>
-          <View style={[
-            styles.treeNode, 
-            isMain && styles.treeNodeMain,
-            isParent && styles.treeNodeParent,
-            node.unknown && styles.treeNodeUnknown,
-            isDuplicate && !isMain && styles.treeNodeDuplicate
-          ]}>
-            {isDuplicate && !isMain && (
+          <TouchableOpacity
+            style={[
+              styles.treeNode,
+              isParent && styles.treeNodeParent,
+              isDuplicate && styles.treeNodeDuplicate,
+              isExpanded && styles.treeNodeExpanded
+            ]}
+            onPress={() => setExpandedNode(isExpanded ? null : nodeKey)}
+          >
+            {isDuplicate && (
               <View style={styles.duplicateBadge}>
                 <Ionicons name="git-merge" size={10} color="#fff" />
               </View>
@@ -263,58 +258,155 @@ export default function AveDetailScreen() {
               <Image source={{ uri: node.foto_principal }} style={[styles.treePhoto, isParent && styles.treePhotoParent]} />
             ) : (
               <View style={[
-                styles.treePhotoPlaceholder, 
+                styles.treePhotoPlaceholder,
                 isParent && styles.treePhotoPlaceholderParent,
-                isDuplicate && !isMain && styles.treePhotoPlaceholderDuplicate
+                isDuplicate && styles.treePhotoPlaceholderDuplicate
               ]}>
                 <Ionicons
                   name={node.tipo === 'gallo' ? 'male' : 'female'}
-                  size={isMain ? 28 : (isParent ? 24 : 18)}
-                  color={isDuplicate && !isMain ? '#f59e0b' : (node.tipo === 'gallo' ? '#3b82f6' : '#ec4899')}
+                  size={isParent ? 24 : 18}
+                  color={isDuplicate ? '#f59e0b' : (node.tipo === 'gallo' ? '#3b82f6' : '#ec4899')}
                 />
               </View>
             )}
-            {/* Placa */}
             <Text style={[
-              styles.treeCode, 
-              isMain && styles.treeCodeMain, 
+              styles.treeCode,
               isParent && styles.treeCodeParent,
-              isDuplicate && !isMain && styles.treeCodeDuplicate
+              isDuplicate && styles.treeCodeDuplicate
             ]} numberOfLines={1}>
-              {node.unknown ? '?' : `PL: ${node.codigo}`}
+              PL: {node.codigo}
             </Text>
-            {/* Nombre */}
-            {node.nombre && (
-              <Text style={[styles.treeName, isParent && styles.treeNameParent]} numberOfLines={1}>{node.nombre}</Text>
-            )}
-            {/* Gallería - solo para padres */}
-            {isParent && node.galleria && (
-              <View style={styles.treeGalleriaContainer}>
-                <Ionicons name="business-outline" size={10} color="#9ca3af" />
-                <Text style={styles.treeGalleriaText}>{node.galleria}</Text>
+            <Ionicons
+              name={isExpanded ? 'chevron-up' : 'chevron-down'}
+              size={14}
+              color="#9ca3af"
+              style={{ marginTop: 4 }}
+            />
+          </TouchableOpacity>
+
+          {/* Panel expandido con información detallada */}
+          {isExpanded && (
+            <View style={styles.expandedPanel}>
+              {node.nombre && (
+                <View style={styles.expandedRow}>
+                  <Text style={styles.expandedLabel}>Nombre:</Text>
+                  <Text style={styles.expandedValue}>{node.nombre}</Text>
+                </View>
+              )}
+              <View style={styles.expandedRow}>
+                <Text style={styles.expandedLabel}>Placa:</Text>
+                <Text style={styles.expandedValue}>{node.codigo}</Text>
               </View>
-            )}
-            {/* Indicador de externo */}
-            {isParent && isExternal && (
-              <View style={styles.treeExternalBadge}>
-                <Text style={styles.treeExternalText}>Externo</Text>
-              </View>
-            )}
-            {/* Color */}
-            {isParent && node.color && (
-              <Text style={styles.treeParentDetail}>{node.color}</Text>
-            )}
-            {/* Línea */}
-            {isParent && node.linea && (
-              <Text style={styles.treeParentDetail}>{node.linea}</Text>
-            )}
-          </View>
-        </TouchableOpacity>
+              {node.galleria && (
+                <View style={styles.expandedRow}>
+                  <Text style={styles.expandedLabel}>Gallería:</Text>
+                  <Text style={styles.expandedValue}>{node.galleria}</Text>
+                </View>
+              )}
+              {node.color && (
+                <View style={styles.expandedRow}>
+                  <Text style={styles.expandedLabel}>Color:</Text>
+                  <Text style={styles.expandedValue}>{node.color}</Text>
+                </View>
+              )}
+              {node.linea && (
+                <View style={styles.expandedRow}>
+                  <Text style={styles.expandedLabel}>Línea:</Text>
+                  <Text style={styles.expandedValue}>{node.linea}</Text>
+                </View>
+              )}
+              {isExternal && (
+                <View style={styles.expandedExternalBadge}>
+                  <Ionicons name="globe-outline" size={12} color="#f59e0b" />
+                  <Text style={styles.expandedExternalText}>Ave Externa</Text>
+                </View>
+              )}
+              {/* Botón para ver detalle completo si no es externo */}
+              {!isExternal && node.id && node.id !== id && (
+                <TouchableOpacity
+                  style={styles.expandedViewBtn}
+                  onPress={() => router.push(`/ave/detail/${node.id}`)}
+                >
+                  <Text style={styles.expandedViewBtnText}>Ver Perfil Completo</Text>
+                  <Ionicons name="arrow-forward" size={14} color="#f59e0b" />
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+        </View>
       );
     };
 
-    // Verificar si hay consanguinidad
-    const hasConsanguinidad = duplicateIds.size > 0;
+    // Renderizar nodo de abuelo con opción de agregar
+    const renderAbueloNode = (node: any, label: string, nodeKey: string) => {
+      const isExpanded = expandedNode === nodeKey;
+
+      if (!node) {
+        return (
+          <View style={styles.abueloNodeContainer}>
+            <Text style={styles.abueloLabel}>{label}</Text>
+            <TouchableOpacity style={styles.abueloAddBtn}>
+              <Ionicons name="add" size={18} color="#9ca3af" />
+            </TouchableOpacity>
+          </View>
+        );
+      }
+
+      const nodeIdentifier = node.id || (node.externo && node.codigo ? `ext_${node.codigo}` : null);
+      const isDuplicate = nodeIdentifier ? duplicateIds.has(nodeIdentifier) : false;
+      const isExternal = node.externo || (!node.id && node.codigo);
+
+      return (
+        <View style={styles.abueloNodeContainer}>
+          <Text style={styles.abueloLabel}>{label}</Text>
+          <TouchableOpacity
+            style={[styles.abueloNode, isDuplicate && styles.abueloNodeDuplicate]}
+            onPress={() => setExpandedNode(isExpanded ? null : nodeKey)}
+          >
+            <View style={[styles.abueloIcon, { backgroundColor: node.tipo === 'gallo' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(236, 72, 153, 0.15)' }]}>
+              <Ionicons
+                name={node.tipo === 'gallo' ? 'male' : 'female'}
+                size={14}
+                color={isDuplicate ? '#f59e0b' : (node.tipo === 'gallo' ? '#3b82f6' : '#ec4899')}
+              />
+            </View>
+            <Text style={[styles.abueloCode, isDuplicate && { color: '#f59e0b' }]} numberOfLines={1}>
+              {node.codigo}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Panel expandido para abuelo */}
+          {isExpanded && (
+            <View style={styles.abueloExpandedPanel}>
+              {node.nombre && (
+                <Text style={styles.abueloExpandedText}>📛 {node.nombre}</Text>
+              )}
+              <Text style={styles.abueloExpandedText}>🏷️ PL: {node.codigo}</Text>
+              {node.galleria && (
+                <Text style={styles.abueloExpandedText}>🏢 {node.galleria}</Text>
+              )}
+              {node.color && (
+                <Text style={styles.abueloExpandedText}>🎨 {node.color}</Text>
+              )}
+              {node.linea && (
+                <Text style={styles.abueloExpandedText}>🧬 {node.linea}</Text>
+              )}
+              {isExternal && (
+                <Text style={styles.abueloExpandedExternal}>🌐 Externo</Text>
+              )}
+              {!isExternal && node.id && node.id !== id && (
+                <TouchableOpacity
+                  style={styles.abueloViewBtn}
+                  onPress={() => router.push(`/ave/detail/${node.id}`)}
+                >
+                  <Text style={styles.abueloViewBtnText}>Ver Perfil</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+        </View>
+      );
+    };
 
     return (
       <View style={styles.treeContainer}>
@@ -328,7 +420,7 @@ export default function AveDetailScreen() {
           </View>
         )}
 
-        {/* Conector vertical inicial (sin cuadro del ave principal) */}
+        {/* Conector vertical inicial */}
         <View style={styles.treeConnectorVerticalLong} />
 
         {/* Conector horizontal */}
@@ -337,27 +429,61 @@ export default function AveDetailScreen() {
         {/* Nivel 1: Padres */}
         <View style={styles.treeLevel}>
           <View style={styles.treeBranch}>
-            {renderTreeNode(pedigri?.padre, 'Padre', false, true)}
+            {renderExpandableNode(pedigri?.padre, 'Padre', 'padre', true)}
           </View>
           <View style={styles.treeBranch}>
-            {renderTreeNode(pedigri?.madre, 'Madre', false, true)}
+            {renderExpandableNode(pedigri?.madre, 'Madre', 'madre', true)}
           </View>
         </View>
 
-        {/* Conectores a abuelos */}
-        <View style={styles.treeGrandparentConnectors}>
-          <View style={styles.treeConnectorVerticalSmall} />
-          <View style={styles.treeConnectorVerticalSmall} />
-        </View>
+        {/* Botón para mostrar/ocultar abuelos */}
+        <TouchableOpacity
+          style={styles.toggleAbuelosBtn}
+          onPress={() => setShowAbuelos(!showAbuelos)}
+        >
+          <Ionicons
+            name={showAbuelos ? 'chevron-up-circle' : 'add-circle'}
+            size={24}
+            color="#f59e0b"
+          />
+          <Text style={styles.toggleAbuelosText}>
+            {showAbuelos ? 'Ocultar Abuelos' : 'Ver Abuelos'}
+          </Text>
+        </TouchableOpacity>
 
-        {/* Conectores horizontales abuelos */}
-        <View style={styles.treeGrandparentHorizontal}>
-          <View style={styles.treeConnectorHorizontalSmall} />
-          <View style={styles.treeConnectorHorizontalSmall} />
-        </View>
+        {/* Nivel 2: Abuelos (desplegable) */}
+        {showAbuelos && (
+          <View style={styles.abuelosContainer}>
+            {/* Conectores a abuelos */}
+            <View style={styles.treeGrandparentConnectors}>
+              <View style={styles.treeConnectorVerticalSmall} />
+              <View style={styles.treeConnectorVerticalSmall} />
+            </View>
 
-        {/* Nivel 2: Abuelos */}
-        <View style={styles.treeLevelGrandparents}>
+            {/* Conectores horizontales abuelos */}
+            <View style={styles.treeGrandparentHorizontal}>
+              <View style={styles.treeConnectorHorizontalSmall} />
+              <View style={styles.treeConnectorHorizontalSmall} />
+            </View>
+
+            {/* Abuelos */}
+            <View style={styles.treeLevelGrandparents}>
+              {/* Abuelos paternos */}
+              <View style={styles.treeGrandparentPair}>
+                {renderAbueloNode(pedigri?.padre?.padre, 'Abuelo P.', 'abuelo_p')}
+                {renderAbueloNode(pedigri?.padre?.madre, 'Abuela P.', 'abuela_p')}
+              </View>
+              {/* Abuelos maternos */}
+              <View style={styles.treeGrandparentPair}>
+                {renderAbueloNode(pedigri?.madre?.padre, 'Abuelo M.', 'abuelo_m')}
+                {renderAbueloNode(pedigri?.madre?.madre, 'Abuela M.', 'abuela_m')}
+              </View>
+            </View>
+          </View>
+        )}
+      </View>
+    );
+  };>
           {/* Abuelos paternos */}
           <View style={styles.treeGrandparentPair}>
             {renderTreeNode(pedigri?.padre?.padre, 'Abuelo P.')}
