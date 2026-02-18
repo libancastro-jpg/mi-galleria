@@ -584,7 +584,7 @@ const styles = StyleSheet.create({
   parentItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 3,
+    paddingVertical: 4,
     paddingHorizontal: 4,
   },
   parentRank: {
@@ -592,11 +592,18 @@ const styles = StyleSheet.create({
     color: '#9ca3af',
     width: 16,
   },
-  parentCode: {
+  parentInfo: {
     flex: 1,
+  },
+  parentCode: {
     fontSize: 12,
     color: '#1a1a1a',
     fontWeight: '500',
+  },
+  parentHijos: {
+    fontSize: 10,
+    color: '#9ca3af',
+    marginTop: 1,
   },
   parentPercent: {
     fontSize: 12,
