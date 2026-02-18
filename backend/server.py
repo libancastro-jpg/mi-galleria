@@ -553,8 +553,23 @@ async def delete_ave(ave_id: str, current_user: dict = Depends(get_current_user)
 async def get_pedigri(ave_id: str, generations: int = 5, current_user: dict = Depends(get_current_user)):
     """Get pedigree tree up to 5 generations"""
     
-    async def get_ancestors(bird_id: str, gen: int) -> dict:
-        if gen > generations or not bird_id:
+    async def get_ancestors(bird_id: str, gen: int, externo_info: dict = None) -> dict:
+        if gen > generations:
+            return None
+        
+        # Si es un padre externo (solo tiene placa, no ID en la base de datos)
+        if externo_info:
+            return {
+                "id": None,
+                "codigo": externo_info.get("codigo"),
+                "nombre": externo_info.get("nombre"),
+                "tipo": externo_info.get("tipo", "gallo"),
+                "galleria": externo_info.get("galleria"),
+                "externo": True,
+                "generation": gen
+            }
+        
+        if not bird_id:
             return None
         
         bird = await db.aves.find_one({"_id": ObjectId(bird_id), "user_id": current_user["id"]})
@@ -568,13 +583,31 @@ async def get_pedigri(ave_id: str, generations: int = 5, current_user: dict = De
             "tipo": bird.get("tipo"),
             "color": bird.get("color"),
             "linea": bird.get("linea"),
+            "galleria": bird.get("galleria"),
             "foto_principal": bird.get("foto_principal"),
             "generation": gen
         }
         
         if gen < generations:
-            result["padre"] = await get_ancestors(bird.get("padre_id"), gen + 1)
-            result["madre"] = await get_ancestors(bird.get("madre_id"), gen + 1)
+            # Verificar si tiene padre_id o padre_externo
+            if bird.get("padre_id"):
+                result["padre"] = await get_ancestors(bird.get("padre_id"), gen + 1)
+            elif bird.get("padre_externo"):
+                result["padre"] = await get_ancestors(None, gen + 1, {
+                    "codigo": bird.get("padre_externo"),
+                    "tipo": "gallo",
+                    "galleria": bird.get("padre_galleria")
+                })
+            
+            # Verificar si tiene madre_id o madre_externo
+            if bird.get("madre_id"):
+                result["madre"] = await get_ancestors(bird.get("madre_id"), gen + 1)
+            elif bird.get("madre_externo"):
+                result["madre"] = await get_ancestors(None, gen + 1, {
+                    "codigo": bird.get("madre_externo"),
+                    "tipo": "gallina",
+                    "galleria": bird.get("madre_galleria")
+                })
         
         return result
     
