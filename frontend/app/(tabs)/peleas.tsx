@@ -247,9 +247,12 @@ export default function PeleasScreen() {
                     onPress={() => router.push(`/ave/detail/${padre.id}`)}
                   >
                     <Text style={styles.parentRank}>{idx + 1}.</Text>
-                    <Text style={styles.parentCode} numberOfLines={1}>
-                      {padre.nombre || padre.codigo}
-                    </Text>
+                    <View style={styles.parentInfo}>
+                      <Text style={styles.parentCode} numberOfLines={1}>
+                        {padre.nombre || padre.codigo}
+                      </Text>
+                      <Text style={styles.parentHijos}>{padre.hijos_peleados} hijos</Text>
+                    </View>
                     <Text style={[styles.parentPercent, { color: padre.porcentaje >= 50 ? '#22c55e' : '#ef4444' }]}>
                       {padre.porcentaje}%
                     </Text>
@@ -277,9 +280,12 @@ export default function PeleasScreen() {
                     onPress={() => router.push(`/ave/detail/${madre.id}`)}
                   >
                     <Text style={styles.parentRank}>{idx + 1}.</Text>
-                    <Text style={styles.parentCode} numberOfLines={1}>
-                      {madre.nombre || madre.codigo}
-                    </Text>
+                    <View style={styles.parentInfo}>
+                      <Text style={styles.parentCode} numberOfLines={1}>
+                        {madre.nombre || madre.codigo}
+                      </Text>
+                      <Text style={styles.parentHijos}>{madre.hijos_peleados} hijos</Text>
+                    </View>
                     <Text style={[styles.parentPercent, { color: madre.porcentaje >= 50 ? '#22c55e' : '#ef4444' }]}>
                       {madre.porcentaje}%
                     </Text>
