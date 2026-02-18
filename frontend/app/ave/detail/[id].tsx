@@ -445,14 +445,23 @@ export default function AveDetailScreen() {
                           externo: true
                         };
                         
-                        const newPedigri = { ...pedigri };
-                        if (parentKey === 'padre' && newPedigri.padre) {
+                        // Crear copia profunda del pedigri
+                        const newPedigri = JSON.parse(JSON.stringify(pedigri || {}));
+                        
+                        // Asegurar que la estructura existe
+                        if (parentKey === 'padre') {
+                          if (!newPedigri.padre) {
+                            newPedigri.padre = {};
+                          }
                           if (nodeKey === 'abuelo_p') {
                             newPedigri.padre.padre = newAbuelo;
                           } else {
                             newPedigri.padre.madre = newAbuelo;
                           }
-                        } else if (parentKey === 'madre' && newPedigri.madre) {
+                        } else if (parentKey === 'madre') {
+                          if (!newPedigri.madre) {
+                            newPedigri.madre = {};
+                          }
                           if (nodeKey === 'abuelo_m') {
                             newPedigri.madre.padre = newAbuelo;
                           } else {
