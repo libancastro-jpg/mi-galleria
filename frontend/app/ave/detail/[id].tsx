@@ -941,8 +941,8 @@ const styles = StyleSheet.create({
   // Estilos para el árbol genealógico conectado
   treeContainer: {
     alignItems: 'center',
-    paddingVertical: 16,
-    minWidth: 380,
+    paddingVertical: 20,
+    minWidth: 420,
   },
   treeLevel: {
     flexDirection: 'row',
@@ -951,10 +951,13 @@ const styles = StyleSheet.create({
   },
   treeBranch: {
     alignItems: 'center',
-    marginHorizontal: 16,
+    marginHorizontal: 20,
   },
   treeNodeContainer: {
     alignItems: 'center',
+  },
+  treeNodeContainerParent: {
+    minWidth: 120,
   },
   treeLabel: {
     fontSize: 10,
@@ -963,6 +966,10 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     textTransform: 'uppercase',
   },
+  treeLabelParent: {
+    fontSize: 12,
+    marginBottom: 6,
+  },
   treeNode: {
     backgroundColor: '#242424',
     borderRadius: 12,
@@ -970,65 +977,102 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#333333',
-    minWidth: 70,
-    maxWidth: 85,
+    minWidth: 75,
+    maxWidth: 90,
   },
   treeNodeMain: {
     borderColor: '#f59e0b',
     backgroundColor: 'rgba(245, 158, 11, 0.15)',
-    minWidth: 90,
-    maxWidth: 100,
-    padding: 12,
+    minWidth: 100,
+    maxWidth: 110,
+    padding: 14,
+  },
+  treeNodeParent: {
+    minWidth: 110,
+    maxWidth: 130,
+    padding: 14,
+    borderWidth: 2,
   },
   treeNodeUnknown: {
     opacity: 0.5,
     borderStyle: 'dashed',
   },
   treeNodeUnknownText: {
-    fontSize: 20,
+    fontSize: 24,
     color: '#4b5563',
     fontWeight: 'bold',
   },
+  treeNodeUnknownSubtext: {
+    fontSize: 10,
+    color: '#4b5563',
+    marginTop: 4,
+  },
   treePhoto: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     marginBottom: 6,
   },
+  treePhotoParent: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginBottom: 8,
+  },
   treePhotoPlaceholder: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#333333',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 6,
   },
+  treePhotoPlaceholderParent: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginBottom: 8,
+  },
   treeCode: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
     color: '#fff',
     textAlign: 'center',
   },
   treeCodeMain: {
-    fontSize: 13,
+    fontSize: 14,
+  },
+  treeCodeParent: {
+    fontSize: 14,
+    fontWeight: '700',
   },
   treeName: {
-    fontSize: 9,
+    fontSize: 10,
     color: '#9ca3af',
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  treeNameParent: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  treeParentDetail: {
+    fontSize: 10,
+    color: '#6b7280',
     textAlign: 'center',
     marginTop: 2,
   },
   treeConnectorVertical: {
     width: 2,
-    height: 16,
+    height: 20,
     backgroundColor: '#444444',
   },
   treeConnectorHorizontal: {
-    width: 140,
+    width: 180,
     height: 2,
     backgroundColor: '#444444',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   treeGrandparentConnectors: {
     flexDirection: 'row',
