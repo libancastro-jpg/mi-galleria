@@ -276,7 +276,10 @@ export default function PerfilScreen() {
               <Ionicons name="chevron-forward" size={20} color={COLORS.grayLight} />
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.actionItem}>
+            <TouchableOpacity 
+              style={styles.actionItem}
+              onPress={() => setShowPinModal(true)}
+            >
               <View style={styles.actionIcon}>
                 <Ionicons name="lock-closed" size={20} color={COLORS.gold} />
               </View>
@@ -284,17 +287,33 @@ export default function PerfilScreen() {
               <Ionicons name="chevron-forward" size={20} color={COLORS.grayLight} />
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.actionItem}>
+            <TouchableOpacity 
+              style={styles.actionItem}
+              onPress={handleSyncData}
+              disabled={syncing}
+            >
               <View style={styles.actionIcon}>
-                <Ionicons name="sync" size={20} color={COLORS.gold} />
+                {syncing ? (
+                  <ActivityIndicator size="small" color={COLORS.gold} />
+                ) : (
+                  <Ionicons name="sync" size={20} color={COLORS.gold} />
+                )}
               </View>
               <Text style={styles.actionText}>Sincronizar Datos</Text>
               <Ionicons name="chevron-forward" size={20} color={COLORS.grayLight} />
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.actionItem}>
+            <TouchableOpacity 
+              style={styles.actionItem}
+              onPress={handleExportData}
+              disabled={exporting}
+            >
               <View style={styles.actionIcon}>
-                <Ionicons name="download" size={20} color={COLORS.gold} />
+                {exporting ? (
+                  <ActivityIndicator size="small" color={COLORS.gold} />
+                ) : (
+                  <Ionicons name="download" size={20} color={COLORS.gold} />
+                )}
               </View>
               <Text style={styles.actionText}>Exportar Datos (PDF/CSV)</Text>
               <Ionicons name="chevron-forward" size={20} color={COLORS.grayLight} />
