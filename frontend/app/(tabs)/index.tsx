@@ -279,20 +279,36 @@ export default function DashboardScreen() {
             <Text style={styles.statTitleCentered}>Aves Activas</Text>
             {(data?.aves.total_activas || 0) > 0 ? (
               <>
-                <Text style={styles.statNumber}>{data?.aves.total_activas || 0}</Text>
-                <View style={styles.statDetails}>
-                  <View style={styles.statDetailRow}>
-                    <Ionicons name="male" size={14} color="#3b82f6" />
-                    <Text style={styles.statDetailText}>Gallos: {data?.aves.gallos || 0}</Text>
-                  </View>
-                  <View style={styles.statDetailRow}>
-                    <Ionicons name="female" size={14} color="#ec4899" />
-                    <Text style={styles.statDetailText}>Gallinas: {data?.aves.gallinas || 0}</Text>
+                <View style={styles.avesActivasContent}>
+                  <Image 
+                    source={{ uri: 'https://customer-assets.emergentagent.com/job_aviary-dashboard/artifacts/hgzvwt56_f8785e86-21cf-4672-9fc0-dc7be729149f%2033.png' }}
+                    style={styles.avesActivasImage}
+                    resizeMode="contain"
+                  />
+                  <View style={styles.avesActivasStats}>
+                    <Text style={styles.statNumber}>{data?.aves.total_activas || 0}</Text>
+                    <View style={styles.statDetails}>
+                      <View style={styles.statDetailRow}>
+                        <Ionicons name="male" size={14} color="#3b82f6" />
+                        <Text style={styles.statDetailText}>Gallos: {data?.aves.gallos || 0}</Text>
+                      </View>
+                      <View style={styles.statDetailRow}>
+                        <Ionicons name="female" size={14} color="#ec4899" />
+                        <Text style={styles.statDetailText}>Gallinas: {data?.aves.gallinas || 0}</Text>
+                      </View>
+                    </View>
                   </View>
                 </View>
               </>
             ) : (
-              <Text style={styles.emptyCardText}>Aún no tienes aves registradas.</Text>
+              <View style={styles.avesActivasContent}>
+                <Image 
+                  source={{ uri: 'https://customer-assets.emergentagent.com/job_aviary-dashboard/artifacts/hgzvwt56_f8785e86-21cf-4672-9fc0-dc7be729149f%2033.png' }}
+                  style={styles.avesActivasImage}
+                  resizeMode="contain"
+                />
+                <Text style={styles.emptyCardText}>Aún no tienes aves registradas.</Text>
+              </View>
             )}
           </TouchableOpacity>
 
