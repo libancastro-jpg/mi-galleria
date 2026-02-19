@@ -38,9 +38,15 @@ export default function PerfilScreen() {
   
   // Estados para edición
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showPinModal, setShowPinModal] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [editingGalleria, setEditingGalleria] = useState(user?.nombre || '');
+  const [currentPin, setCurrentPin] = useState('');
+  const [newPin, setNewPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const handleLogout = async () => {
     // En web, usar modal personalizado en lugar de Alert
