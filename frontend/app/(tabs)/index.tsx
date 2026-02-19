@@ -709,6 +709,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
+  // Aves Activas with Image
+  avesActivasContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  avesActivasImage: {
+    width: 70,
+    height: 70,
+  },
+  avesActivasStats: {
+    flex: 1,
+    alignItems: 'flex-start',
+  },
   camadaTitle: {
     fontSize: 14,
     color: COLORS.grayLight,
