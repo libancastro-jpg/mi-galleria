@@ -58,7 +58,11 @@ export default function LoginScreen() {
         >
           <View style={styles.header}>
             <View style={styles.logoContainer}>
-              <Ionicons name="fitness" size={64} color="#f59e0b" />
+              <Image 
+                source={require('../../assets/images/logo.png')} 
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
             </View>
             <Text style={styles.title}>Mi Galleria</Text>
             <Text style={styles.subtitle}>Gestión de Gallos de Pelea</Text>
