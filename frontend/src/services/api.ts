@@ -1,4 +1,4 @@
-const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://aviary-dashboard.preview.emergentagent.com';
+const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://mi-galleria-final.preview.emergentagent.com';
 
 // Callback para manejar logout cuando hay error 401
 let onUnauthorized: (() => void) | null = null;

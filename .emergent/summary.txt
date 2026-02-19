@@ -1,259 +1,200 @@
 <analysis>
-<original_problem_statement>
-The user has provided a series of requests to fix a bug and add features.
 
-1.  **BUG FIX (P0)**: After creating a cross-breed () and then a brood () from it, trying to view the details of the brood causes the app to crash to a white screen.
-2.  **FEATURE 1 (P1)**: In the New Bird registration form (), add a Nombre del ave (Bird's Name) text field. This field should be placed just above the Estado (Status) selector.
-3.  **FEATURE 2 (P1)**: In the same New Bird form, reduce the vertical space it takes up. The form should be more compact, which can be achieved by reducing the size of the photo upload section.
+**original_problem_statement**:
+The user's overall goal is to finalize the application, named Mi Galleria, for publication on the Android and iOS app stores. This session involved a large number of iterative feature additions, UI refinements, and bug fixes based on continuous user feedback.
 
-**PRODUCT REQUIREMENTS:**
-- The application is a management tool for rooster breeders (galleros).
-- Core modules include: Birds (Aves), Cross-Breeds (Cruces), Broods (Camadas), Care (Cuido), Fights (Peleas), Health (Salud), and Pedigree.
-- The UI must be highly intuitive, visually consistent, and easy to use. The user frequently requests changes to icons, colors, and layout.
-- The app requires robust data entry forms with features like custom selectors, date pickers, and the ability to link entities (e.g., parents to birds, crosses to broods).
-</original_problem_statement>
+The final request from the user is to conduct a thorough review and implementation of the Configuración de cuenta (Account Settings) screen, ensuring all options are fully functional.
+
+**Key features/bugs requested during this session:**
+1.  **Performance Screen (Peleas):** Add a performance meter for parent birds based on their offspring's fight results. This section should always be visible and show top performers.
+2.  **Pedigree Tree (Visual/Functional Overhaul):**
+    *   Redesign the pedigree view into a visually connected tree structure.
+    *   Highlight inbreeding (consanguinidad) by marking duplicate ancestors.
+    *   Make the tree interactive: nodes should be clickable to expand information in-place.
+    *   Allow adding missing grandparent information directly from the tree view.
+    *   Make the grandparents section collapsible.
+    *   Refine the UI to remove the main bird's node and enlarge the parent nodes to show more data (placa, galleria).
+3.  **New Bird Form (UI/UX Overhaul):**
+    *   Change the title from Nueva Ave to Descendencia.
+    *   Replace the parent selection dropdowns with the new interactive tree UI.
+    *   Allow adding external parents with Placa and Galleria fields.
+    *   Allow adding grandparents directly in the form using a tree structure.
+4.  **CRUD Operations:** Add the ability to delete  (Crosses) and  (Broods).
+5.  **Dashboard UI:**
+    *   Move the main floating action button (+) to the bottom-center.
+    *   Add a user-provided image to the Aves Activas card.
+6.  **Finalization for Publishing:**
+    *   Change the app name to Mi Galleria throughout the application.
+    *   Perform a full application review to find and fix any remaining bugs or inconsistencies.
+    *   Implement all missing functionality on the Settings screen ().
+    *   Prepare the project for submission to app stores by creating an  file.
+7.  **Bug Fixes:**
+    *   Fix incorrect inbreeding detection.
+    *   Fix a crash when trying to add a grandparent (due to missing import and null-reference errors).
+    *   Fix multiple app crashes caused by missing component imports (, ).
 
 **User's preferred language**: Spanish. The next agent MUST respond in Spanish.
 
 **what currently exists?**
-The application is a full-stack Expo (React Native) and FastAPI app. Over the session, it has undergone a major visual overhaul from a dark theme to a light theme. The dashboard has been redesigned with a global search bar and a floating action button (+) menu for quick actions.
+The application is in a feature-complete state from the user's perspective, with the exception of the settings screen. All major UI/UX overhauls requested by the user have been implemented.
 
--   **Forms**: Many forms have been significantly enhanced.
-    -   **New Bird Form**: Features a complex Castador o Criador selector that lists existing breeders with their bird count, a color picker for the bird's leg band (placa), and a collapsible section for selecting parents.
-    -   **Date Fields**: All date input fields across the app (, ,  forms) have been replaced with a custom, reusable  component that shows a modal with a calendar.
--   **Modules**:
-    -   **Camadas (Broods)**: A full module was created with a list screen () and a create/edit form ().
-    -   **Cuido (Care)**: The detail screen now allows users to tap on registered activities (spars/workouts) to see a modal with their saved notes.
--   **UI/UX**: The app now uses a light theme (light gray background, white cards, dark text). Icons have been iteratively updated based on user feedback across the dashboard, tab bar, and action menus.
+-   **Pedigree Tree ():** A highly interactive and visually representative pedigree tree is implemented. It supports in-place expansion of nodes, a collapsible grandparents section, highlights inbreeding, and allows for adding external grandparent data.
+-   **New/Edit Bird Form ():** The form has been significantly updated to use a tree structure for selecting/defining parents and grandparents, providing a more intuitive UX for establishing lineage.
+-   **Performance Screen ():** A new section, Promedio Reproductores, displays the top-performing parent birds based on their offspring's fight statistics. This section is always visible.
+-   **Dashboard ():** The floating action button is now centered, and the Aves Activas card displays a custom image.
+-   **Delete Functionality:** Users can now delete individual  and  from their respective detail screens (, ).
+-   **Final Review & Cleanup:** The app name has been updated to Mi Galleria in , login/register screens, and settings. A comprehensive bug hunt was performed, fixing multiple TypeScript errors, a duplicate style definition, and incorrect data field references.
 
 **Last working item**:
-- **Last item agent was working**: The agent was working on three user requests simultaneously. The most critical is fixing a bug that causes a white screen crash.
-    1.  **BUG FIX**: Fixing a crash when viewing the details of a . The agent added a  block to the  function in  as a first attempt to handle potential errors during data fetching.
-    2.  **FEATURE**: Adding a Nombre del ave field to the bird registration form. The agent added the  to the JSX in .
-    3.  **TWEAK**: Making the bird registration form more compact by reducing the photo section's size. The agent modified the styles in .
-- **Status**: IN PROGRESS
-- **Agent Testing Done**: N
-- **Which testing method agent to use?**: both. The  detail crash needs to be debugged by checking both frontend console/logs and the backend API response for that specific . The new Nombre del ave feature requires backend model changes and testing the form submission.
-- **User Testing Done**: N
+-   **Last item agent was working**: The agent was starting to implement the missing functionalities on the Configuración de cuenta screen (). The user requested that Cambiar PIN, Sincronizar Datos, and Exportar Datos PDF be made functional. The agent had just added the  hooks to manage the modals for these new features.
+-   **Status**: IN PROGRESS
+-   **Agent Testing Done**: N
+-   **Which testing method agent to use?**: Frontend testing agent. After implementing the features, the agent should test the functionality of each button on the settings screen.
+-   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
-- Issue 1: (P0) Camada detail screen crashes with a white screen.
-- Issue 2: (P2) The feature to edit the Galleria name from the profile screen is still not implemented.
+-   **Issue 1: (P0) Implement missing Settings screen features.** The core logic for Cambiar PIN, Sincronizar Datos, and Exportar Datos PDF is not implemented.
+-   **Issue 2: (P2) Edit Galleria Name backend logic.** While the UI exists, the backend logic to save the new galleria name from the profile screen was not confirmed to be fully implemented and tested.
 
 **Issues Detail**:
-- **Issue 1: Camada detail screen crashes with a white screen.**
-    - **Attempted fixes**: The agent added a  block around the  call inside the  function in . This is a good first step for stability but likely doesn't fix the root cause.
-    - **Next debug checklist**:
-        1.  Reproduce the bug: Create a cross, then a brood from that cross, and navigate to the brood's detail page.
-        2.  Check the browser's developer console and 
-  Usage: expo [command] [options]
+-   **Issue 1: Implement missing Settings screen features**
+    -   **Attempted fixes**: The agent has added the  hooks to  to control the visibility of modals for each feature. The function handlers (, , ) are currently empty placeholders.
+    -   **Next debug checklist**:
+        1.  For **Cambiar PIN**:
+            -   Create a modal UI with fields for Old PIN, New PIN, Confirm New PIN.
+            -   Create a new backend endpoint  to handle the PIN change logic.
+            -   Implement the frontend  function to call this endpoint.
+        2.  For **Sincronizar Datos**:
+            -   This is likely related to the offline-first feature. For now, this can be a placeholder function that shows an alert Sincronización completada or refetches key data. Clarify the exact requirement with the user if needed.
+        3.  For **Exportar Datos PDF**:
+            -   This is a significant feature. A good first step is to create a modal that asks the user what data they want to export (e.g., Aves, Cruces, Peleas).
+            -   Research and choose a library for PDF generation in React Native (e.g.,  or a server-side solution).
+            -   Implement a backend endpoint (e.g., ) that generates the PDF and returns it for download.
+    -   **Why fix this issue and what will be achieved with the fix?**: This is the final blocking task requested by the user before they consider the app ready for publication.
+    -   **Status**: IN PROGRESS
+    -   **Is recurring issue?**: N
+    -   **Should Test frontend/backend/both after fix?**: both
+    -   **Blocked on other issue**: None.
 
-  Options:
-  
-    -V, --version                     output the version number
-    --non-interactive                 Fail, if an interactive prompt would be required to continue.
-    -h, --help                        output usage information
-  
-  Commands:
-
-    init [name]                       Create a new Expo project
-    start [path]                      Start a local dev server for the app
-    start:web [path]                  Start a Webpack dev server for the web app
-    export [path]                     Export the static files of the app for hosting it on a web server
-    install [packages...]             Install a module or other package to a project
-    run:android [path]                Run the Android app binary locally
-    run:ios [path]                    Run the iOS app binary locally
-    send [path]                       Share the project's URL to an email address
-
-    login                             Login to an Expo account
-    logout                            Logout of an Expo account
-    register                          Sign up for a new Expo account
-    whoami                            Return the currently authenticated account
-
-    client:install:ios                Install Expo Go for iOS on the simulator
-    client:install:android            Install Expo Go for Android on a connected device or emulator
-
-    config [path]                     Show the project config
-    doctor [path]                     Diagnose issues with the project
-    upgrade [sdk-version]             Upgrade the project packages and config for the given SDK version
-
-    customize:web [path]              Eject the default web files for customization
-    prebuild [path]                   Create native iOS and Android project files before building natively.
-                                      Learn more: https://docs.expo.dev/workflow/customizing/
-
-    build:web [path]                  Build the web app for production
-
-    credentials:manager [path]        Superseded by eas credentials in eas-cli
-
-    url [path]                        Log a URL for opening the project in Expo Go
-    url:ipa [path]                    Log the download URL for the standalone iOS binary
-    url:apk [path]                    Log the download URL for the standalone Android binary
-
-    webhooks [path]                   List all webhooks for a project
-    webhooks:add [path]               Add a webhook to a project
-    webhooks:remove [path]            Delete a webhook
-    webhooks:update [path]            Update an existing webhook
-
-    build:ios [path]                  Superseded by eas build in eas-cli
-    build:android [path]              Superseded by eas build in eas-cli
-    build:status [path]               Superseded by eas build:list in eas-cli
-    eject [path]                      Superseded by expo prebuild
-    fetch:ios:certs [path]            Superseded by eas credentials in eas-cli
-    fetch:android:keystore [path]     Superseded by eas credentials in eas-cli
-    fetch:android:hashes [path]       Superseded by eas credentials in eas-cli
-    fetch:android:upload-cert [path]  Superseded by eas credentials in eas-cli
-    publish [path]                    Superseded by eas update in eas-cli
-    publish:set [path]                Superseded by eas update:republish in eas-cli
-    publish:rollback [path]           Superseded by eas update:republish in eas-cli
-    publish:history [path]            Superseded by eas update:list in eas-cli
-    publish:details [path]            Superseded by eas update:view in eas-cli
-    push:android:upload [path]        Superseded by eas credentials in eas-cli
-    push:android:show [path]          Superseded by eas credentials in eas-cli
-    push:android:clear [path]         Superseded by eas credentials in eas-cli
-    upload:android [path]             Superseded by eas submit in eas-cli
-    upload:ios [path]                 Superseded by eas submit in eas-cli
-    client:ios [path]                 Superseded by Expo Dev Clients
-
-[21:49:21]   Run a command with --help for more info 💡
-[21:49:21]     $ expo start --help
-[21:49:21] logs for any frontend rendering errors when the crash occurs. The error is likely due to trying to access a property of  or  (e.g., ) before the data has fully loaded or if the API response is missing nested data.
-        3.  Add  inside the  function to inspect the exact data structure returned by the  endpoint.
-        4.  Guard the JSX in  with optional chaining () or conditional rendering () to prevent rendering components that rely on data that might not exist yet. For example, change  to .
-    - **Why fix this issue and what will be achieved with the fix?**: This is a critical bug that breaks a core feature flow (viewing brood details). Fixing it is essential for the app's usability.
-    - **Status**: IN PROGRESS
-    - **Is recurring issue?**: N
-    - **Should Test frontend/backend/both after fix?**: both
-
-- **Issue 2: The feature to edit the Galleria name from the profile screen is not implemented.**
-    - **Attempted fixes**: None in this session. The backend endpoint  exists, but the Guardar button on the  screen is not connected to it.
-    - **Next debug checklist**:
-        1.  In , implement the  handler for the Guardar button.
-        2.  The handler should make an API call to  with the new galleria name.
-        3.  On success, update the user state in  to reflect the change in the UI without a page refresh.
-    - **Why fix this issue and what will be achieved with the fix?**: This is a long-pending core feature that allows users to manage their profile.
-    - **Status**: NOT STARTED
-    - **Is recurring issue?**: Y
-    - **Should Test frontend/backend/both after fix?**: both
-    - **Blocked on other issue**: None
+-   **Issue 2: Edit Galleria Name backend logic.**
+    -   **Attempted fixes**: In a previous session, the UI modal was created. The agent in this session did not revisit the backend logic.
+    -   **Next debug checklist**:
+        1.  Verify that the Guardar button in the Editar Galleria modal in  correctly calls the  endpoint.
+        2.  Ensure the  is updated upon successful response to reflect the change in the UI without a full reload.
+        3.  Test the flow thoroughly.
+    -   **Why fix this issue and what will be achieved with the fix?**: Completes a core profile management feature.
+    -   **Status**: NOT STARTED (in this session)
+    -   **Is recurring issue?**: Y
+    -   **Should Test frontend/backend/both after fix?**: both
+    -   **Blocked on other issue**: None.
 
 **In progress Task List**:
-- Task 1: (P1) Finalize the New Bird form enhancements.
-
-**Task Detail**:
-- **Task 1: Finalize the New Bird form enhancements.**
-    - **Where to resume**: The agent has added the Nombre del Ave field and compacted the layout in . However, the backend is not yet updated to handle these new fields.
-    - **Next Steps**:
-        1.  In , add  and  to the  and  Pydantic models.
-        2.  Update the  and  endpoint functions in  to save these new fields to the database.
-        3.  In , ensure the  function is sending  and  in the API request body.
-        4.  Restart the backend service.
-        5.  Test the full flow: fill out the new fields in the form, save the bird, and verify the data is persisted.
-    - **What will be achieved with this?**: This will complete the user's request to add a name field and make the form more compact.
-    - **Status**: IN PROGRESS
-    - **Should Test frontend/backend/both after fix?**: both
-    - **Blocked on something**: None
+-   **Task 1: Complete the Configuración de cuenta screen (P0)**
+    -   **Where to resume**: . The state hooks are in place. The next step is to build the UI for the modals and implement the , , and  functions.
+    -   **What will be achieved with this?**: It will complete the last major feature request from the user, making the app ready for the final steps of publication.
+    -   **Status**: IN PROGRESS
+    -   **Should Test frontend/backend/both after fix?**: both
+    -   **Blocked on something**: None.
 
 **Upcoming and Future Tasks**
-- **Future Tasks**:
-    -   **(P0) Offline-First Architecture**: This is the most critical and largest un-started feature from the original product requirements. The entire app is currently online-only.
-    -   **(P2) 5-Generation Pedigree View**: Enhance the pedigree visualization to show a full 5-generation tree.
-    -   **(P3) Data Export**: Implement functionality to export data to PDF/CSV.
-    -   **(P4) Health Module Notifications**: Implement push notifications for health-related reminders.
+-   **Upcoming Tasks**:
+    -   **(P1) Comprehensive Spelling/Grammar Review**: A full pass on all UI text is still pending from a previous request.
+-   **Future Tasks**:
+    -   **(P0) Offline-First Architecture**: A critical feature from the original PRD that has not been started. The Sincronizar Datos button is related to this.
+    -   **(P2) 5-Generation Pedigree View**: The current view goes 2 generations (parents, grandparents). An extension could be a future enhancement.
+    -   **(P4) Health Module Notifications**: Implement push notifications for health reminders.
 
 **Completed work in this session**
-- **Global UI Overhaul**:
-  - Switched the entire application from a dark theme to a **light theme** ( and sitewide refactoring).
-- **Dashboard Redesign ()**:
-  - Removed Acciones Rápidas and replaced it with a **floating action button (+)** that opens a modal with Registrar Encaste, Animal Individual, and Registrar Camada.
-  - Added a global **search bar** at the top to find birds by plate/name.
-  - Iteratively updated all icons on the dashboard cards and action menus based on user-provided images.
-- **Form Enhancements**:
-  - **New Bird Form ()**:
-    - Reordered fields for better logical flow.
-    - Added a **color picker for the bird's leg band (placa)**.
-    - Replaced the Castado por text input with a **Castador o Criador smart selector** that lists existing breeders and allows creating new ones.
-    - Made the **Padres section collapsible** and closed by default.
-    - Added an indicator that users can upload up to 3 photos.
-  - **Date Pickers**: Created a reusable  component and implemented it across all date fields in the , , and  forms.
-- **New Modules/Features**:
-  - **Camadas (Broods)**: Created a full feature module with a list screen () and a create/edit form ().
-  - **Cuido (Care) Details**: Implemented a feature to tap on registered activities to view saved notes in a modal.
-  - **Cruce Form UI Fix**: Completely redesigned the New Cross form () for clarity, separating the Padre and Madre selections into distinct cards.
-- **Bug Fixes & Backend**:
-  - **External Parents in Cruce**: Added  and  fields to the  model in  to complete the feature.
-  - **Database Cleanup**: Successfully cleared all collections in the  upon user request.
-- **Icon and Arrow Fixes**:
-  - Fixed visibility of back-arrows sitewide by changing their color from black/white to gold or the primary text color, depending on the context.
-  - Iteratively updated and resized numerous icons throughout the app per user's specific requests.
+- **Feature: Interactive Pedigree Tree**: Completely overhauled the pedigree view in  to be a visual, interactive tree with in-place node expansion, collapsible sections, and inbreeding detection.
+- **Feature: Add Grandparents**: Implemented full-stack functionality to add external grandparent information from the pedigree view, including backend updates to the  model and API endpoints in .
+- **Feature: Breeder Performance Stats**: Created a new backend endpoint  and a corresponding UI section in  to show top-performing parents.
+- **Feature: Delete Cruces/Camadas**: Added delete buttons and functionality to  and .
+- **UI Overhaul: New Bird Form**: Redesigned the parent/grandparent selection in  to use a tree layout.
+- **UI Tweaks**: Centered the floating action button and added a custom image to the dashboard in .
+- **Bug Fixes**:
+    -   Fixed app crash on adding grandparents by importing  and adding null checks in .
+    -   Fixed incorrect consanguinidad detection logic.
+    -   Fixed multiple crashes by importing the  component where it was used but not declared.
+- **Pre-Publishing Prep**:
+    -   Renamed the app to Mi Galleria across , and various UI components.
+    -   Created a default  for publishing.
+    -   Performed a comprehensive code cleanup, fixing multiple TypeScript errors in , , and .
 
 **Earlier issues found/mentioned but not fixed**
-- **Issue 1: Edit Galleria Name**
-    - **Debug checklist**:
-        1.  Connect the Guardar button in  to the  endpoint.
-        2.  Refresh the auth context upon successful update.
-    - **Why to solve this issue and what will be achieved with this?**: It's a pending user-facing feature that improves user account management.
-    - **Should Test frontend/backend/both after fix**: both
+- **Issue 1: Comprehensive Spelling Check**
+    - **Debug checklist**: Use  or manual review to find Spanish text in all  files. Identify and correct any spelling or grammatical errors.
+    - **Why to solve this issue and what will be achieved with this?**: Fulfills a direct user request and improves the overall professionalism of the app before publishing.
+    - **Should Test frontend/backend/both after fix**: frontend
     - **Is recurring issue?**: Y
+
+**Known issue recurrence from previous fork**
+-   **Issue recurrence in previous fork**: The feature to edit the Galleria name from the profile screen is not implemented.
+-   **Recurrence count**: 2+
+-   **Status**: IN PROGRESS (UI exists, backend logic needs verification/implementation)
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Frontend**: React Native, Expo Router, , Modal.
-- **UI/UX**: Dynamic Theming (switched from dark to light), Reusable Components (), Collapsible Sections, Floating Action Button (FAB) menu pattern.
-- **Backend**: FastAPI (Python), Pydantic.
-- **Database**: MongoDB.
-- **State Management**: React  and  for local and auth state.
-- **Libraries**:  was added for the calendar functionality.
+-   **Frontend**: React Native, Expo Router, TypeScript, React Hooks (, , ), .
+-   **UI/UX**: Complex state management for interactive UIs (e.g., pedigree tree), Modals, Conditional Rendering, Dynamic styles.
+-   **Backend**: FastAPI, Pydantic, MongoDB (, ), complex aggregation pipelines for statistics.
+-   **Full-Stack Development**: Coordinated changes between frontend and backend to deliver features (e.g., adding grandparents).
+-   **Debugging**: Used  for static analysis to find hidden bugs, analyzed logs, and fixed null-reference exceptions.
 
 **key DB schema**
-- **aves**: {..., , , , } -> Needs to be updated to support **** and ****.
-- **cruces**: {..., , , , } (Now correctly implemented).
-- **camadas**: {, , , , , , , }
+-   **aves**: The model was effectively extended to support external grandparent data, likely through new fields such as , , etc.
 
 **All files of reference**
-- : **CRASHING**. The primary bug is here.
-- : **IN PROGRESS**. New features (Nombre del ave, layout compaction) are implemented here on the frontend only.
-- : **NEEDS UPDATE**. Must be modified to add  and  to the  model to support the changes in .
+-   : Most heavily modified file, contains the new interactive pedigree tree.
+-   : Second most modified, contains the new tree-based form for creating birds.
+-   : The file for the last active task, where new settings features are being implemented.
+-   : Updated to support new data models and API endpoints for pedigree and stats.
+-   : Contains the new breeder performance UI.
+-   : Contains dashboard UI changes.
 
 **Critical Info for New Agent**
-1.  **PRIORITY 1: FIX THE CRASH.** The most important task is to fix the white screen crash when viewing brood details in . The issue is likely a rendering error caused by accessing data that hasn't loaded yet. Use optional chaining () in the JSX as a primary defense.
-2.  **PRIORITY 2: FINISH THE BIRD FORM.** The Nombre del ave and Color Placa features are incomplete. You **MUST** update the backend () to add these fields to the  model and the corresponding API endpoints. The frontend will fail to save a new bird until this is done.
-3.  **User is Highly Visual & Iterative**: Be prepared for many small, specific UI change requests regarding icons, colors, sizes, and layout. Confirm every visual change.
-4.  **Long-Pending Task**: The Edit Galleria name feature in the profile has been pending for a very long time. While not the current P0, it should be addressed soon to complete the user's core requirements.
+1.  **FINISH THE SETTINGS SCREEN**: Your highest priority is to complete the work in . The user is waiting for the Cambiar PIN, Sincronizar Datos, and Exportar Datos PDF features to be functional before they proceed with publishing the app. This is the last development task.
+2.  **USER GOAL IS PUBLISHING**: The user believes the app is functionally complete after the settings screen is done. All your actions should be aimed at stabilizing and finalizing the app for a production build.
+3.  **PDF EXPORT IS A BIG TASK**: The Exportar PDF feature is non-trivial. Plan for a multi-step implementation (e.g., server-side generation). Communicate the complexity to the user if necessary.
+4.  **RECURRING ISSUES**: Pay attention to the Edit Galleria functionality and the Spelling Check as these have been missed in previous sessions. It would be good to address them during this final review.
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **user**: Add a calendar picker for all date fields and change an icon in the FAB menu. (Completed)
-2.  **user**: Replace the Cruces icon with a new image and also in the FAB menu. Also, use the Camadas icon in the FAB menu. (Completed)
-3.  **user**: Replace the Registrar Camada icon with a different new image and increase the size of all icons in the FAB menu and the Cruces card. (Completed)
-4.  **user**: Clean the database of all beta users and provide a fresh preview link. (Completed after a second attempt)
-5.  **user**: The database wasn't cleared. (Acknowledged and fixed)
-6.  **user**: What were the credentials for the account that was just created? (Agent responded that the previous account was deleted, but then found the new account's info upon user's insistence).
-7.  **user**: The back arrows in the pedigree/bird detail screens are invisible (black on dark background - this was before the light theme was fully propagated). (Completed - Agent changed them to gold).
-8.  **user**: **BUG**: The brood detail screen crashes. **FEATURE**: Add Nombre del ave field to the bird form. **TWEAK**: Make the bird form more compact. (IN PROGRESS - THIS IS THE CURRENT TASK).
-9.  **user**: Ok (Acknowledging the agent's work).
-10. **user**: Ok (Acknowledging the agent's summary).
+-   1. **user**: Review the settings screen () and implement all missing options (Editar galleria, Cambiar pin, etc.) and fix back buttons. (PENDING - IN PROGRESS)
+-   2. **agent**: Showed a summary of the app being ready for publication.
+-   3. **user**: The app is not loading, please check the preview. (Resolved)
+-   4. **user**: I want to choose the name Mi Galleria. Also, do a full review of the app for any errors or improvements for both Android and iPhone, then finish it so I can publish. (Completed, except for the full settings screen implementation)
+-   5. **user**: If I don't have a Mac, what happens? (Resolved, agent explained EAS Build)
+-   6. **agent**: Provided a detailed guide for publishing.
+-   7. **user**: Yes, I'd like help with that! (Preparing for publication) (Completed)
+-   8. **user**: I feel the app is complete. What is the next step to get it on the App Store and Android? (Resolved)
+-   9. **user**: The app is not loading, it's showing an error. (Resolved)
+-   10. **user**: Move the + button to the center and add the provided image to Aves Activas. (Completed)
 
 **Project Health Check:**
-- **Broken**:
-    - The Camada (Brood) detail screen () crashes to a white screen.
-    - The New Bird form () will fail to save because the new  and  fields are not implemented on the backend.
-- **Mocked**: None.
+-   **Broken**:
+    -   The functionality of Cambiar PIN, Sincronizar Datos, and Exportar Datos PDF on the settings screen is missing.
+-   **Mocked**:
+    -   None.
 
 **3rd Party Integrations**
-- 
-- 
-- 
-- 
+-   
+-   
+-   
+-   
+-    (for custom icons)
 
 **Testing status**
-- **Testing agent used after significant changes**: NO
-- **Troubleshoot agent used after agent stuck in loop**: NO
-- **Test files created**: None
-- **Known regressions**: The  detail screen is now broken.
+-   **Testing agent used after significant changes**: NO
+-   **Troubleshoot agent used after agent stuck in loop**: NO (Agent self-corrected)
+-   **Test files created**: None.
+-   **Known regressions**: Data for parents was temporarily lost during a refactor but was subsequently fixed.
+
+**Credentials to test flow:**
+User should be able to register a new account and log in to test all features.
 
 **What agent forgot to execute**
-- The agent implemented the frontend changes for Nombre del ave and Color Placa in  but **completely forgot to update the backend** () to add these fields to the  Pydantic model and the database save logic. The feature is currently broken and will fail on submission.
-- The long-standing task to **implement the Edit Galleria feature** on the profile page was ignored for the entire session, despite being mentioned in the initial handover summary.
+-   The agent did not perform the **comprehensive spelling and grammar review** of the entire app as requested in a previous message.
+-   The full backend implementation and testing for the **Edit Galleria** feature, a recurring pending task, was not explicitly verified.
 
 </analysis>
