@@ -2010,11 +2010,9 @@ const styles = StyleSheet.create({
     borderColor: '#e0e0e0',
   },
   abueloItem: {
-    gap: 12,
-  },
-  abueloItem: {
     flex: 1,
     alignItems: 'center',
+    gap: 12,
   },
   abueloLabel: {
     fontSize: 11,
