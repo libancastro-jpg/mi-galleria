@@ -137,7 +137,7 @@ export default function PerfilScreen() {
                 </View>
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Teléfono</Text>
-                  <Text style={styles.infoValue}>{formatPhoneNumber(user?.phone_number)}</Text>
+                  <Text style={styles.infoValue}>{formatPhoneNumber(user?.telefono)}</Text>
                 </View>
               </View>
               
