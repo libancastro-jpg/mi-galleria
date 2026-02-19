@@ -97,7 +97,54 @@
 #====================================================================================================
 
 
-
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+user_problem_statement: "Test the new backend endpoints for the Mi Galleria app (Rooster breeding app): PUT /api/auth/change-pin endpoint and GET /api/export/data endpoint"
+
+backend:
+  - task: "PUT /api/auth/change-pin endpoint"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "✅ Endpoint fully tested and working correctly. Successfully tested: 1) User registration with phone 9999999999 and PIN 1234, 2) Login to get valid token, 3) PIN change from 1234 to 5678 using token, 4) Verification of PIN change by logging in with new PIN 5678, 5) Error cases: incorrect current PIN (properly rejected with 400), invalid new PIN formats - too short/long/non-numeric (all properly rejected with 400 status). All authentication and validation working as expected."
+
+  - task: "GET /api/export/data endpoint"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "✅ Endpoint fully tested and working correctly. Successfully tested: 1) Authenticated request returns proper JSON with all expected fields: aves, cruces, camadas, peleas (all showing count 0 for new user), 2) Unauthenticated request properly rejected with 401 status, 3) Works correctly after PIN change with new token. Authentication middleware and data export functionality working perfectly."
+
+frontend:
+  # No frontend testing required per system instructions
+
+metadata:
+  created_by: "testing_agent"
+  version: "1.0"  
+  test_sequence: 1
+  run_ui: false
+
+test_plan:
+  current_focus:
+    - "PUT /api/auth/change-pin endpoint"
+    - "GET /api/export/data endpoint"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+    - agent: "testing"
+      message: "Completed comprehensive testing of Mi Galleria backend endpoints. Both PUT /api/auth/change-pin and GET /api/export/data endpoints are working perfectly. All test scenarios passed including user registration, authentication, PIN change functionality, error handling, and data export. Backend is fully functional and ready for use. Created comprehensive backend_test.py with 6 test scenarios that all passed successfully."
