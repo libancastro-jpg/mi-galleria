@@ -101,6 +101,84 @@ export default function PerfilScreen() {
     }
   };
 
+  const handleChangePin = async () => {
+    if (!currentPin || !newPin || !confirmPin) {
+      Alert.alert('Error', 'Por favor completa todos los campos');
+      return;
+    }
+
+    if (newPin.length < 4 || newPin.length > 6) {
+      Alert.alert('Error', 'El PIN debe tener entre 4 y 6 dígitos');
+      return;
+    }
+
+    if (newPin !== confirmPin) {
+      Alert.alert('Error', 'Los PINs no coinciden');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await api.put('/auth/change-pin', { 
+        current_pin: currentPin, 
+        new_pin: newPin 
+      });
+      setShowPinModal(false);
+      setCurrentPin('');
+      setNewPin('');
+      setConfirmPin('');
+      Alert.alert('Éxito', 'PIN actualizado correctamente');
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'No se pudo cambiar el PIN');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSyncData = async () => {
+    setSyncing(true);
+    try {
+      // Refrescar los datos del usuario
+      if (refreshUser) {
+        await refreshUser();
+      }
+      Alert.alert('Éxito', 'Datos sincronizados correctamente');
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'No se pudo sincronizar');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleExportData = async () => {
+    setExporting(true);
+    try {
+      const response = await api.get('/export/data');
+      // En una app real, esto generaría un PDF/CSV
+      Alert.alert(
+        'Exportar Datos',
+        'Esta función generará un archivo PDF/CSV con todos tus datos.\n\n' +
+        `Total de aves: ${response.aves || 0}\n` +
+        `Total de cruces: ${response.cruces || 0}\n` +
+        `Total de camadas: ${response.camadas || 0}\n` +
+        `Total de peleas: ${response.peleas || 0}`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { 
+            text: 'Descargar PDF', 
+            onPress: () => {
+              Alert.alert('Info', 'La descarga de PDF estará disponible próximamente');
+            }
+          }
+        ]
+      );
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'No se pudo exportar los datos');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const formatPhoneNumber = (phone: string | undefined) => {
     if (!phone) return 'No registrado';
     return phone;
