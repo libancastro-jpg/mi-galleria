@@ -414,6 +414,84 @@ export default function PerfilScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Modal para cambiar PIN */}
+      <Modal
+        visible={showPinModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPinModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modal}>
+            <View style={styles.logoutModalIcon}>
+              <Ionicons name="lock-closed" size={40} color={COLORS.gold} />
+            </View>
+            <Text style={styles.modalTitle}>Cambiar PIN</Text>
+            
+            <Text style={styles.modalLabel}>PIN Actual</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={currentPin}
+              onChangeText={setCurrentPin}
+              placeholder="Ingresa tu PIN actual"
+              placeholderTextColor={COLORS.grayLight}
+              keyboardType="numeric"
+              secureTextEntry
+              maxLength={6}
+            />
+            
+            <Text style={styles.modalLabel}>Nuevo PIN (4-6 dígitos)</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={newPin}
+              onChangeText={setNewPin}
+              placeholder="Ingresa tu nuevo PIN"
+              placeholderTextColor={COLORS.grayLight}
+              keyboardType="numeric"
+              secureTextEntry
+              maxLength={6}
+            />
+            
+            <Text style={styles.modalLabel}>Confirmar Nuevo PIN</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={confirmPin}
+              onChangeText={setConfirmPin}
+              placeholder="Confirma tu nuevo PIN"
+              placeholderTextColor={COLORS.grayLight}
+              keyboardType="numeric"
+              secureTextEntry
+              maxLength={6}
+            />
+            
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalCancelButton}
+                onPress={() => {
+                  setShowPinModal(false);
+                  setCurrentPin('');
+                  setNewPin('');
+                  setConfirmPin('');
+                }}
+              >
+                <Text style={styles.modalCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalConfirmButton}
+                onPress={handleChangePin}
+                disabled={saving}
+              >
+                {saving ? (
+                  <ActivityIndicator size="small" color="#000" />
+                ) : (
+                  <Text style={styles.modalConfirmText}>Cambiar</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
