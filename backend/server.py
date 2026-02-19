@@ -449,6 +449,54 @@ async def update_profile(
         }
     }
 
+class ChangePinRequest(BaseModel):
+    current_pin: str
+    new_pin: str
+
+@api_router.put("/auth/change-pin")
+async def change_pin(
+    data: ChangePinRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Change user PIN"""
+    # Get current user with PIN
+    user = await db.users.find_one({"_id": ObjectId(current_user["id"])})
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    # Verify current PIN
+    if not verify_pin(data.current_pin, user["pin"]):
+        raise HTTPException(status_code=400, detail="PIN actual incorrecto")
+    
+    # Validate new PIN
+    if not data.new_pin.isdigit() or len(data.new_pin) < 4 or len(data.new_pin) > 6:
+        raise HTTPException(status_code=400, detail="El nuevo PIN debe ser de 4 a 6 dígitos")
+    
+    # Update PIN
+    await db.users.update_one(
+        {"_id": ObjectId(current_user["id"])},
+        {"$set": {"pin": hash_pin(data.new_pin), "updated_at": datetime.utcnow()}}
+    )
+    
+    return {"message": "PIN actualizado correctamente"}
+
+@api_router.get("/export/data")
+async def export_data(current_user: dict = Depends(get_current_user)):
+    """Get data summary for export"""
+    user_id = current_user["id"]
+    
+    aves_count = await db.aves.count_documents({"user_id": user_id})
+    cruces_count = await db.cruces.count_documents({"user_id": user_id})
+    camadas_count = await db.camadas.count_documents({"user_id": user_id})
+    peleas_count = await db.peleas.count_documents({"user_id": user_id})
+    
+    return {
+        "aves": aves_count,
+        "cruces": cruces_count,
+        "camadas": camadas_count,
+        "peleas": peleas_count
+    }
+
 # ============== AVES ROUTES ==============
 
 @api_router.post("/aves", response_model=AveResponse)
