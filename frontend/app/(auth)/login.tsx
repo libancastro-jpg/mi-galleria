@@ -59,7 +59,7 @@ export default function LoginScreen() {
             <View style={styles.logoContainer}>
               <Ionicons name="fitness" size={64} color="#f59e0b" />
             </View>
-            <Text style={styles.title}>Castador Pro</Text>
+            <Text style={styles.title}>Mi Galleria</Text>
             <Text style={styles.subtitle}>Gestión de Gallos de Pelea</Text>
           </View>
 
