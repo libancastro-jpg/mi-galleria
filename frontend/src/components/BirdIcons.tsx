@@ -375,7 +375,6 @@ export function HealthIcon({ size = 24, color = '#F5A623', strokeWidth = 1.8 }: 
           strokeLinecap="round"
           strokeLinejoin="round"
           fill="none"
-          rx="2"
         />
       </Svg>
     </View>
