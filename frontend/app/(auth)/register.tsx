@@ -70,7 +70,11 @@ export default function RegisterScreen() {
         >
           <View style={styles.header}>
             <View style={styles.logoContainer}>
-              <Ionicons name="fitness" size={48} color="#f59e0b" />
+              <Image 
+                source={require('../../assets/images/logo.png')} 
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
             </View>
             <Text style={styles.title}>Crear Cuenta</Text>
             <Text style={styles.subtitle}>Regístrate para comenzar</Text>
