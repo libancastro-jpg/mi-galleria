@@ -227,7 +227,7 @@ export default function PerfilScreen() {
 
           {/* App Info */}
           <View style={styles.appInfo}>
-            <Text style={styles.appName}>Castador Pro</Text>
+            <Text style={styles.appName}>Mi Galleria</Text>
             <Text style={styles.appVersion}>Versión 1.0.0</Text>
           </View>
         </ScrollView>
