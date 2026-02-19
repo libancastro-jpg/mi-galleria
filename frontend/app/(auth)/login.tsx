@@ -144,13 +144,17 @@ const styles = StyleSheet.create({
     marginBottom: 48,
   },
   logoContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,
+  },
+  logoImage: {
+    width: 120,
+    height: 120,
   },
   title: {
     fontSize: 32,
