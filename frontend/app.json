@@ -1,32 +1,36 @@
 {
   "expo": {
-    "name": "Castador Pro",
-    "slug": "castador-pro",
+    "name": "Mi Galleria",
+    "slug": "mi-galleria",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "castador-pro",
-    "userInterfaceStyle": "dark",
+    "scheme": "mi-galleria",
+    "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.castadorpro.app",
+      "bundleIdentifier": "com.migalleria.app",
+      "buildNumber": "1",
       "infoPlist": {
-        "NSCameraUsageDescription": "Tomar fotos de tus aves",
-        "NSPhotoLibraryUsageDescription": "Seleccionar fotos de tus aves"
+        "NSCameraUsageDescription": "Tomar fotos de tus aves para identificarlas fácilmente",
+        "NSPhotoLibraryUsageDescription": "Seleccionar fotos de tus aves desde tu galería",
+        "NSPhotoLibraryAddUsageDescription": "Guardar fotos de tus aves en tu galería"
       }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#0a0a0a"
+        "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.castadorpro.app",
+      "package": "com.migalleria.app",
+      "versionCode": 1,
       "permissions": [
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES"
       ]
     },
     "web": {
@@ -42,12 +46,24 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#000"
+          "backgroundColor": "#ffffff"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Permite acceder a tus fotos para agregar imágenes de tus aves",
+          "cameraPermission": "Permite acceder a la cámara para tomar fotos de tus aves"
         }
       ]
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "mi-galleria-app"
+      }
     }
   }
 }
