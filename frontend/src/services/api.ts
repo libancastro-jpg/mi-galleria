@@ -1,4 +1,6 @@
-const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://mi-galleria-final.preview.emergentagent.com';
+const BASE_URL =
+  process.env.EXPO_PUBLIC_BACKEND_URL ||
+  "https://mi-galleria-final.cluster-9.preview.emergentcf.cloud";
 
 // Callback para manejar logout cuando hay error 401
 let onUnauthorized: (() => void) | null = null;
@@ -15,73 +17,59 @@ class ApiService {
   }
 
   private async request(endpoint: string, options: RequestInit = {}) {
-    const url = `${BASE_URL}/api${endpoint}`;
-    
+    const url = `${BASE_URL}${endpoint}`;
+
     const headers: HeadersInit = {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...(options.headers || {}),
     };
 
     if (this.token) {
-      (headers as Record<string, string>)['Authorization'] = `Bearer ${this.token}`;
+      (headers as Record<string, string>)["Authorization"] = `Bearer ${this.token}`;
     }
 
+    const response = await fetch(url, {
+      ...options,
+      headers,
+    });
+
+    // Si es 401 Unauthorized, forzar logout
+    if (response.status === 401) {
+      if (onUnauthorized) onUnauthorized();
+    }
+
+    // Intentar parsear JSON o mostrar error
+    const text = await response.text();
     try {
-      const response = await fetch(url, {
-        ...options,
-        headers,
-      });
-
-      // Si es 401 Unauthorized, forzar logout
-      if (response.status === 401) {
-        console.log('Token inválido, forzando logout...');
-        if (onUnauthorized) {
-          onUnauthorized();
-        }
-        throw new Error('Sesión expirada');
-      }
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.detail || 'Error en la solicitud');
-      }
-
-      return data;
-    } catch (error: any) {
-      if (error.message === 'Network request failed') {
-        throw new Error('Sin conexión a internet');
-      }
-      throw error;
+      return text ? JSON.parse(text) : {};
+    } catch (e) {
+      // Esto evita "JSON Parse error: Unexpected character"
+      throw new Error(text || "Respuesta no válida del servidor");
     }
   }
 
-  async get(endpoint: string, params?: Record<string, string>) {
-    let url = endpoint;
-    if (params) {
-      const searchParams = new URLSearchParams(params);
-      url = `${endpoint}?${searchParams.toString()}`;
-    }
-    return this.request(url, { method: 'GET' });
+  get(endpoint: string) {
+    return this.request(endpoint, { method: "GET" });
   }
 
-  async post(endpoint: string, data?: any) {
+  post(endpoint: string, body?: any) {
     return this.request(endpoint, {
-      method: 'POST',
-      body: data ? JSON.stringify(data) : undefined,
+      method: "POST",
+      body: body ? JSON.stringify(body) : undefined,
     });
   }
 
-  async put(endpoint: string, data?: any) {
+  put(endpoint: string, body?: any) {
     return this.request(endpoint, {
-      method: 'PUT',
-      body: data ? JSON.stringify(data) : undefined,
+      method: "PUT",
+      body: body ? JSON.stringify(body) : undefined,
     });
   }
 
-  async delete(endpoint: string) {
-    return this.request(endpoint, { method: 'DELETE' });
+  delete(endpoint: string) {
+    return this.request(endpoint, { method: "DELETE" });
   }
 }
 
-export const api = new ApiService();
+export const apiService = new ApiService();
+export default apiService;
