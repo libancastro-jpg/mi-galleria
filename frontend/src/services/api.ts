@@ -1,6 +1,6 @@
 const BASE_URL =
   process.env.EXPO_PUBLIC_BACKEND_URL ||
-  "https://mi-galleria-final.cluster-9.preview.emergentcf.cloud";
+  "https://mi-galleria-backend.onrender.com/api";
 
 // Callback para manejar logout cuando hay error 401
 let onUnauthorized: (() => void) | null = null;
