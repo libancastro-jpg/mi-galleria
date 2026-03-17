@@ -51,17 +51,17 @@ interface DashboardData {
 
 // Color palette - Tema Claro
 const COLORS = {
-  gold: '#d4a017',             // Dorado principal
+  gold: '#d4a017',
   goldLight: 'rgba(212, 160, 23, 0.15)',
-  greenDark: '#22c55e',        // Verde éxito
+  greenDark: '#22c55e',
   greenLight: 'rgba(34, 197, 94, 0.12)',
-  redDeep: '#ef4444',          // Rojo alertas
+  redDeep: '#ef4444',
   redLight: 'rgba(239, 68, 68, 0.12)',
-  grayDark: '#ffffff',         // Blanco (tarjetas)
-  grayMedium: '#e0e0e0',       // Gris claro (bordes)
-  grayLight: '#555555',        // Gris oscuro (texto secundario)
-  white: '#1a1a1a',            // Texto oscuro
-  background: '#f5f5f5',       // Fondo claro
+  grayDark: '#ffffff',
+  grayMedium: '#e0e0e0',
+  grayLight: '#555555',
+  white: '#1a1a1a',
+  background: '#f5f5f5',
 };
 
 export default function DashboardScreen() {
@@ -70,7 +70,7 @@ export default function DashboardScreen() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  
+
   // Estados para búsqueda y menú
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -107,15 +107,15 @@ export default function DashboardScreen() {
       setShowSearchResults(false);
       return;
     }
-    
+
     setSearching(true);
     try {
       const aves = await api.get('/aves');
-      const filtered = aves.filter((ave: any) => 
+      const filtered = aves.filter((ave: any) =>
         ave.codigo?.toLowerCase().includes(query.toLowerCase()) ||
         ave.nombre?.toLowerCase().includes(query.toLowerCase())
       );
-      setSearchResults(filtered.slice(0, 5)); // Máximo 5 resultados
+      setSearchResults(filtered.slice(0, 5));
       setShowSearchResults(true);
     } catch (error) {
       console.error('Error searching:', error);
@@ -133,9 +133,28 @@ export default function DashboardScreen() {
 
   const getAlertStatus = () => {
     const count = data?.recordatorios_salud || 0;
-    if (count === 0) return { color: COLORS.greenDark, bg: COLORS.greenLight, text: 'Todo al día', icon: 'checkmark-circle' };
-    if (count <= 3) return { color: COLORS.gold, bg: COLORS.goldLight, text: `${count} recordatorio${count > 1 ? 's' : ''} pendiente${count > 1 ? 's' : ''}`, icon: 'alert-circle' };
-    return { color: COLORS.redDeep, bg: COLORS.redLight, text: `${count} alertas - Atención requerida`, icon: 'warning' };
+    if (count === 0) {
+      return {
+        color: COLORS.greenDark,
+        bg: COLORS.greenLight,
+        text: 'Todo al día',
+        icon: 'checkmark-circle',
+      };
+    }
+    if (count <= 3) {
+      return {
+        color: COLORS.gold,
+        bg: COLORS.goldLight,
+        text: `${count} recordatorio${count > 1 ? 's' : ''} pendiente${count > 1 ? 's' : ''}`,
+        icon: 'alert-circle',
+      };
+    }
+    return {
+      color: COLORS.redDeep,
+      bg: COLORS.redLight,
+      text: `${count} alertas - Atención requerida`,
+      icon: 'warning',
+    };
   };
 
   const formatUserName = (name: string | undefined) => {
@@ -179,7 +198,7 @@ export default function DashboardScreen() {
               <RoosterLogo size={72} />
             </View>
             <View style={styles.headerRight}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.profileButton}
                 onPress={() => router.push('/perfil')}
               >
@@ -192,7 +211,7 @@ export default function DashboardScreen() {
 
         {/* Alertas Section - Solo mostrar si hay recordatorios pendientes */}
         {(data?.recordatorios_salud || 0) > 0 && (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.alertCard, { backgroundColor: alertStatus.bg }]}
             onPress={() => router.push('/(tabs)/ajustes')}
           >
@@ -221,17 +240,19 @@ export default function DashboardScreen() {
               onChangeText={handleSearch}
             />
             {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => {
-                setSearchQuery('');
-                setSearchResults([]);
-                setShowSearchResults(false);
-              }}>
+              <TouchableOpacity
+                onPress={() => {
+                  setSearchQuery('');
+                  setSearchResults([]);
+                  setShowSearchResults(false);
+                }}
+              >
                 <Ionicons name="close-circle" size={20} color={COLORS.grayLight} />
               </TouchableOpacity>
             )}
             {searching && <ActivityIndicator size="small" color={COLORS.gold} />}
           </View>
-          
+
           {/* Resultados de búsqueda */}
           {showSearchResults && searchResults.length > 0 && (
             <View style={styles.searchResults}>
@@ -242,10 +263,10 @@ export default function DashboardScreen() {
                   onPress={() => handleSelectAve(ave.id)}
                 >
                   <View style={styles.searchResultIcon}>
-                    <Ionicons 
-                      name={ave.tipo === 'gallo' ? 'male' : 'female'} 
-                      size={18} 
-                      color={ave.tipo === 'gallo' ? '#3b82f6' : '#ec4899'} 
+                    <Ionicons
+                      name={ave.tipo === 'gallo' ? 'male' : 'female'}
+                      size={18}
+                      color={ave.tipo === 'gallo' ? '#3b82f6' : '#ec4899'}
                     />
                   </View>
                   <View style={styles.searchResultInfo}>
@@ -262,10 +283,12 @@ export default function DashboardScreen() {
               ))}
             </View>
           )}
-          
+
           {showSearchResults && searchQuery.length > 0 && searchResults.length === 0 && !searching && (
             <View style={styles.searchNoResults}>
-              <Text style={styles.searchNoResultsText}>No se encontraron aves con "{searchQuery}"</Text>
+              <Text style={styles.searchNoResultsText}>
+                No se encontraron aves con "{searchQuery}"
+              </Text>
             </View>
           )}
         </View>
@@ -277,40 +300,31 @@ export default function DashboardScreen() {
             style={styles.statCardCompact}
             onPress={() => router.push('/(tabs)/aves')}
           >
-            <Text style={styles.statTitleCentered}>Aves Activas</Text>
-            {(data?.aves.total_activas || 0) > 0 ? (
-              <>
-                <View style={styles.avesActivasContent}>
-                  <Image 
-                    source={{ uri: 'https://customer-assets.emergentagent.com/job_aviary-dashboard/artifacts/hgzvwt56_f8785e86-21cf-4672-9fc0-dc7be729149f%2033.png' }}
-                    style={styles.avesActivasImage}
-                    resizeMode="contain"
-                  />
-                  <View style={styles.avesActivasStats}>
-                    <Text style={styles.statNumber}>{data?.aves.total_activas || 0}</Text>
-                    <View style={styles.statDetails}>
-                      <View style={styles.statDetailRow}>
-                        <Ionicons name="male" size={14} color="#3b82f6" />
-                        <Text style={styles.statDetailText}>Gallos: {data?.aves.gallos || 0}</Text>
-                      </View>
-                      <View style={styles.statDetailRow}>
-                        <Ionicons name="female" size={14} color="#ec4899" />
-                        <Text style={styles.statDetailText}>Gallinas: {data?.aves.gallinas || 0}</Text>
-                      </View>
-                    </View>
-                  </View>
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              <Image
+                source={require('../../assets/images/aves_activas.png')}
+                style={{ width: 95, height: 95, marginBottom: 10 }}
+                resizeMode="contain"
+              />
+
+              <Text style={styles.statTitleCentered}>Aves Activas</Text>
+
+              {(data?.aves?.total_activas || 0) > 0 ? (
+                <View style={{ alignItems: 'center', marginTop: 6 }}>
+                  <Text style={styles.statNumber}>{data?.aves?.total_activas || 0}</Text>
+
+                  <Text style={styles.statDetailText}>
+                    Gallos: {data?.aves?.gallos || 0}
+                  </Text>
+
+                  <Text style={styles.statDetailText}>
+                    Gallinas: {data?.aves?.gallinas || 0}
+                  </Text>
                 </View>
-              </>
-            ) : (
-              <View style={styles.avesActivasContent}>
-                <Image 
-                  source={{ uri: 'https://customer-assets.emergentagent.com/job_aviary-dashboard/artifacts/hgzvwt56_f8785e86-21cf-4672-9fc0-dc7be729149f%2033.png' }}
-                  style={styles.avesActivasImage}
-                  resizeMode="contain"
-                />
-                <Text style={styles.emptyCardText}>Aún no tienes aves registradas.</Text>
-              </View>
-            )}
+              ) : (
+                <Text style={styles.emptyCardText}>Sin aves registradas.</Text>
+              )}
+            </View>
           </TouchableOpacity>
 
           {/* Rendimiento */}
@@ -327,25 +341,30 @@ export default function DashboardScreen() {
                 <View style={styles.rendimientoStats}>
                   <View style={styles.rendimientoRow}>
                     <Text style={[styles.rendimientoLabel, { color: COLORS.greenDark }]}>Ganadas:</Text>
-                    <Text style={[styles.rendimientoValue, { color: COLORS.greenDark }]}>{data?.peleas.ganadas || 0}</Text>
+                    <Text style={[styles.rendimientoValue, { color: COLORS.greenDark }]}>
+                      {data?.peleas.ganadas || 0}
+                    </Text>
                   </View>
                   <View style={styles.rendimientoRow}>
                     <Text style={[styles.rendimientoLabel, { color: COLORS.redDeep }]}>Perdidas:</Text>
-                    <Text style={[styles.rendimientoValue, { color: COLORS.redDeep }]}>{data?.peleas.perdidas || 0}</Text>
+                    <Text style={[styles.rendimientoValue, { color: COLORS.redDeep }]}>
+                      {data?.peleas.perdidas || 0}
+                    </Text>
                   </View>
                   <View style={styles.rendimientoRow}>
                     <Text style={styles.rendimientoLabel}>Efectividad:</Text>
-                    <Text style={[styles.rendimientoValue, { color: COLORS.gold }]}>{data?.peleas.porcentaje_victorias || 0}%</Text>
+                    <Text style={[styles.rendimientoValue, { color: COLORS.gold }]}>
+                      {data?.peleas.porcentaje_victorias || 0}%
+                    </Text>
                   </View>
                 </View>
-                {/* Progress Bar */}
                 <View style={styles.progressBarContainer}>
                   <View style={styles.progressBarBg}>
-                    <View 
+                    <View
                       style={[
-                        styles.progressBarFill, 
-                        { width: `${data?.peleas.porcentaje_victorias || 0}%` }
-                      ]} 
+                        styles.progressBarFill,
+                        { width: `${data?.peleas.porcentaje_victorias || 0}%` },
+                      ]}
                     />
                   </View>
                 </View>
@@ -370,7 +389,9 @@ export default function DashboardScreen() {
               <View style={styles.cruceStats}>
                 <View style={styles.cruceRow}>
                   <Text style={styles.cruceLabel}>Total:</Text>
-                  <Text style={styles.cruceValue}>{data?.cruces_total || data?.cruces_planeados || 0}</Text>
+                  <Text style={styles.cruceValue}>
+                    {data?.cruces_total || data?.cruces_planeados || 0}
+                  </Text>
                 </View>
               </View>
             ) : (
@@ -388,7 +409,9 @@ export default function DashboardScreen() {
               <View style={styles.camadaStats}>
                 <View style={styles.camadaRow}>
                   <Text style={styles.camadaLabel}>Total:</Text>
-                  <Text style={styles.camadaValue}>{data?.camadas_total || data?.camadas_activas || 0}</Text>
+                  <Text style={styles.camadaValue}>
+                    {data?.camadas_total || data?.camadas_activas || 0}
+                  </Text>
                 </View>
               </View>
             ) : (
@@ -415,7 +438,7 @@ export default function DashboardScreen() {
         animationType="fade"
         onRequestClose={() => setShowAddMenu(false)}
       >
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => setShowAddMenu(false)}
@@ -427,23 +450,6 @@ export default function DashboardScreen() {
                 <Ionicons name="close" size={24} color={COLORS.grayLight} />
               </TouchableOpacity>
             </View>
-            
-            <TouchableOpacity
-              style={styles.addMenuItem}
-              onPress={() => {
-                setShowAddMenu(false);
-                router.push('/cruce/new');
-              }}
-            >
-              <View style={[styles.addMenuIconLarge, { backgroundColor: COLORS.goldLight }]}>
-                <CrucesIcon size={48} />
-              </View>
-              <View style={styles.addMenuItemContent}>
-                <Text style={styles.addMenuItemTitle}>Registrar Encaste</Text>
-                <Text style={styles.addMenuItemDesc}>Planificar cruce entre aves</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={COLORS.grayLight} />
-            </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.addMenuItem}
@@ -458,6 +464,23 @@ export default function DashboardScreen() {
               <View style={styles.addMenuItemContent}>
                 <Text style={styles.addMenuItemTitle}>Animal Individual</Text>
                 <Text style={styles.addMenuItemDesc}>Agregar ave nueva al inventario</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={COLORS.grayLight} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.addMenuItem}
+              onPress={() => {
+                setShowAddMenu(false);
+                router.push('/cruce/new');
+              }}
+            >
+              <View style={[styles.addMenuIconLarge, { backgroundColor: COLORS.goldLight }]}>
+                <CrucesIcon size={48} />
+              </View>
+              <View style={styles.addMenuItemContent}>
+                <Text style={styles.addMenuItemTitle}>Registrar Encaste</Text>
+                <Text style={styles.addMenuItemDesc}>Planificar cruce entre aves</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={COLORS.grayLight} />
             </TouchableOpacity>
@@ -714,15 +737,17 @@ const styles = StyleSheet.create({
   avesActivasContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
   },
   avesActivasImage: {
-    width: 70,
-    height: 70,
+    width: 88,
+    height: 88,
+    alignSelf: 'center',
+    marginRight: 12,
   },
   avesActivasStats: {
     flex: 1,
     alignItems: 'flex-start',
+    justifyContent: 'center',
   },
   camadaTitle: {
     fontSize: 14,

@@ -1,8 +1,15 @@
 import React, { useState } from 'react';
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Platform, View, TouchableOpacity, Text, StyleSheet, Modal, Pressable } from 'react-native';
-import { useRouter } from 'expo-router';
+import {
+  Platform,
+  View,
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  Modal,
+  Pressable,
+} from 'react-native';
 import { GalloLineaIcon } from '../../src/components/GalloLineaIcon';
 
 // Color palette - Tema Claro
@@ -48,11 +55,32 @@ function ActionMenu() {
       >
         <Pressable style={styles.modalOverlay} onPress={() => setIsOpen(false)}>
           <View style={styles.menuContainer}>
+            {/* ✅ SALUD (mueve Salud aquí) */}
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => handleNavigate('/(tabs)/ajustes')}
+            >
+              <View
+                style={[
+                  styles.menuItemIcon,
+                  { backgroundColor: 'rgba(34, 197, 94, 0.15)' },
+                ]}
+              >
+                <Ionicons name="medkit" size={24} color="#22c55e" />
+              </View>
+              <Text style={styles.menuItemText}>Salud</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={styles.menuItem}
               onPress={() => handleNavigate('/(tabs)/cuido')}
             >
-              <View style={[styles.menuItemIcon, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
+              <View
+                style={[
+                  styles.menuItemIcon,
+                  { backgroundColor: 'rgba(59, 130, 246, 0.15)' },
+                ]}
+              >
                 <Ionicons name="timer" size={24} color="#3b82f6" />
               </View>
               <Text style={styles.menuItemText}>Cuido</Text>
@@ -62,7 +90,12 @@ function ActionMenu() {
               style={styles.menuItem}
               onPress={() => handleNavigate('/(tabs)/peleas')}
             >
-              <View style={[styles.menuItemIcon, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
+              <View
+                style={[
+                  styles.menuItemIcon,
+                  { backgroundColor: 'rgba(245, 158, 11, 0.15)' },
+                ]}
+              >
                 <Ionicons name="trophy" size={24} color="#f59e0b" />
               </View>
               <Text style={styles.menuItemText}>Peleas</Text>
@@ -96,21 +129,20 @@ export default function TabLayout() {
           fontWeight: '600',
           marginTop: 2,
         },
-        tabBarIconStyle: {
-          width: 32,
-          height: 32,
-        },
       }}
     >
+      {/* Inicio */}
       <Tabs.Screen
         name="index"
         options={{
           title: 'Inicio',
-          tabBarIcon: () => (
-            <Ionicons name="home" size={28} color={COLORS.black} />
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="home" size={28} color={color} />
           ),
         }}
       />
+
+      {/* Aves */}
       <Tabs.Screen
         name="aves"
         options={{
@@ -122,15 +154,8 @@ export default function TabLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="ajustes"
-        options={{
-          title: 'Salud',
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="medical" size={26} color={color} />
-          ),
-        }}
-      />
+
+      {/* Más (botón con menú) */}
       <Tabs.Screen
         name="cuido"
         options={{
@@ -138,18 +163,11 @@ export default function TabLayout() {
           tabBarButton: () => <ActionMenu />,
         }}
       />
-      <Tabs.Screen
-        name="peleas"
-        options={{
-          href: null, // Oculto, accesible desde el menú
-        }}
-      />
-      <Tabs.Screen
-        name="cruces"
-        options={{
-          href: null, // Accesible desde Dashboard -> Acciones Rápidas
-        }}
-      />
+
+      {/* ✅ OCULTOS: para que NO salgan en la barra inferior */}
+      <Tabs.Screen name="ajustes" options={{ href: null }} />
+      <Tabs.Screen name="peleas" options={{ href: null }} />
+      <Tabs.Screen name="cruces" options={{ href: null }} />
     </Tabs>
   );
 }

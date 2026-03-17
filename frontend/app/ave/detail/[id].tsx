@@ -62,8 +62,7 @@ export default function AveDetailScreen() {
   const [madre, setMadre] = useState<Ave | null>(null);
   const [expandedNode, setExpandedNode] = useState<string | null>(null);
   const [showAbuelos, setShowAbuelos] = useState(false);
-  
-  // Estado para agregar abuelos
+
   const [editingAbuelo, setEditingAbuelo] = useState<string | null>(null);
   const [abueloForm, setAbueloForm] = useState({
     codigo: '',
@@ -96,18 +95,22 @@ export default function AveDetailScreen() {
       setHijos(hijosData);
       setPedigri(pedigriData);
 
-      // Fetch parent info
       if (aveData.padre_id) {
         try {
           const padreData = await api.get(`/aves/${aveData.padre_id}`);
           setPadre(padreData);
         } catch (e) {}
+      } else {
+        setPadre(null);
       }
+
       if (aveData.madre_id) {
         try {
           const madreData = await api.get(`/aves/${aveData.madre_id}`);
           setMadre(madreData);
         } catch (e) {}
+      } else {
+        setMadre(null);
       }
     } catch (error: any) {
       Alert.alert('Error', error.message);
@@ -152,17 +155,72 @@ export default function AveDetailScreen() {
 
   const getEstadoColor = (estado: string) => {
     switch (estado) {
-      case 'activo': return '#22c55e';
-      case 'vendido': return '#3b82f6';
-      case 'muerto': return '#a0a0a0';
-      case 'retirado': return '#f59e0b';
-      default: return '#a0a0a0';
+      case 'activo':
+        return '#22c55e';
+      case 'vendido':
+        return '#3b82f6';
+      case 'muerto':
+        return '#a0a0a0';
+      case 'retirado':
+        return '#f59e0b';
+      default:
+        return '#a0a0a0';
     }
+  };
+
+  const getBaseGeneticaItems = () => {
+    const linea = ave?.linea?.trim();
+    if (!linea) return [];
+    return linea
+      .split(/[\/,+-]/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  };
+
+  const renderBaseGenetica = () => {
+    const lineas = getBaseGeneticaItems();
+
+    return (
+      <View style={styles.geneticaCard}>
+        <View style={styles.geneticaHeader}>
+          <View style={styles.geneticaHeaderLeft}>
+            <Ionicons name="flask-outline" size={18} color="#f59e0b" />
+            <Text style={styles.geneticaTitle}>Base genética</Text>
+          </View>
+        </View>
+
+        {lineas.length > 0 ? (
+          <>
+            {lineas.map((linea, index) => (
+              <View
+                key={`${linea}-${index}`}
+                style={[
+                  styles.geneticaRow,
+                  index === lineas.length - 1 && styles.geneticaRowLast,
+                ]}
+              >
+                <Text style={styles.geneticaLine}>{linea}</Text>
+                <Text style={styles.geneticaPercent}>
+                  {lineas.length === 1 ? '100%' : `${Math.round(100 / lineas.length)}% base`}
+                </Text>
+              </View>
+            ))}
+            <Text style={styles.geneticaNote}>
+              Base inicial tomada del campo línea del ave.
+            </Text>
+          </>
+        ) : (
+          <Text style={styles.geneticaEmpty}>
+            Esta ave aún no tiene línea genética registrada.
+          </Text>
+        )}
+      </View>
+    );
   };
 
   const renderPedigriNode = (node: any, level: number = 0) => {
     if (!node || level > 4) return null;
-    
+
     return (
       <View style={[styles.pedigriNode, { marginLeft: level * 8 }]}>
         <TouchableOpacity
@@ -204,11 +262,9 @@ export default function AveDetailScreen() {
     );
   };
 
-  // Nuevo renderizado del árbol genealógico conectado
   const renderConnectedTree = () => {
     if (!pedigri) return null;
 
-    // Función para recolectar todos los IDs/códigos del árbol y detectar duplicados
     const collectIds = (node: any, ids: Map<string, number> = new Map()): Map<string, number> => {
       if (!node || node.unknown) return ids;
       const identifier = node.id || (node.externo && node.codigo ? `ext_${node.codigo}` : null);
@@ -229,8 +285,12 @@ export default function AveDetailScreen() {
 
     const hasConsanguinidad = duplicateIds.size > 0;
 
-    // Renderizar nodo expandible
-    const renderExpandableNode = (node: any, label: string, nodeKey: string, isParent: boolean = false) => {
+    const renderExpandableNode = (
+      node: any,
+      label: string,
+      nodeKey: string,
+      isParent: boolean = false
+    ) => {
       const isExpanded = expandedNode === nodeKey;
       const nodeIdentifier = node?.id || (node?.externo && node?.codigo ? `ext_${node?.codigo}` : null);
       const isDuplicate = nodeIdentifier ? duplicateIds.has(nodeIdentifier) : false;
@@ -256,7 +316,7 @@ export default function AveDetailScreen() {
               styles.treeNode,
               isParent && styles.treeNodeParent,
               isDuplicate && styles.treeNodeDuplicate,
-              isExpanded && styles.treeNodeExpanded
+              isExpanded && styles.treeNodeExpanded,
             ]}
             onPress={() => setExpandedNode(isExpanded ? null : nodeKey)}
           >
@@ -268,23 +328,28 @@ export default function AveDetailScreen() {
             {node.foto_principal ? (
               <Image source={{ uri: node.foto_principal }} style={[styles.treePhoto, isParent && styles.treePhotoParent]} />
             ) : (
-              <View style={[
-                styles.treePhotoPlaceholder,
-                isParent && styles.treePhotoPlaceholderParent,
-                isDuplicate && styles.treePhotoPlaceholderDuplicate
-              ]}>
+              <View
+                style={[
+                  styles.treePhotoPlaceholder,
+                  isParent && styles.treePhotoPlaceholderParent,
+                  isDuplicate && styles.treePhotoPlaceholderDuplicate,
+                ]}
+              >
                 <Ionicons
                   name={node.tipo === 'gallo' ? 'male' : 'female'}
                   size={isParent ? 24 : 18}
-                  color={isDuplicate ? '#f59e0b' : (node.tipo === 'gallo' ? '#3b82f6' : '#ec4899')}
+                  color={isDuplicate ? '#f59e0b' : node.tipo === 'gallo' ? '#3b82f6' : '#ec4899'}
                 />
               </View>
             )}
-            <Text style={[
-              styles.treeCode,
-              isParent && styles.treeCodeParent,
-              isDuplicate && styles.treeCodeDuplicate
-            ]} numberOfLines={1}>
+            <Text
+              style={[
+                styles.treeCode,
+                isParent && styles.treeCodeParent,
+                isDuplicate && styles.treeCodeDuplicate,
+              ]}
+              numberOfLines={1}
+            >
               PL: {node.codigo}
             </Text>
             <Ionicons
@@ -295,7 +360,6 @@ export default function AveDetailScreen() {
             />
           </TouchableOpacity>
 
-          {/* Panel expandido con información detallada */}
           {isExpanded && (
             <View style={styles.expandedPanel}>
               {node.nombre && (
@@ -332,7 +396,6 @@ export default function AveDetailScreen() {
                   <Text style={styles.expandedExternalText}>Ave Externa</Text>
                 </View>
               )}
-              {/* Botón para ver detalle completo si no es externo */}
               {!isExternal && node.id && node.id !== id && (
                 <TouchableOpacity
                   style={styles.expandedViewBtn}
@@ -348,12 +411,16 @@ export default function AveDetailScreen() {
       );
     };
 
-    // Renderizar nodo de abuelo con opción de agregar
-    const renderAbueloNode = (node: any, label: string, nodeKey: string, parentKey: string, isAbuelo: boolean = true) => {
+    const renderAbueloNode = (
+      node: any,
+      label: string,
+      nodeKey: string,
+      parentKey: string,
+      isAbuelo: boolean = true
+    ) => {
       const isExpanded = expandedNode === nodeKey;
       const isEditing = editingAbuelo === nodeKey;
 
-      // Determinar el tipo basado en el label
       const tipo = label.includes('Abuelo') ? 'gallo' : 'gallina';
 
       if (!node) {
@@ -367,35 +434,35 @@ export default function AveDetailScreen() {
                   placeholder="Placa *"
                   placeholderTextColor="#666"
                   value={abueloForm.codigo}
-                  onChangeText={(text) => setAbueloForm({...abueloForm, codigo: text})}
+                  onChangeText={(text) => setAbueloForm({ ...abueloForm, codigo: text })}
                 />
                 <TextInput
                   style={styles.abueloInput}
                   placeholder="Gallería"
                   placeholderTextColor="#666"
                   value={abueloForm.galleria}
-                  onChangeText={(text) => setAbueloForm({...abueloForm, galleria: text})}
+                  onChangeText={(text) => setAbueloForm({ ...abueloForm, galleria: text })}
                 />
                 <TextInput
                   style={styles.abueloInput}
                   placeholder="Nombre"
                   placeholderTextColor="#666"
                   value={abueloForm.nombre}
-                  onChangeText={(text) => setAbueloForm({...abueloForm, nombre: text})}
+                  onChangeText={(text) => setAbueloForm({ ...abueloForm, nombre: text })}
                 />
                 <TextInput
                   style={styles.abueloInput}
                   placeholder="Color"
                   placeholderTextColor="#666"
                   value={abueloForm.color}
-                  onChangeText={(text) => setAbueloForm({...abueloForm, color: text})}
+                  onChangeText={(text) => setAbueloForm({ ...abueloForm, color: text })}
                 />
                 <TextInput
                   style={styles.abueloInput}
                   placeholder="Línea"
                   placeholderTextColor="#666"
                   value={abueloForm.linea}
-                  onChangeText={(text) => setAbueloForm({...abueloForm, linea: text})}
+                  onChangeText={(text) => setAbueloForm({ ...abueloForm, linea: text })}
                 />
                 <View style={styles.abueloFormButtons}>
                   <TouchableOpacity
@@ -413,7 +480,6 @@ export default function AveDetailScreen() {
                     onPress={async () => {
                       if (!abueloForm.codigo) return;
                       try {
-                        // Guardar el abuelo en el padre correspondiente
                         const updateData: any = {};
                         if (parentKey === 'padre') {
                           if (nodeKey === 'abuelo_p') {
@@ -432,10 +498,9 @@ export default function AveDetailScreen() {
                             updateData.abuelo_materno_madre_galleria = abueloForm.galleria;
                           }
                         }
-                        
+
                         await api.put(`/aves/${id}`, updateData);
-                        
-                        // Actualizar el pedigri localmente
+
                         const newAbuelo = {
                           codigo: abueloForm.codigo,
                           galleria: abueloForm.galleria,
@@ -443,13 +508,11 @@ export default function AveDetailScreen() {
                           color: abueloForm.color,
                           linea: abueloForm.linea,
                           tipo: tipo,
-                          externo: true
+                          externo: true,
                         };
-                        
-                        // Crear copia profunda del pedigri
+
                         const newPedigri = JSON.parse(JSON.stringify(pedigri || {}));
-                        
-                        // Asegurar que la estructura existe
+
                         if (parentKey === 'padre') {
                           if (!newPedigri.padre) {
                             newPedigri.padre = {};
@@ -470,7 +533,7 @@ export default function AveDetailScreen() {
                           }
                         }
                         setPedigri(newPedigri);
-                        
+
                         setEditingAbuelo(null);
                         setAbueloForm({ codigo: '', galleria: '', nombre: '', color: '', linea: '' });
                         Alert.alert('Éxito', 'Abuelo agregado correctamente');
@@ -484,7 +547,7 @@ export default function AveDetailScreen() {
                 </View>
               </View>
             ) : (
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.abueloAddBtn}
                 onPress={() => {
                   setAbueloForm({ codigo: '', galleria: '', nombre: '', color: '', linea: '' });
@@ -510,11 +573,21 @@ export default function AveDetailScreen() {
             style={[styles.abueloNode, isDuplicate && styles.abueloNodeDuplicate]}
             onPress={() => setExpandedNode(isExpanded ? null : nodeKey)}
           >
-            <View style={[styles.abueloIcon, { backgroundColor: node.tipo === 'gallo' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(236, 72, 153, 0.15)' }]}>
+            <View
+              style={[
+                styles.abueloIcon,
+                {
+                  backgroundColor:
+                    node.tipo === 'gallo'
+                      ? 'rgba(59, 130, 246, 0.15)'
+                      : 'rgba(236, 72, 153, 0.15)',
+                },
+              ]}
+            >
               <Ionicons
                 name={node.tipo === 'gallo' ? 'male' : 'female'}
                 size={14}
-                color={isDuplicate ? '#f59e0b' : (node.tipo === 'gallo' ? '#3b82f6' : '#ec4899')}
+                color={isDuplicate ? '#f59e0b' : node.tipo === 'gallo' ? '#3b82f6' : '#ec4899'}
               />
             </View>
             <Text style={[styles.abueloCode, isDuplicate && { color: '#f59e0b' }]} numberOfLines={1}>
@@ -523,25 +596,14 @@ export default function AveDetailScreen() {
             <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={12} color="#9ca3af" />
           </TouchableOpacity>
 
-          {/* Panel expandido para abuelo */}
           {isExpanded && (
             <View style={styles.abueloExpandedPanel}>
-              {node.nombre && (
-                <Text style={styles.abueloExpandedText}>📛 {node.nombre}</Text>
-              )}
+              {node.nombre && <Text style={styles.abueloExpandedText}>📛 {node.nombre}</Text>}
               <Text style={styles.abueloExpandedText}>🏷️ PL: {node.codigo}</Text>
-              {node.galleria && (
-                <Text style={styles.abueloExpandedText}>🏢 {node.galleria}</Text>
-              )}
-              {node.color && (
-                <Text style={styles.abueloExpandedText}>🎨 {node.color}</Text>
-              )}
-              {node.linea && (
-                <Text style={styles.abueloExpandedText}>🧬 {node.linea}</Text>
-              )}
-              {isExternal && (
-                <Text style={styles.abueloExpandedExternal}>🌐 Externo</Text>
-              )}
+              {node.galleria && <Text style={styles.abueloExpandedText}>🏢 {node.galleria}</Text>}
+              {node.color && <Text style={styles.abueloExpandedText}>🎨 {node.color}</Text>}
+              {node.linea && <Text style={styles.abueloExpandedText}>🧬 {node.linea}</Text>}
+              {isExternal && <Text style={styles.abueloExpandedExternal}>🌐 Externo</Text>}
               {!isExternal && node.id && node.id !== id && (
                 <TouchableOpacity
                   style={styles.abueloViewBtn}
@@ -558,7 +620,6 @@ export default function AveDetailScreen() {
 
     return (
       <View style={styles.treeContainer}>
-        {/* Alerta de consanguinidad */}
         {hasConsanguinidad && (
           <View style={styles.consanguinidadAlert}>
             <Ionicons name="warning" size={16} color="#f59e0b" />
@@ -568,13 +629,9 @@ export default function AveDetailScreen() {
           </View>
         )}
 
-        {/* Conector vertical inicial */}
         <View style={styles.treeConnectorVerticalLong} />
-
-        {/* Conector horizontal */}
         <View style={styles.treeConnectorHorizontal} />
 
-        {/* Nivel 1: Padres */}
         <View style={styles.treeLevel}>
           <View style={styles.treeBranch}>
             {renderExpandableNode(pedigri?.padre, 'Padre', 'padre', true)}
@@ -584,7 +641,6 @@ export default function AveDetailScreen() {
           </View>
         </View>
 
-        {/* Botón para mostrar/ocultar abuelos */}
         <TouchableOpacity
           style={styles.toggleAbuelosBtn}
           onPress={() => setShowAbuelos(!showAbuelos)}
@@ -599,29 +655,23 @@ export default function AveDetailScreen() {
           </Text>
         </TouchableOpacity>
 
-        {/* Nivel 2: Abuelos (desplegable) */}
         {showAbuelos && (
           <View style={styles.abuelosContainer}>
-            {/* Conectores a abuelos */}
             <View style={styles.treeGrandparentConnectors}>
               <View style={styles.treeConnectorVerticalSmall} />
               <View style={styles.treeConnectorVerticalSmall} />
             </View>
 
-            {/* Conectores horizontales abuelos */}
             <View style={styles.treeGrandparentHorizontal}>
               <View style={styles.treeConnectorHorizontalSmall} />
               <View style={styles.treeConnectorHorizontalSmall} />
             </View>
 
-            {/* Abuelos */}
             <View style={styles.treeLevelGrandparents}>
-              {/* Abuelos paternos */}
               <View style={styles.treeGrandparentPair}>
                 {renderAbueloNode(pedigri?.padre?.padre, 'Abuelo P.', 'abuelo_p', 'padre')}
                 {renderAbueloNode(pedigri?.padre?.madre, 'Abuela P.', 'abuela_p', 'padre')}
               </View>
-              {/* Abuelos maternos */}
               <View style={styles.treeGrandparentPair}>
                 {renderAbueloNode(pedigri?.madre?.padre, 'Abuelo M.', 'abuelo_m', 'madre')}
                 {renderAbueloNode(pedigri?.madre?.madre, 'Abuela M.', 'abuela_m', 'madre')}
@@ -635,7 +685,6 @@ export default function AveDetailScreen() {
 
   const renderPedigriTab = () => (
     <View style={styles.tabContent}>
-      {/* Información del Ave */}
       <View style={styles.infoCard}>
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>Tipo</Text>
@@ -694,6 +743,9 @@ export default function AveDetailScreen() {
         </View>
       </View>
 
+      <Text style={styles.sectionTitle}>Genética</Text>
+      {renderBaseGenetica()}
+
       {ave?.notas && (
         <>
           <Text style={styles.sectionTitle}>Notas</Text>
@@ -703,7 +755,6 @@ export default function AveDetailScreen() {
         </>
       )}
 
-      {/* Árbol de Pedigrí Conectado */}
       <Text style={styles.sectionTitle}>Árbol Genealógico</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pedigriScroll}>
         <View style={styles.pedigriContainer}>
@@ -722,21 +773,22 @@ export default function AveDetailScreen() {
           <View style={styles.statsRow}>
             <View style={styles.statBox}>
               <Text style={styles.statNumber}>
-                {peleas.filter(p => p.resultado === 'GANO').length}
+                {peleas.filter((p) => p.resultado === 'GANO').length}
               </Text>
               <Text style={styles.statLabel}>Ganadas</Text>
             </View>
             <View style={styles.statBox}>
               <Text style={styles.statNumber}>
-                {peleas.filter(p => p.resultado === 'PERDIO').length}
+                {peleas.filter((p) => p.resultado === 'PERDIO').length}
               </Text>
               <Text style={styles.statLabel}>Perdidas</Text>
             </View>
             <View style={styles.statBox}>
               <Text style={[styles.statNumber, { color: '#22c55e' }]}>
                 {peleas.length > 0
-                  ? Math.round((peleas.filter(p => p.resultado === 'GANO').length / peleas.length) * 100)
-                  : 0}%
+                  ? Math.round((peleas.filter((p) => p.resultado === 'GANO').length / peleas.length) * 100)
+                  : 0}
+                %
               </Text>
               <Text style={styles.statLabel}>Victoria</Text>
             </View>
@@ -823,10 +875,15 @@ export default function AveDetailScreen() {
 
   const renderHijosTab = () => (
     <View style={styles.tabContent}>
-      {/* Botón para registrar nuevo hijo */}
       <TouchableOpacity
         style={styles.registerChildButton}
-        onPress={() => router.push(`/ave/new?padre_id=${ave?.tipo === 'gallo' ? id : ''}&madre_id=${ave?.tipo === 'gallina' ? id : ''}`)}
+        onPress={() =>
+          router.push(
+            `/ave/new?padre_id=${ave?.tipo === 'gallo' ? id : ''}&madre_id=${
+              ave?.tipo === 'gallina' ? id : ''
+            }`
+          )
+        }
       >
         <Ionicons name="add-circle" size={24} color="#f59e0b" />
         <Text style={styles.registerChildText}>Registrar Nuevo Hijo</Text>
@@ -904,7 +961,6 @@ export default function AveDetailScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#f59e0b" />
         }
       >
-        {/* Profile Header */}
         <View style={styles.profileHeader}>
           {ave?.foto_principal ? (
             <Image source={{ uri: ave.foto_principal }} style={styles.profilePhoto} />
@@ -926,7 +982,6 @@ export default function AveDetailScreen() {
           </View>
         </View>
 
-        {/* Tabs */}
         <View style={styles.tabsContainer}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {tabs.map((tab) => (
@@ -948,7 +1003,6 @@ export default function AveDetailScreen() {
           </ScrollView>
         </View>
 
-        {/* Tab Content */}
         {activeTab === 'pedigri' && renderPedigriTab()}
         {activeTab === 'peleas' && renderPeleasTab()}
         {activeTab === 'salud' && renderSaludTab()}
@@ -1113,6 +1167,55 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginBottom: 12,
   },
+  geneticaCard: {
+    backgroundColor: '#242424',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#333333',
+  },
+  geneticaHeader: {
+    marginBottom: 10,
+  },
+  geneticaHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  geneticaTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  geneticaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333333',
+  },
+  geneticaRowLast: {
+    borderBottomWidth: 0,
+  },
+  geneticaLine: {
+    fontSize: 14,
+    color: '#e5e7eb',
+  },
+  geneticaPercent: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#f59e0b',
+  },
+  geneticaNote: {
+    marginTop: 10,
+    fontSize: 12,
+    color: '#9ca3af',
+  },
+  geneticaEmpty: {
+    fontSize: 14,
+    color: '#9ca3af',
+  },
   parentsRow: {
     flexDirection: 'row',
     gap: 12,
@@ -1226,7 +1329,6 @@ const styles = StyleSheet.create({
     borderLeftColor: '#333333',
     paddingLeft: 12,
   },
-  // Estilos para el árbol genealógico conectado
   treeContainer: {
     alignItems: 'center',
     paddingVertical: 20,
@@ -1427,7 +1529,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
-  // Estilos para consanguinidad
   consanguinidadAlert: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1466,7 +1567,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     zIndex: 1,
   },
-  // Estilos para nodos expandibles
   treeNodeExpanded: {
     borderColor: '#f59e0b',
     backgroundColor: 'rgba(245, 158, 11, 0.1)',
@@ -1525,7 +1625,6 @@ const styles = StyleSheet.create({
     color: '#f59e0b',
     fontWeight: '600',
   },
-  // Estilos para botón de abuelos
   toggleAbuelosBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1543,7 +1642,6 @@ const styles = StyleSheet.create({
     width: '100%',
     marginTop: 8,
   },
-  // Estilos para nodos de abuelos
   abueloNodeContainer: {
     alignItems: 'center',
     minWidth: 70,

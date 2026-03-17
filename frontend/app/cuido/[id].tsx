@@ -78,22 +78,21 @@ export default function CuidoDetailScreen() {
 
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [cuido, setCuido] = useState<Cuido | null>(null);
   const [gallos, setGallos] = useState<Ave[]>([]);
   const [showGalloList, setShowGalloList] = useState(false);
-  const [selectedGallo, setSelectedGallo] = useState<string>('');
-  
-  // Modal states
+  const [selectedGallo, setSelectedGallo] = useState('');
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [actividadTipo, setActividadTipo] = useState<'tope' | 'trabajo' | null>(null);
   const [actividadTiempo, setActividadTiempo] = useState('');
   const [actividadFecha, setActividadFecha] = useState(new Date().toISOString().split('T')[0]);
   const [actividadNotas, setActividadNotas] = useState('');
-  
+
   const [showDescansoModal, setShowDescansoModal] = useState(false);
   const [diasDescanso, setDiasDescanso] = useState('');
-  
-  // Estado para ver detalle de actividad
+
   const [selectedActividad, setSelectedActividad] = useState<Actividad | null>(null);
   const [showDetalleModal, setShowDetalleModal] = useState(false);
 
@@ -107,11 +106,9 @@ export default function CuidoDetailScreen() {
   const fetchCuido = async () => {
     try {
       const data = await api.get(`/cuido/${id}`);
-      // Transform old format to new format if needed
       const actividades: Actividad[] = data.actividades || [];
-      
-      // Migrate old tope fields if present
-      if (data.tope1_completado && !actividades.find(a => a.tipo === 'tope' && a.numero === 1)) {
+
+      if (data.tope1_completado && !actividades.find((a) => a.tipo === 'tope' && a.numero === 1)) {
         actividades.push({
           id: 'tope1',
           tipo: 'tope',
@@ -120,7 +117,7 @@ export default function CuidoDetailScreen() {
           notas: data.tope1_notas,
         });
       }
-      if (data.tope2_completado && !actividades.find(a => a.tipo === 'tope' && a.numero === 2)) {
+      if (data.tope2_completado && !actividades.find((a) => a.tipo === 'tope' && a.numero === 2)) {
         actividades.push({
           id: 'tope2',
           tipo: 'tope',
@@ -129,11 +126,10 @@ export default function CuidoDetailScreen() {
           notas: data.tope2_notas,
         });
       }
-      
-      // Migrate old trabajos if present
+
       if (data.trabajos && Array.isArray(data.trabajos)) {
         data.trabajos.forEach((t: any) => {
-          if (t.completado && !actividades.find(a => a.tipo === 'trabajo' && a.numero === t.numero)) {
+          if (t.completado && !actividades.find((a) => a.tipo === 'trabajo' && a.numero === t.numero)) {
             actividades.push({
               id: `trabajo${t.numero}`,
               tipo: 'trabajo',
@@ -145,7 +141,7 @@ export default function CuidoDetailScreen() {
           }
         });
       }
-      
+
       setCuido({ ...data, actividades });
     } catch (error: any) {
       Alert.alert('Error', error.message);
@@ -181,11 +177,39 @@ export default function CuidoDetailScreen() {
     }
   };
 
+  const handleDeleteCuido = () => {
+    if (!cuido) return;
+
+    Alert.alert(
+      'Eliminar cuido',
+      `¿Seguro que quieres eliminar el cuido de ${cuido.ave_codigo || 'esta ave'}?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setDeleting(true);
+              await api.delete(`/cuido/${cuido.id}`);
+              Alert.alert('Éxito', 'Cuido eliminado correctamente');
+              router.back();
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'No se pudo eliminar el cuido');
+            } finally {
+              setDeleting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleAddActividad = async () => {
     if (!cuido || !actividadTipo) return;
 
-    const topeCount = cuido.actividades.filter(a => a.tipo === 'tope').length;
-    const trabajoCount = cuido.actividades.filter(a => a.tipo === 'trabajo').length;
+    const topeCount = cuido.actividades.filter((a) => a.tipo === 'tope').length;
+    const trabajoCount = cuido.actividades.filter((a) => a.tipo === 'trabajo').length;
     const numero = actividadTipo === 'tope' ? topeCount + 1 : trabajoCount + 1;
 
     if (actividadTipo === 'trabajo' && !actividadTiempo) {
@@ -194,7 +218,6 @@ export default function CuidoDetailScreen() {
     }
 
     try {
-      // Construir URL con parámetros incluyendo notas si existen
       if (actividadTipo === 'tope') {
         let url = `/cuido/${cuido.id}/tope?tope_numero=${numero}`;
         if (actividadNotas) {
@@ -209,8 +232,7 @@ export default function CuidoDetailScreen() {
         }
         await api.post(url);
       }
-      
-      // Actualizar localmente
+
       const newActividad: Actividad = {
         id: `${actividadTipo}${numero}`,
         tipo: actividadTipo,
@@ -219,12 +241,12 @@ export default function CuidoDetailScreen() {
         fecha: actividadFecha,
         notas: actividadNotas || undefined,
       };
-      
+
       setCuido({
         ...cuido,
         actividades: [...cuido.actividades, newActividad],
       });
-      
+
       resetAddModal();
       Alert.alert('Éxito', `${actividadTipo === 'tope' ? 'Tope' : 'Trabajo'} ${numero} registrado`);
     } catch (error: any) {
@@ -309,7 +331,6 @@ export default function CuidoDetailScreen() {
     );
   }
 
-  // New Cuido Form
   if (isNew) {
     return (
       <SafeAreaView style={styles.container}>
@@ -341,7 +362,7 @@ export default function CuidoDetailScreen() {
               <RoosterIcon size={24} color={COLORS.gold} />
               <Text style={styles.selectButtonText}>
                 {selectedGallo
-                  ? gallos.find(g => g.id === selectedGallo)?.codigo || 'Seleccionado'
+                  ? gallos.find((g) => g.id === selectedGallo)?.codigo || 'Seleccionado'
                   : 'Seleccionar gallo'}
               </Text>
             </View>
@@ -402,9 +423,8 @@ export default function CuidoDetailScreen() {
     );
   }
 
-  // Cuido Detail View
-  const topes = cuido?.actividades.filter(a => a.tipo === 'tope') || [];
-  const trabajos = cuido?.actividades.filter(a => a.tipo === 'trabajo') || [];
+  const topes = cuido?.actividades.filter((a) => a.tipo === 'tope') || [];
+  const trabajos = cuido?.actividades.filter((a) => a.tipo === 'trabajo') || [];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -413,13 +433,25 @@ export default function CuidoDetailScreen() {
           <Ionicons name="arrow-back" size={24} color="#d4a017" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Cuido</Text>
-        <TouchableOpacity onPress={handleFinalizar} style={styles.finalizarButton}>
-          <Text style={styles.finalizarText}>Finalizar</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            onPress={handleDeleteCuido}
+            disabled={deleting}
+            style={styles.deleteButton}
+          >
+            {deleting ? (
+              <ActivityIndicator size="small" color={COLORS.redDeep} />
+            ) : (
+              <Ionicons name="trash-outline" size={20} color={COLORS.redDeep} />
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleFinalizar} style={styles.finalizarButton}>
+            <Text style={styles.finalizarText}>Finalizar</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView style={styles.content}>
-        {/* Gallo Info */}
         <View style={styles.galloCard}>
           {cuido?.ave_foto ? (
             <Image source={{ uri: cuido.ave_foto }} style={styles.galloDetailPhoto} />
@@ -444,19 +476,14 @@ export default function CuidoDetailScreen() {
           )}
         </View>
 
-        {/* Descanso Info */}
         {cuido?.en_descanso && (
           <View style={styles.descansoCard}>
             <View style={styles.descansoHeader}>
               <Ionicons name="bed" size={24} color={COLORS.blue} />
               <Text style={styles.descansoTitle}>Período de Descanso</Text>
             </View>
-            <Text style={styles.descansoInfo}>
-              {cuido.dias_descanso} días de descanso
-            </Text>
-            <Text style={styles.descansoFecha}>
-              Finaliza: {cuido.fecha_fin_descanso}
-            </Text>
+            <Text style={styles.descansoInfo}>{cuido.dias_descanso} días de descanso</Text>
+            <Text style={styles.descansoFecha}>Finaliza: {cuido.fecha_fin_descanso}</Text>
             <TouchableOpacity
               style={styles.finalizarDescansoButton}
               onPress={handleFinalizarDescanso}
@@ -466,7 +493,6 @@ export default function CuidoDetailScreen() {
           </View>
         )}
 
-        {/* Actividades Section - Topes */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Topes ({topes.length})</Text>
           {!cuido?.en_descanso && (
@@ -481,7 +507,7 @@ export default function CuidoDetailScreen() {
             </TouchableOpacity>
           )}
         </View>
-        
+
         {topes.length === 0 ? (
           <View style={styles.emptyActividad}>
             <Ionicons name="flash-outline" size={32} color={COLORS.grayLight} />
@@ -491,8 +517,8 @@ export default function CuidoDetailScreen() {
         ) : (
           <View style={styles.actividadesGrid}>
             {topes.sort((a, b) => a.numero - b.numero).map((tope) => (
-              <TouchableOpacity 
-                key={tope.id} 
+              <TouchableOpacity
+                key={tope.id}
                 style={styles.actividadCard}
                 onPress={() => {
                   setSelectedActividad(tope);
@@ -514,7 +540,6 @@ export default function CuidoDetailScreen() {
           </View>
         )}
 
-        {/* Actividades Section - Trabajos */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Trabajos ({trabajos.length})</Text>
           {!cuido?.en_descanso && (
@@ -529,7 +554,7 @@ export default function CuidoDetailScreen() {
             </TouchableOpacity>
           )}
         </View>
-        
+
         {trabajos.length === 0 ? (
           <View style={styles.emptyActividad}>
             <Ionicons name="barbell-outline" size={32} color={COLORS.grayLight} />
@@ -539,8 +564,8 @@ export default function CuidoDetailScreen() {
         ) : (
           <View style={styles.actividadesGrid}>
             {trabajos.sort((a, b) => a.numero - b.numero).map((trabajo) => (
-              <TouchableOpacity 
-                key={trabajo.id} 
+              <TouchableOpacity
+                key={trabajo.id}
                 style={styles.actividadCard}
                 onPress={() => {
                   setSelectedActividad(trabajo);
@@ -565,7 +590,6 @@ export default function CuidoDetailScreen() {
           </View>
         )}
 
-        {/* Descanso Section */}
         {!cuido?.en_descanso && (
           <>
             <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Descanso</Text>
@@ -582,7 +606,6 @@ export default function CuidoDetailScreen() {
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      {/* Add Actividad Modal */}
       <Modal
         visible={showAddModal}
         transparent
@@ -594,7 +617,7 @@ export default function CuidoDetailScreen() {
             <Text style={styles.modalTitle}>
               Agregar {actividadTipo === 'tope' ? 'Tope' : 'Trabajo'}
             </Text>
-            
+
             {actividadTipo === null && (
               <>
                 <Text style={styles.modalLabel}>Tipo de actividad</Text>
@@ -616,7 +639,7 @@ export default function CuidoDetailScreen() {
                 </View>
               </>
             )}
-            
+
             {actividadTipo === 'trabajo' && (
               <>
                 <Text style={styles.modalLabel}>Tiempo (minutos)</Text>
@@ -638,10 +661,12 @@ export default function CuidoDetailScreen() {
                       ]}
                       onPress={() => setActividadTiempo(min.toString())}
                     >
-                      <Text style={[
-                        styles.tiempoButtonText,
-                        actividadTiempo === min.toString() && styles.tiempoButtonTextActive,
-                      ]}>
+                      <Text
+                        style={[
+                          styles.tiempoButtonText,
+                          actividadTiempo === min.toString() && styles.tiempoButtonTextActive,
+                        ]}
+                      >
                         {min}m
                       </Text>
                     </TouchableOpacity>
@@ -656,7 +681,7 @@ export default function CuidoDetailScreen() {
               onChange={setActividadFecha}
               placeholder="Seleccionar fecha"
             />
-            
+
             <Text style={styles.modalLabel}>Notas (opcional)</Text>
             <TextInput
               style={[styles.modalInput, styles.modalInputMultiline]}
@@ -669,16 +694,10 @@ export default function CuidoDetailScreen() {
             />
 
             <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.modalCancelButton}
-                onPress={resetAddModal}
-              >
+              <TouchableOpacity style={styles.modalCancelButton} onPress={resetAddModal}>
                 <Text style={styles.modalCancelText}>Cancelar</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.modalConfirmButton}
-                onPress={handleAddActividad}
-              >
+              <TouchableOpacity style={styles.modalConfirmButton} onPress={handleAddActividad}>
                 <Text style={styles.modalConfirmText}>Agregar</Text>
               </TouchableOpacity>
             </View>
@@ -686,7 +705,6 @@ export default function CuidoDetailScreen() {
         </View>
       </Modal>
 
-      {/* Descanso Modal */}
       <Modal
         visible={showDescansoModal}
         transparent
@@ -715,10 +733,12 @@ export default function CuidoDetailScreen() {
                   ]}
                   onPress={() => setDiasDescanso(dias.toString())}
                 >
-                  <Text style={[
-                    styles.diasButtonText,
-                    diasDescanso === dias.toString() && styles.diasButtonTextActive,
-                  ]}>
+                  <Text
+                    style={[
+                      styles.diasButtonText,
+                      diasDescanso === dias.toString() && styles.diasButtonTextActive,
+                    ]}
+                  >
                     {dias}d
                   </Text>
                 </TouchableOpacity>
@@ -734,10 +754,7 @@ export default function CuidoDetailScreen() {
               >
                 <Text style={styles.modalCancelText}>Cancelar</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.modalConfirmButton}
-                onPress={handleDescanso}
-              >
+              <TouchableOpacity style={styles.modalConfirmButton} onPress={handleDescanso}>
                 <Text style={styles.modalConfirmText}>Iniciar</Text>
               </TouchableOpacity>
             </View>
@@ -745,7 +762,6 @@ export default function CuidoDetailScreen() {
         </View>
       </Modal>
 
-      {/* Modal de Detalle de Actividad */}
       <Modal
         visible={showDetalleModal}
         transparent
@@ -760,16 +776,18 @@ export default function CuidoDetailScreen() {
             {selectedActividad && (
               <>
                 <View style={styles.detalleHeader}>
-                  <View style={[
-                    styles.detalleIconContainer,
-                    selectedActividad.tipo === 'tope' 
-                      ? { backgroundColor: COLORS.goldLight } 
-                      : { backgroundColor: COLORS.greenLight }
-                  ]}>
-                    <Ionicons 
-                      name={selectedActividad.tipo === 'tope' ? 'flash' : 'barbell'} 
-                      size={32} 
-                      color={selectedActividad.tipo === 'tope' ? COLORS.gold : COLORS.green} 
+                  <View
+                    style={[
+                      styles.detalleIconContainer,
+                      selectedActividad.tipo === 'tope'
+                        ? { backgroundColor: COLORS.goldLight }
+                        : { backgroundColor: COLORS.greenLight },
+                    ]}
+                  >
+                    <Ionicons
+                      name={selectedActividad.tipo === 'tope' ? 'flash' : 'barbell'}
+                      size={32}
+                      color={selectedActividad.tipo === 'tope' ? COLORS.gold : COLORS.green}
                     />
                   </View>
                   <Text style={styles.detalleTitle}>
@@ -785,11 +803,11 @@ export default function CuidoDetailScreen() {
                       {new Date(selectedActividad.fecha).toLocaleDateString('es-ES', {
                         day: '2-digit',
                         month: 'long',
-                        year: 'numeric'
+                        year: 'numeric',
                       })}
                     </Text>
                   </View>
-                  
+
                   {selectedActividad.tiempo_minutos && (
                     <View style={styles.detalleInfoItem}>
                       <Ionicons name="time" size={18} color={COLORS.grayLight} />
@@ -853,6 +871,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.grayMedium,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   backButton: {
     width: 40,
     height: 40,
@@ -874,6 +897,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#000',
+  },
+  deleteButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.redLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(139, 26, 26, 0.2)',
   },
   finalizarButton: {
     paddingHorizontal: 12,
@@ -1039,6 +1072,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     marginTop: 8,
+    flexWrap: 'wrap',
   },
   galloDetailTag: {
     fontSize: 12,
@@ -1099,7 +1133,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1a1a1a',
   },
-  // Actividades Grid
   actividadesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1127,6 +1160,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.green,
     fontWeight: '600',
+    textAlign: 'center',
   },
   actividadTiempo: {
     fontSize: 11,
@@ -1173,7 +1207,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.blue,
   },
-  // Modal Styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.8)',
@@ -1308,13 +1341,11 @@ const styles = StyleSheet.create({
     color: '#000',
     fontWeight: '600',
   },
-  // Estilos para indicador de notas en actividades
   actividadNotasIndicator: {
     position: 'absolute',
     top: 8,
     right: 8,
   },
-  // Estilos para modal de detalle
   detalleHeader: {
     alignItems: 'center',
     marginBottom: 24,

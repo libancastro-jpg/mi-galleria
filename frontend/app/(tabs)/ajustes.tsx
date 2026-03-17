@@ -8,6 +8,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   Alert,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -58,26 +59,14 @@ interface Recordatorio {
 export default function SaludScreen() {
   const router = useRouter();
   const { logout } = useAuth();
+
+  // ✅ Solo 2 tabs
   const [activeTab, setActiveTab] = useState<'recordatorios' | 'historial'>('recordatorios');
+
   const [recordatorios, setRecordatorios] = useState<Recordatorio[]>([]);
   const [historial, setHistorial] = useState<SaludRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
-  const handleLogout = () => {
-    Alert.alert(
-      'Cerrar Sesión',
-      '¿Estás seguro de que deseas cerrar sesión?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Cerrar Sesión',
-          style: 'destructive',
-          onPress: () => logout(),
-        },
-      ]
-    );
-  };
 
   const fetchData = async () => {
     try {
@@ -159,10 +148,7 @@ export default function SaludScreen() {
         </View>
       )}
 
-      <TouchableOpacity
-        style={styles.addButton}
-        onPress={() => router.push('/salud/new')}
-      >
+      <TouchableOpacity style={styles.addButton} onPress={() => router.push('/salud/new')}>
         <Ionicons name="add" size={24} color={COLORS.white} />
         <Text style={styles.addButtonText}>Nuevo Registro de Salud</Text>
       </TouchableOpacity>
@@ -205,62 +191,6 @@ export default function SaludScreen() {
     </View>
   );
 
-  const renderConfig = () => (
-    <View style={styles.tabContent}>
-      <View style={styles.configSection}>
-        <Text style={styles.configSectionTitle}>Cuenta</Text>
-        <TouchableOpacity style={styles.configItem}>
-          <View style={styles.configItemIcon}>
-            <Ionicons name="person" size={20} color={COLORS.gold} />
-          </View>
-          <Text style={styles.configItemText}>Editar Perfil</Text>
-          <Ionicons name="chevron-forward" size={20} color={COLORS.grayLight} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.configItem}>
-          <View style={styles.configItemIcon}>
-            <Ionicons name="sync" size={20} color={COLORS.gold} />
-          </View>
-          <Text style={styles.configItemText}>Sincronizar Datos</Text>
-          <Ionicons name="chevron-forward" size={20} color={COLORS.grayLight} />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.configSection}>
-        <Text style={styles.configSectionTitle}>Datos</Text>
-        <TouchableOpacity style={styles.configItem}>
-          <View style={styles.configItemIcon}>
-            <Ionicons name="download" size={20} color={COLORS.gold} />
-          </View>
-          <Text style={styles.configItemText}>Exportar (PDF/CSV)</Text>
-          <Ionicons name="chevron-forward" size={20} color={COLORS.grayLight} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.configItem}>
-          <View style={styles.configItemIcon}>
-            <Ionicons name="cloud-upload" size={20} color={COLORS.gold} />
-          </View>
-          <Text style={styles.configItemText}>Backup</Text>
-          <Ionicons name="chevron-forward" size={20} color={COLORS.grayLight} />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.configSection}>
-        <Text style={styles.configSectionTitle}>Sesión</Text>
-        <TouchableOpacity style={[styles.configItem, styles.configItemDanger]} onPress={handleLogout}>
-          <View style={[styles.configItemIcon, { backgroundColor: COLORS.redLight }]}>
-            <Ionicons name="log-out" size={20} color={COLORS.redDeep} />
-          </View>
-          <Text style={[styles.configItemText, { color: COLORS.redDeep }]}>Cerrar Sesión</Text>
-          <Ionicons name="chevron-forward" size={20} color={COLORS.redDeep} />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.appInfo}>
-        <Text style={styles.appName}>Mi Galleria</Text>
-        <Text style={styles.appVersion}>Versión 1.0.0</Text>
-      </View>
-    </View>
-  );
-
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -278,47 +208,69 @@ export default function SaludScreen() {
       </View>
 
       {/* Resumen de Recordatorios */}
-      <View style={[
-        styles.alertSummary, 
-        { backgroundColor: recordatorios.length > 0 
-          ? (recordatorios.length > 3 ? COLORS.redLight : COLORS.goldLight) 
-          : COLORS.greenLight 
-        }
-      ]}>
-        <View style={[
-          styles.alertSummaryIcon, 
-          { backgroundColor: recordatorios.length > 0 
-            ? (recordatorios.length > 3 ? COLORS.redDeep : COLORS.gold) 
-            : COLORS.greenDark 
-          }
-        ]}>
-          <Ionicons 
-            name={recordatorios.length > 0 
-              ? (recordatorios.length > 3 ? 'warning' : 'alert-circle') 
-              : 'checkmark-circle'
-            } 
-            size={22} 
-            color={COLORS.white} 
+      <View
+        style={[
+          styles.alertSummary,
+          {
+            backgroundColor:
+              recordatorios.length > 0
+                ? recordatorios.length > 3
+                  ? COLORS.redLight
+                  : COLORS.goldLight
+                : COLORS.greenLight,
+          },
+        ]}
+      >
+        <View
+          style={[
+            styles.alertSummaryIcon,
+            {
+              backgroundColor:
+                recordatorios.length > 0
+                  ? recordatorios.length > 3
+                    ? COLORS.redDeep
+                    : COLORS.gold
+                  : COLORS.greenDark,
+            },
+          ]}
+        >
+          <Ionicons
+            name={
+              recordatorios.length > 0
+                ? recordatorios.length > 3
+                  ? 'warning'
+                  : 'alert-circle'
+                : 'checkmark-circle'
+            }
+            size={22}
+            color={COLORS.white}
           />
         </View>
         <View style={styles.alertSummaryContent}>
           <Text style={styles.alertSummaryTitle}>Estado de Recordatorios</Text>
-          <Text style={[
-            styles.alertSummaryText, 
-            { color: recordatorios.length > 0 
-              ? (recordatorios.length > 3 ? COLORS.redDeep : COLORS.gold) 
-              : COLORS.greenDark 
-            }
-          ]}>
-            {recordatorios.length === 0 
-              ? 'Todo al día - Sin pendientes' 
-              : `${recordatorios.length} recordatorio${recordatorios.length > 1 ? 's' : ''} pendiente${recordatorios.length > 1 ? 's' : ''}`
-            }
+          <Text
+            style={[
+              styles.alertSummaryText,
+              {
+                color:
+                  recordatorios.length > 0
+                    ? recordatorios.length > 3
+                      ? COLORS.redDeep
+                      : COLORS.gold
+                    : COLORS.greenDark,
+              },
+            ]}
+          >
+            {recordatorios.length === 0
+              ? 'Todo al día - Sin pendientes'
+              : `${recordatorios.length} recordatorio${recordatorios.length > 1 ? 's' : ''} pendiente${
+                  recordatorios.length > 1 ? 's' : ''
+                }`}
           </Text>
         </View>
       </View>
 
-      {/* Tabs - Solo Recordatorios e Historial */}
+      {/* ✅ Tabs SOLO Recordatorios e Historial */}
       <View style={styles.tabs}>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'recordatorios' && styles.tabActive]}
@@ -333,6 +285,7 @@ export default function SaludScreen() {
             Recordatorios
           </Text>
         </TouchableOpacity>
+
         <TouchableOpacity
           style={[styles.tab, activeTab === 'historial' && styles.tabActive]}
           onPress={() => setActiveTab('historial')}
@@ -351,13 +304,7 @@ export default function SaludScreen() {
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={COLORS.gold}
-          />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.gold} />}
       >
         {activeTab === 'recordatorios' && renderRecordatorios()}
         {activeTab === 'historial' && renderHistorial()}
@@ -367,27 +314,16 @@ export default function SaludScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: {
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.grayMedium,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
-  },
-  // Alert Summary
+  title: { fontSize: 24, fontWeight: 'bold', color: '#1a1a1a' },
+
   alertSummary: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -404,20 +340,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  alertSummaryContent: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  alertSummaryTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1a1a1a',
-  },
-  alertSummaryText: {
-    fontSize: 13,
-    fontWeight: '500',
-    marginTop: 2,
-  },
+  alertSummaryContent: { flex: 1, marginLeft: 12 },
+  alertSummaryTitle: { fontSize: 14, fontWeight: '600', color: '#1a1a1a' },
+  alertSummaryText: { fontSize: 13, fontWeight: '500', marginTop: 2 },
+
   tabs: {
     flexDirection: 'row',
     backgroundColor: COLORS.grayDark,
@@ -432,29 +358,14 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     gap: 6,
   },
-  tabActive: {
-    borderBottomWidth: 2,
-    borderBottomColor: COLORS.gold,
-  },
-  tabText: {
-    fontSize: 13,
-    color: COLORS.grayLight,
-    fontWeight: '500',
-  },
-  tabTextActive: {
-    color: COLORS.gold,
-    fontWeight: '600',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  content: {
-    padding: 16,
-  },
-  tabContent: {
-    flex: 1,
-  },
-  // Recordatorios
+  tabActive: { borderBottomWidth: 2, borderBottomColor: COLORS.gold },
+  tabText: { fontSize: 13, color: COLORS.grayLight, fontWeight: '500' },
+  tabTextActive: { color: COLORS.gold, fontWeight: '600' },
+
+  scrollView: { flex: 1 },
+  content: { padding: 16 },
+  tabContent: { flex: 1 },
+
   recordatorioCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -465,46 +376,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.grayMedium,
   },
-  recordatorioIcon: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  recordatorioInfo: {
-    flex: 1,
-    marginLeft: 14,
-  },
-  recordatorioProducto: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1a1a1a',
-  },
-  recordatorioAve: {
-    fontSize: 13,
-    color: COLORS.grayLight,
-    marginTop: 2,
-  },
-  recordatorioTipo: {
-    fontSize: 12,
-    color: COLORS.gold,
-    marginTop: 4,
-  },
-  recordatorioFecha: {
-    alignItems: 'flex-end',
-  },
-  recordatorioFechaLabel: {
-    fontSize: 11,
-    color: COLORS.grayLight,
-  },
-  recordatorioFechaValue: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.gold,
-    marginTop: 2,
-  },
-  // Historial
+  recordatorioIcon: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center' },
+  recordatorioInfo: { flex: 1, marginLeft: 14 },
+  recordatorioProducto: { fontSize: 16, fontWeight: '600', color: '#1a1a1a' },
+  recordatorioAve: { fontSize: 13, color: COLORS.grayLight, marginTop: 2 },
+  recordatorioTipo: { fontSize: 12, color: COLORS.gold, marginTop: 4 },
+  recordatorioFecha: { alignItems: 'flex-end' },
+  recordatorioFechaLabel: { fontSize: 11, color: COLORS.grayLight },
+  recordatorioFechaValue: { fontSize: 13, fontWeight: '600', color: COLORS.gold, marginTop: 2 },
+
   historialCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -515,32 +395,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.grayMedium,
   },
-  historialIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  historialInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  historialProducto: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1a1a1a',
-  },
-  historialDetails: {
-    fontSize: 12,
-    color: COLORS.grayLight,
-    marginTop: 2,
-  },
-  historialTipo: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  // Empty state
+  historialIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  historialInfo: { flex: 1, marginLeft: 12 },
+  historialProducto: { fontSize: 14, fontWeight: '600', color: '#1a1a1a' },
+  historialDetails: { fontSize: 12, color: COLORS.grayLight, marginTop: 2 },
+  historialTipo: { fontSize: 11, fontWeight: '600' },
+
   emptyState: {
     alignItems: 'center',
     paddingVertical: 48,
@@ -549,27 +409,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.grayMedium,
   },
-  emptyIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1a1a1a',
-  },
-  emptySubtitle: {
-    fontSize: 13,
-    color: COLORS.grayLight,
-    marginTop: 8,
-    textAlign: 'center',
-    paddingHorizontal: 32,
-  },
-  // Add button
+  emptyIcon: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  emptyTitle: { fontSize: 18, fontWeight: '600', color: '#1a1a1a' },
+  emptySubtitle: { fontSize: 13, color: COLORS.grayLight, marginTop: 8, textAlign: 'center', paddingHorizontal: 32 },
+
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -580,62 +423,5 @@ const styles = StyleSheet.create({
     marginTop: 20,
     gap: 10,
   },
-  addButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.grayDark,
-  },
-  // Config
-  configSection: {
-    marginBottom: 24,
-  },
-  configSectionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.grayLight,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 10,
-  },
-  configItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.grayDark,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: COLORS.grayMedium,
-  },
-  configItemDanger: {
-    borderColor: COLORS.redLight,
-  },
-  configItemIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: COLORS.goldLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  configItemText: {
-    flex: 1,
-    fontSize: 15,
-    color: '#1a1a1a',
-    marginLeft: 12,
-  },
-  appInfo: {
-    alignItems: 'center',
-    paddingVertical: 24,
-  },
-  appName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.gold,
-  },
-  appVersion: {
-    fontSize: 13,
-    color: COLORS.grayLight,
-    marginTop: 4,
-  },
+  addButtonText: { fontSize: 16, fontWeight: '600', color: COLORS.grayDark },
 });

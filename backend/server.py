@@ -17,17 +17,19 @@ from bson import ObjectId
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# Configure logging first
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# MongoDB connection
-mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
+mongo_url = os.environ.get("MONGO_URL")
+
+if not mongo_url:
+    raise RuntimeError("MONGO_URL is not set in environment variables")
+
+print("Mongo URL loaded:", mongo_url[:25], "...")
 db_name = os.environ.get('DB_NAME', 'castador_pro')
 client = AsyncIOMotorClient(mongo_url)
 db = client[db_name]
 
-# JWT Configuration - Use environment variable in production
 JWT_SECRET = os.environ.get('JWT_SECRET')
 if not JWT_SECRET:
     JWT_SECRET = 'castador-pro-secret-key-2025-dev'
@@ -82,19 +84,19 @@ class AveBase(BaseModel):
     tipo: str  # gallo | gallina
     codigo: str
     nombre: Optional[str] = None
-    color_placa: Optional[str] = None  # Color de la placa/anillo
-    foto_principal: Optional[str] = None  # base64
+    color_placa: Optional[str] = None
+    foto_principal: Optional[str] = None
     fecha_nacimiento: Optional[str] = None
     color: Optional[str] = None
-    cresta: Optional[str] = None  # Tipo de cresta
+    cresta: Optional[str] = None
     linea: Optional[str] = None
-    castado_por: Optional[str] = None  # Nombre del castador
-    estado: str = "activo"  # activo | vendido | muerto | retirado
+    castado_por: Optional[str] = None
+    estado: str = "activo"
     notas: Optional[str] = None
     padre_id: Optional[str] = None
     madre_id: Optional[str] = None
-    padre_externo: Optional[str] = None  # Placa de padre externo (otra gallería)
-    madre_externo: Optional[str] = None  # Placa de madre externo (otra gallería)
+    padre_externo: Optional[str] = None
+    madre_externo: Optional[str] = None
     marcaje_qr: Optional[str] = None
 
 class AveCreate(AveBase):
@@ -118,7 +120,6 @@ class AveUpdate(BaseModel):
     padre_externo: Optional[str] = None
     madre_externo: Optional[str] = None
     marcaje_qr: Optional[str] = None
-    # Campos para abuelos externos
     abuelo_paterno_padre: Optional[str] = None
     abuelo_paterno_padre_galleria: Optional[str] = None
     abuelo_paterno_madre: Optional[str] = None
@@ -138,12 +139,23 @@ class AveResponse(AveBase):
 class CruceBase(BaseModel):
     padre_id: Optional[str] = None
     madre_id: Optional[str] = None
-    padre_externo: Optional[str] = None  # Placa + gallería de padre externo
-    madre_externo: Optional[str] = None  # Placa + gallería de madre externa
+    padre_externo: Optional[str] = None
+    madre_externo: Optional[str] = None
     fecha: str
     objetivo: Optional[str] = None
     notas: Optional[str] = None
-    estado: str = "planeado"  # planeado | hecho | cancelado
+    estado: str = "planeado"
+
+    criador_id: Optional[str] = None
+    castador_id: Optional[str] = None
+
+    cantidad_huevos_pollitos: Optional[int] = None
+    cantidad_registrada: Optional[int] = None
+
+    marca_nacimiento: Optional[str] = None
+    marca_lado: Optional[str] = None
+    marca_color: Optional[str] = None
+    sin_marca: Optional[bool] = False
 
 class CruceCreate(CruceBase):
     pass
@@ -158,6 +170,17 @@ class CruceUpdate(BaseModel):
     notas: Optional[str] = None
     estado: Optional[str] = None
 
+    criador_id: Optional[str] = None
+    castador_id: Optional[str] = None
+
+    cantidad_huevos_pollitos: Optional[int] = None
+    cantidad_registrada: Optional[int] = None
+
+    marca_nacimiento: Optional[str] = None
+    marca_lado: Optional[str] = None
+    marca_color: Optional[str] = None
+    sin_marca: Optional[bool] = None
+
 class CruceResponse(CruceBase):
     id: str
     user_id: str
@@ -171,7 +194,7 @@ class CamadaBase(BaseModel):
     fecha_puesta_inicio: Optional[str] = None
     cantidad_huevos: Optional[int] = None
     fecha_incubacion_inicio: Optional[str] = None
-    metodo: str = "gallina"  # gallina | incubadora
+    metodo: str = "gallina"
     fecha_nacimiento: Optional[str] = None
     pollitos_nacidos: Optional[int] = None
     notas: Optional[str] = None
@@ -200,8 +223,8 @@ class PeleaBase(BaseModel):
     ave_id: str
     fecha: str
     lugar: Optional[str] = None
-    resultado: str  # GANO | PERDIO
-    calificacion: str  # EXTRAORDINARIA | BUENA | REGULAR | MALA
+    resultado: str
+    calificacion: str
     notas: Optional[str] = None
 
 class PeleaCreate(PeleaBase):
@@ -224,7 +247,7 @@ class PeleaResponse(PeleaBase):
 # Salud Models
 class SaludBase(BaseModel):
     ave_id: str
-    tipo: str  # vitamina | vacuna | desparasitante | tratamiento
+    tipo: str
     producto: str
     dosis: Optional[str] = None
     fecha: str
@@ -249,9 +272,9 @@ class SaludResponse(SaludBase):
     created_at: datetime
     updated_at: datetime
 
-# Cuido Models (Gallos en preparación)
+# Cuido Models
 class TrabajoItem(BaseModel):
-    numero: int  # 1-5
+    numero: int
     tiempo_minutos: Optional[int] = None
     completado: bool = False
     fecha_completado: Optional[str] = None
@@ -260,7 +283,7 @@ class TrabajoItem(BaseModel):
 class CuidoBase(BaseModel):
     ave_id: str
     fecha_inicio: str
-    estado: str = "activo"  # activo | descanso | finalizado
+    estado: str = "activo"
     tope1_completado: bool = False
     tope1_fecha: Optional[str] = None
     tope1_notas: Optional[str] = None
@@ -336,7 +359,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         return {"id": str(user["_id"]), **{k: v for k, v in user.items() if k != "_id" and k != "pin"}}
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expirado")
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=401, detail="Token inválido")
 
 def serialize_doc(doc: dict) -> dict:
@@ -355,12 +378,10 @@ def serialize_doc(doc: dict) -> dict:
 
 @api_router.post("/auth/register", response_model=TokenResponse)
 async def register(user_data: UserCreate):
-    # Check if phone already exists
     existing = await db.users.find_one({"telefono": user_data.telefono})
     if existing:
         raise HTTPException(status_code=400, detail="Este número ya está registrado")
     
-    # Validate PIN (4-6 digits)
     if not user_data.pin.isdigit() or len(user_data.pin) < 4 or len(user_data.pin) > 6:
         raise HTTPException(status_code=400, detail="El PIN debe ser de 4 a 6 dígitos")
     
@@ -375,7 +396,6 @@ async def register(user_data: UserCreate):
     
     result = await db.users.insert_one(user_doc)
     user_id = str(result.inserted_id)
-    
     token = create_token(user_id)
     
     return TokenResponse(
@@ -436,7 +456,6 @@ async def update_profile(
         {"$set": update_data}
     )
     
-    # Return updated user data
     updated_user = await db.users.find_one({"_id": ObjectId(current_user["id"])})
     return {
         "message": "Perfil actualizado",
@@ -458,21 +477,16 @@ async def change_pin(
     data: ChangePinRequest,
     current_user: dict = Depends(get_current_user)
 ):
-    """Change user PIN"""
-    # Get current user with PIN
     user = await db.users.find_one({"_id": ObjectId(current_user["id"])})
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     
-    # Verify current PIN
     if not verify_pin(data.current_pin, user["pin"]):
         raise HTTPException(status_code=400, detail="PIN actual incorrecto")
     
-    # Validate new PIN
     if not data.new_pin.isdigit() or len(data.new_pin) < 4 or len(data.new_pin) > 6:
         raise HTTPException(status_code=400, detail="El nuevo PIN debe ser de 4 a 6 dígitos")
     
-    # Update PIN
     await db.users.update_one(
         {"_id": ObjectId(current_user["id"])},
         {"$set": {"pin": hash_pin(data.new_pin), "updated_at": datetime.utcnow()}}
@@ -482,7 +496,6 @@ async def change_pin(
 
 @api_router.get("/export/data")
 async def export_data(current_user: dict = Depends(get_current_user)):
-    """Get data summary for export"""
     user_id = current_user["id"]
     
     aves_count = await db.aves.count_documents({"user_id": user_id})
@@ -501,13 +514,11 @@ async def export_data(current_user: dict = Depends(get_current_user)):
 
 @api_router.post("/aves", response_model=AveResponse)
 async def create_ave(ave: AveCreate, current_user: dict = Depends(get_current_user)):
-    # Validate padre is gallo
     if ave.padre_id:
         padre = await db.aves.find_one({"_id": ObjectId(ave.padre_id), "user_id": current_user["id"]})
         if padre and padre.get("tipo") != "gallo":
             raise HTTPException(status_code=400, detail="El padre debe ser un gallo")
     
-    # Validate madre is gallina
     if ave.madre_id:
         madre = await db.aves.find_one({"_id": ObjectId(ave.madre_id), "user_id": current_user["id"]})
         if madre and madre.get("tipo") != "gallina":
@@ -562,7 +573,6 @@ async def update_ave(ave_id: str, ave_update: AveUpdate, current_user: dict = De
     update_data = {k: v for k, v in ave_update.dict().items() if v is not None}
     update_data["updated_at"] = datetime.utcnow()
     
-    # Validate padre/madre if updating
     if "padre_id" in update_data and update_data["padre_id"]:
         padre = await db.aves.find_one({"_id": ObjectId(update_data["padre_id"]), "user_id": current_user["id"]})
         if padre and padre.get("tipo") != "gallo":
@@ -580,7 +590,6 @@ async def update_ave(ave_id: str, ave_update: AveUpdate, current_user: dict = De
 
 @api_router.delete("/aves/{ave_id}")
 async def delete_ave(ave_id: str, current_user: dict = Depends(get_current_user)):
-    # Check if ave is referenced as parent
     children = await db.aves.count_documents({
         "user_id": current_user["id"],
         "$or": [{"padre_id": ave_id}, {"madre_id": ave_id}]
@@ -595,7 +604,6 @@ async def delete_ave(ave_id: str, current_user: dict = Depends(get_current_user)
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Ave no encontrada")
     
-    # Also delete related records
     await db.peleas.delete_many({"ave_id": ave_id, "user_id": current_user["id"]})
     await db.salud.delete_many({"ave_id": ave_id, "user_id": current_user["id"]})
     
@@ -608,13 +616,10 @@ async def delete_ave(ave_id: str, current_user: dict = Depends(get_current_user)
 
 @api_router.get("/aves/{ave_id}/pedigri")
 async def get_pedigri(ave_id: str, generations: int = 5, current_user: dict = Depends(get_current_user)):
-    """Get pedigree tree up to 5 generations"""
-    
     async def get_ancestors(bird_id: str, gen: int, externo_info: dict = None) -> dict:
         if gen > generations:
             return None
         
-        # Si es un padre externo (solo tiene placa, no ID en la base de datos)
         if externo_info:
             return {
                 "id": None,
@@ -646,7 +651,6 @@ async def get_pedigri(ave_id: str, generations: int = 5, current_user: dict = De
         }
         
         if gen < generations:
-            # Verificar si tiene padre_id o padre_externo
             if bird.get("padre_id"):
                 result["padre"] = await get_ancestors(bird.get("padre_id"), gen + 1)
             elif bird.get("padre_externo"):
@@ -655,7 +659,6 @@ async def get_pedigri(ave_id: str, generations: int = 5, current_user: dict = De
                     "tipo": "gallo",
                     "galleria": bird.get("padre_galleria")
                 })
-                # Agregar abuelos paternos si existen
                 if gen + 1 < generations:
                     if bird.get("abuelo_paterno_padre"):
                         padre_ext["padre"] = {
@@ -675,7 +678,6 @@ async def get_pedigri(ave_id: str, generations: int = 5, current_user: dict = De
                         }
                 result["padre"] = padre_ext
             
-            # Verificar si tiene madre_id o madre_externo
             if bird.get("madre_id"):
                 result["madre"] = await get_ancestors(bird.get("madre_id"), gen + 1)
             elif bird.get("madre_externo"):
@@ -684,7 +686,6 @@ async def get_pedigri(ave_id: str, generations: int = 5, current_user: dict = De
                     "tipo": "gallina",
                     "galleria": bird.get("madre_galleria")
                 })
-                # Agregar abuelos maternos si existen
                 if gen + 1 < generations:
                     if bird.get("abuelo_materno_padre"):
                         madre_ext["padre"] = {
@@ -711,12 +712,10 @@ async def get_pedigri(ave_id: str, generations: int = 5, current_user: dict = De
         raise HTTPException(status_code=404, detail="Ave no encontrada")
     
     pedigri = await get_ancestors(ave_id, 1)
-    
     return pedigri
 
 @api_router.get("/aves/{ave_id}/hijos", response_model=List[AveResponse])
 async def get_hijos(ave_id: str, current_user: dict = Depends(get_current_user)):
-    """Get all children of a bird"""
     ave = await db.aves.find_one({"_id": ObjectId(ave_id), "user_id": current_user["id"]})
     if not ave:
         raise HTTPException(status_code=404, detail="Ave no encontrada")
@@ -738,8 +737,6 @@ async def calculate_consanguinidad(
     madre_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    """Calculate estimated inbreeding coefficient between two birds"""
-    
     async def get_all_ancestors(bird_id: str, gen: int, max_gen: int = 5) -> List[tuple]:
         if gen > max_gen or not bird_id:
             return []
@@ -754,14 +751,12 @@ async def calculate_consanguinidad(
         
         return ancestors
     
-    # Get ancestors of both parents
     padre_ancestors = await get_all_ancestors(padre_id, 1)
     madre_ancestors = await get_all_ancestors(madre_id, 1)
     
     padre_ids = {a[0]: a[1] for a in padre_ancestors}
     madre_ids = {a[0]: a[1] for a in madre_ancestors}
     
-    # Find common ancestors
     common = []
     for aid, gen in padre_ids.items():
         if aid in madre_ids:
@@ -777,7 +772,6 @@ async def calculate_consanguinidad(
                     "closest_generation": min_gen
                 })
     
-    # Calculate estimated percentage
     if not common:
         percentage = 0
         level = "bajo"
@@ -801,36 +795,81 @@ async def calculate_consanguinidad(
     
     return {
         "porcentaje_estimado": percentage,
-        "nivel": level,  # alto | medio | bajo
+        "nivel": level,
         "ancestros_comunes": common,
         "total_comunes": len(common)
     }
+
+# ============== CRIADORES / CASTADORES ROUTES ==============
+
+@api_router.get("/criadores")
+async def get_criadores(current_user: dict = Depends(get_current_user)):
+    results = []
+
+    if current_user.get("nombre"):
+        results.append({
+            "id": current_user["id"],
+            "nombre": current_user["nombre"]
+        })
+
+    aves = await db.aves.find(
+        {
+            "user_id": current_user["id"],
+            "castado_por": {"$exists": True, "$ne": None, "$ne": ""}
+        }
+    ).to_list(1000)
+
+    seen_names = set()
+    for r in results:
+        if r.get("nombre"):
+            seen_names.add(r["nombre"].strip().lower())
+
+    for ave in aves:
+        nombre = (ave.get("castado_por") or "").strip()
+        if nombre and nombre.lower() not in seen_names:
+            results.append({
+                "id": f"castador_{nombre.lower().replace(' ', '_')}",
+                "nombre": nombre
+            })
+            seen_names.add(nombre.lower())
+
+    return results
+
+@api_router.get("/castadores")
+async def get_castadores(current_user: dict = Depends(get_current_user)):
+    return await get_criadores(current_user)
 
 # ============== CRUCES ROUTES ==============
 
 @api_router.post("/cruces", response_model=CruceResponse)
 async def create_cruce(cruce: CruceCreate, current_user: dict = Depends(get_current_user)):
-    # Validate padre is gallo
-    padre = await db.aves.find_one({"_id": ObjectId(cruce.padre_id), "user_id": current_user["id"]})
-    if not padre:
-        raise HTTPException(status_code=404, detail="Padre no encontrado")
-    if padre.get("tipo") != "gallo":
-        raise HTTPException(status_code=400, detail="El padre debe ser un gallo")
+    if cruce.padre_id:
+        padre = await db.aves.find_one({"_id": ObjectId(cruce.padre_id), "user_id": current_user["id"]})
+        if not padre:
+            raise HTTPException(status_code=404, detail="Padre no encontrado")
+        if padre.get("tipo") != "gallo":
+            raise HTTPException(status_code=400, detail="El padre debe ser un gallo")
+    elif not cruce.padre_externo:
+        raise HTTPException(status_code=400, detail="Debes seleccionar o agregar un padre")
     
-    # Validate madre is gallina
-    madre = await db.aves.find_one({"_id": ObjectId(cruce.madre_id), "user_id": current_user["id"]})
-    if not madre:
-        raise HTTPException(status_code=404, detail="Madre no encontrada")
-    if madre.get("tipo") != "gallina":
-        raise HTTPException(status_code=400, detail="La madre debe ser una gallina")
+    if cruce.madre_id:
+        madre = await db.aves.find_one({"_id": ObjectId(cruce.madre_id), "user_id": current_user["id"]})
+        if not madre:
+            raise HTTPException(status_code=404, detail="Madre no encontrada")
+        if madre.get("tipo") != "gallina":
+            raise HTTPException(status_code=400, detail="La madre debe ser una gallina")
+    elif not cruce.madre_externo:
+        raise HTTPException(status_code=400, detail="Debes seleccionar o agregar una madre")
     
-    # Calculate consanguinidad
-    consang_result = await calculate_consanguinidad(cruce.padre_id, cruce.madre_id, current_user)
+    consanguinidad_estimado = 0.0
+    if cruce.padre_id and cruce.madre_id:
+        consang_result = await calculate_consanguinidad(cruce.padre_id, cruce.madre_id, current_user)
+        consanguinidad_estimado = consang_result["porcentaje_estimado"]
     
     cruce_doc = {
         **cruce.dict(),
         "user_id": current_user["id"],
-        "consanguinidad_estimado": consang_result["porcentaje_estimado"],
+        "consanguinidad_estimado": consanguinidad_estimado,
         "created_at": datetime.utcnow(),
         "updated_at": datetime.utcnow()
     }
@@ -868,6 +907,27 @@ async def update_cruce(cruce_id: str, cruce_update: CruceUpdate, current_user: d
     update_data = {k: v for k, v in cruce_update.dict().items() if v is not None}
     update_data["updated_at"] = datetime.utcnow()
     
+    padre_id = update_data.get("padre_id", existing.get("padre_id"))
+    madre_id = update_data.get("madre_id", existing.get("madre_id"))
+    
+    if padre_id:
+        padre = await db.aves.find_one({"_id": ObjectId(padre_id), "user_id": current_user["id"]})
+        if not padre:
+            raise HTTPException(status_code=404, detail="Padre no encontrado")
+        if padre.get("tipo") != "gallo":
+            raise HTTPException(status_code=400, detail="El padre debe ser un gallo")
+    
+    if madre_id:
+        madre = await db.aves.find_one({"_id": ObjectId(madre_id), "user_id": current_user["id"]})
+        if not madre:
+            raise HTTPException(status_code=404, detail="Madre no encontrada")
+        if madre.get("tipo") != "gallina":
+            raise HTTPException(status_code=400, detail="La madre debe ser una gallina")
+    
+    if padre_id and madre_id:
+        consang_result = await calculate_consanguinidad(padre_id, madre_id, current_user)
+        update_data["consanguinidad_estimado"] = consang_result["porcentaje_estimado"]
+    
     await db.cruces.update_one({"_id": ObjectId(cruce_id)}, {"$set": update_data})
     
     updated = await db.cruces.find_one({"_id": ObjectId(cruce_id)})
@@ -884,7 +944,6 @@ async def delete_cruce(cruce_id: str, current_user: dict = Depends(get_current_u
 
 @api_router.post("/camadas", response_model=CamadaResponse)
 async def create_camada(camada: CamadaCreate, current_user: dict = Depends(get_current_user)):
-    # Validate cruce exists
     cruce = await db.cruces.find_one({"_id": ObjectId(camada.cruce_id), "user_id": current_user["id"]})
     if not cruce:
         raise HTTPException(status_code=404, detail="Cruce no encontrado")
@@ -899,7 +958,6 @@ async def create_camada(camada: CamadaCreate, current_user: dict = Depends(get_c
     result = await db.camadas.insert_one(camada_doc)
     camada_doc["_id"] = result.inserted_id
     
-    # Update cruce status to "hecho"
     await db.cruces.update_one({"_id": ObjectId(camada.cruce_id)}, {"$set": {"estado": "hecho"}})
     
     return CamadaResponse(**serialize_doc(camada_doc))
@@ -936,7 +994,6 @@ async def crear_pollitos(
     cantidad: int,
     current_user: dict = Depends(get_current_user)
 ):
-    """Create chicks from a litter"""
     camada = await db.camadas.find_one({"_id": ObjectId(camada_id), "user_id": current_user["id"]})
     if not camada:
         raise HTTPException(status_code=404, detail="Camada no encontrada")
@@ -948,7 +1005,7 @@ async def crear_pollitos(
     created_aves = []
     for i in range(cantidad):
         ave_doc = {
-            "tipo": "gallo",  # Default, can be changed later
+            "tipo": "gallo",
             "codigo": f"P-{camada_id[-4:]}-{i+1}",
             "nombre": None,
             "foto_principal": None,
@@ -957,8 +1014,8 @@ async def crear_pollitos(
             "linea": None,
             "estado": "activo",
             "notas": f"Nacido de camada {camada_id}",
-            "padre_id": cruce["padre_id"],
-            "madre_id": cruce["madre_id"],
+            "padre_id": cruce.get("padre_id"),
+            "madre_id": cruce.get("madre_id"),
             "marcaje_qr": None,
             "user_id": current_user["id"],
             "created_at": datetime.utcnow(),
@@ -968,7 +1025,6 @@ async def crear_pollitos(
         ave_doc["_id"] = result.inserted_id
         created_aves.append(serialize_doc(ave_doc))
     
-    # Update camada
     await db.camadas.update_one(
         {"_id": ObjectId(camada_id)},
         {"$set": {"pollitos_nacidos": cantidad, "updated_at": datetime.utcnow()}}
@@ -990,7 +1046,6 @@ async def delete_camada(camada_id: str, current_user: dict = Depends(get_current
 
 @api_router.post("/peleas", response_model=PeleaResponse)
 async def create_pelea(pelea: PeleaCreate, current_user: dict = Depends(get_current_user)):
-    # Validate ave exists
     ave = await db.aves.find_one({"_id": ObjectId(pelea.ave_id), "user_id": current_user["id"]})
     if not ave:
         raise HTTPException(status_code=404, detail="Ave no encontrada")
@@ -1028,14 +1083,12 @@ async def get_estadisticas_peleas(
     linea: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """Get fight statistics"""
     query = {"user_id": current_user["id"]}
     if ave_id:
         query["ave_id"] = ave_id
     
     peleas = await db.peleas.find(query).to_list(1000)
     
-    # If filtering by linea, get ave IDs first
     if linea:
         aves_linea = await db.aves.find({
             "user_id": current_user["id"],
@@ -1048,7 +1101,6 @@ async def get_estadisticas_peleas(
     ganadas = len([p for p in peleas if p.get("resultado") == "GANO"])
     perdidas = len([p for p in peleas if p.get("resultado") == "PERDIO"])
     
-    # Count by calificacion
     calificaciones = {
         "EXTRAORDINARIA": 0,
         "BUENA": 0,
@@ -1060,7 +1112,6 @@ async def get_estadisticas_peleas(
         if cal in calificaciones:
             calificaciones[cal] += 1
     
-    # Calculate streak
     sorted_peleas = sorted(peleas, key=lambda x: x.get("fecha", ""), reverse=True)
     racha_actual = 0
     racha_tipo = None
@@ -1084,21 +1135,17 @@ async def get_estadisticas_peleas(
 
 @api_router.get("/peleas/estadisticas-padres")
 async def get_estadisticas_padres(current_user: dict = Depends(get_current_user)):
-    """Get fight statistics grouped by parent birds (fathers and mothers)"""
     user_id = current_user["id"]
     
-    # Get all fights
     peleas = await db.peleas.find({"user_id": user_id}).to_list(10000)
     if not peleas:
         return {"padres": [], "madres": []}
     
-    # Get all aves to map parents
     aves = await db.aves.find({"user_id": user_id}).to_list(10000)
     aves_map = {str(a["_id"]): a for a in aves}
     
-    # Group fights by parent
-    padre_stats = {}  # padre_id -> {ganadas, total, ave_info}
-    madre_stats = {}  # madre_id -> {ganadas, total, ave_info}
+    padre_stats = {}
+    madre_stats = {}
     
     for pelea in peleas:
         ave_id = pelea.get("ave_id")
@@ -1109,7 +1156,6 @@ async def get_estadisticas_padres(current_user: dict = Depends(get_current_user)
         resultado = pelea.get("resultado")
         gano = 1 if resultado == "GANO" else 0
         
-        # Track father stats
         padre_id = ave.get("padre_id")
         if padre_id and padre_id in aves_map:
             padre = aves_map[padre_id]
@@ -1126,7 +1172,6 @@ async def get_estadisticas_padres(current_user: dict = Depends(get_current_user)
             padre_stats[padre_id]["total"] += 1
             padre_stats[padre_id]["hijos_ids"].add(ave_id)
         
-        # Track mother stats
         madre_id = ave.get("madre_id")
         if madre_id and madre_id in aves_map:
             madre = aves_map[madre_id]
@@ -1143,7 +1188,6 @@ async def get_estadisticas_padres(current_user: dict = Depends(get_current_user)
             madre_stats[madre_id]["total"] += 1
             madre_stats[madre_id]["hijos_ids"].add(ave_id)
     
-    # Calculate percentages and sort
     padres_list = []
     for pid, data in padre_stats.items():
         porcentaje = round((data["ganadas"] / data["total"] * 100) if data["total"] > 0 else 0, 1)
@@ -1170,13 +1214,12 @@ async def get_estadisticas_padres(current_user: dict = Depends(get_current_user)
             "hijos_peleados": len(data["hijos_ids"])
         })
     
-    # Sort by percentage (descending), then by total fights
     padres_list.sort(key=lambda x: (-x["porcentaje"], -x["total"]))
     madres_list.sort(key=lambda x: (-x["porcentaje"], -x["total"]))
     
     return {
-        "padres": padres_list[:10],  # Top 10
-        "madres": madres_list[:10]   # Top 10
+        "padres": padres_list[:10],
+        "madres": madres_list[:10]
     }
 
 @api_router.get("/peleas/{pelea_id}", response_model=PeleaResponse)
@@ -1211,7 +1254,6 @@ async def delete_pelea(pelea_id: str, current_user: dict = Depends(get_current_u
 
 @api_router.post("/salud", response_model=SaludResponse)
 async def create_salud(salud: SaludCreate, current_user: dict = Depends(get_current_user)):
-    # Validate ave exists
     ave = await db.aves.find_one({"_id": ObjectId(salud.ave_id), "user_id": current_user["id"]})
     if not ave:
         raise HTTPException(status_code=404, detail="Ave no encontrada")
@@ -1245,17 +1287,14 @@ async def get_salud_records(
 
 @api_router.get("/salud/recordatorios")
 async def get_recordatorios(current_user: dict = Depends(get_current_user)):
-    """Get upcoming health reminders"""
     today = datetime.utcnow().strftime("%Y-%m-%d")
     week_later = (datetime.utcnow() + timedelta(days=7)).strftime("%Y-%m-%d")
     
-    # Get records with proxima_fecha within the next 7 days
     records = await db.salud.find({
         "user_id": current_user["id"],
         "proxima_fecha": {"$gte": today, "$lte": week_later}
     }).sort("proxima_fecha", 1).to_list(100)
     
-    # Enrich with ave info
     result = []
     for r in records:
         ave = await db.aves.find_one({"_id": ObjectId(r["ave_id"])})
@@ -1299,15 +1338,12 @@ async def delete_salud(salud_id: str, current_user: dict = Depends(get_current_u
 
 @api_router.post("/cuido")
 async def create_cuido(cuido: CuidoCreate, current_user: dict = Depends(get_current_user)):
-    """Create a new cuido record for a gallo"""
-    # Validate ave exists and is a gallo
     ave = await db.aves.find_one({"_id": ObjectId(cuido.ave_id), "user_id": current_user["id"]})
     if not ave:
         raise HTTPException(status_code=404, detail="Ave no encontrada")
     if ave.get("tipo") != "gallo":
         raise HTTPException(status_code=400, detail="Solo se puede crear cuido para gallos")
     
-    # Check if gallo already has active cuido
     existing = await db.cuido.find_one({
         "ave_id": cuido.ave_id,
         "user_id": current_user["id"],
@@ -1316,7 +1352,6 @@ async def create_cuido(cuido: CuidoCreate, current_user: dict = Depends(get_curr
     if existing:
         raise HTTPException(status_code=400, detail="Este gallo ya tiene un cuido activo")
     
-    # Initialize trabajos list
     trabajos = [
         {"numero": i, "tiempo_minutos": None, "completado": False, "fecha_completado": None, "notas": None}
         for i in range(1, 6)
@@ -1353,14 +1388,12 @@ async def get_cuidos(
     estado: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """Get all cuido records"""
     query = {"user_id": current_user["id"]}
     if estado:
         query["estado"] = estado
     
     cuidos = await db.cuido.find(query).sort("created_at", -1).to_list(1000)
     
-    # Enrich with ave info
     result = []
     for c in cuidos:
         ave = await db.aves.find_one({"_id": ObjectId(c["ave_id"])})
@@ -1377,12 +1410,10 @@ async def get_cuidos(
 
 @api_router.get("/cuido/{cuido_id}")
 async def get_cuido(cuido_id: str, current_user: dict = Depends(get_current_user)):
-    """Get a specific cuido record"""
     cuido = await db.cuido.find_one({"_id": ObjectId(cuido_id), "user_id": current_user["id"]})
     if not cuido:
         raise HTTPException(status_code=404, detail="Cuido no encontrado")
     
-    # Enrich with ave info
     ave = await db.aves.find_one({"_id": ObjectId(cuido["ave_id"])})
     cuido_data = serialize_doc(cuido)
     if ave:
@@ -1396,14 +1427,12 @@ async def get_cuido(cuido_id: str, current_user: dict = Depends(get_current_user
 
 @api_router.put("/cuido/{cuido_id}")
 async def update_cuido(cuido_id: str, cuido_update: CuidoUpdate, current_user: dict = Depends(get_current_user)):
-    """Update a cuido record"""
     existing = await db.cuido.find_one({"_id": ObjectId(cuido_id), "user_id": current_user["id"]})
     if not existing:
         raise HTTPException(status_code=404, detail="Cuido no encontrado")
     
     update_data = {k: v for k, v in cuido_update.dict().items() if v is not None}
     
-    # Handle trabajos update - convert to dict if needed
     if "trabajos" in update_data:
         update_data["trabajos"] = [t.dict() if hasattr(t, 'dict') else t for t in update_data["trabajos"]]
     
@@ -1421,7 +1450,6 @@ async def registrar_tope(
     notas: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """Register a tope (1 or 2)"""
     if tope_numero not in [1, 2]:
         raise HTTPException(status_code=400, detail="Tope debe ser 1 o 2")
     
@@ -1453,7 +1481,6 @@ async def registrar_trabajo(
     notas: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    """Register a trabajo (1-5) with time"""
     if trabajo_numero < 1 or trabajo_numero > 5:
         raise HTTPException(status_code=400, detail="Trabajo debe ser entre 1 y 5")
     
@@ -1483,7 +1510,6 @@ async def iniciar_descanso(
     dias: int,
     current_user: dict = Depends(get_current_user)
 ):
-    """Start rest period (1-20 days)"""
     if dias < 1 or dias > 20:
         raise HTTPException(status_code=400, detail="Días de descanso debe ser entre 1 y 20")
     
@@ -1513,7 +1539,6 @@ async def iniciar_descanso(
 
 @api_router.post("/cuido/{cuido_id}/finalizar-descanso")
 async def finalizar_descanso(cuido_id: str, current_user: dict = Depends(get_current_user)):
-    """End rest period and return to active"""
     cuido = await db.cuido.find_one({"_id": ObjectId(cuido_id), "user_id": current_user["id"]})
     if not cuido:
         raise HTTPException(status_code=404, detail="Cuido no encontrado")
@@ -1531,7 +1556,6 @@ async def finalizar_descanso(cuido_id: str, current_user: dict = Depends(get_cur
 
 @api_router.post("/cuido/{cuido_id}/finalizar")
 async def finalizar_cuido(cuido_id: str, current_user: dict = Depends(get_current_user)):
-    """Finalize cuido completely"""
     cuido = await db.cuido.find_one({"_id": ObjectId(cuido_id), "user_id": current_user["id"]})
     if not cuido:
         raise HTTPException(status_code=404, detail="Cuido no encontrado")
@@ -1558,19 +1582,15 @@ async def delete_cuido(cuido_id: str, current_user: dict = Depends(get_current_u
 
 @api_router.get("/dashboard")
 async def get_dashboard(current_user: dict = Depends(get_current_user)):
-    """Get dashboard summary"""
     user_id = current_user["id"]
     
-    # Count active birds
     aves_activas = await db.aves.count_documents({"user_id": user_id, "estado": "activo"})
     gallos = await db.aves.count_documents({"user_id": user_id, "estado": "activo", "tipo": "gallo"})
     gallinas = await db.aves.count_documents({"user_id": user_id, "estado": "activo", "tipo": "gallina"})
     
-    # Total cruces and planned cruces
     cruces_total = await db.cruces.count_documents({"user_id": user_id})
     cruces_planeados = await db.cruces.count_documents({"user_id": user_id, "estado": "planeado"})
     
-    # Total camadas and active camadas
     camadas_total = await db.camadas.count_documents({"user_id": user_id})
     camadas_activas = await db.camadas.count_documents({
         "user_id": user_id,
@@ -1578,7 +1598,6 @@ async def get_dashboard(current_user: dict = Depends(get_current_user)):
         "fecha_nacimiento": None
     })
     
-    # Recent fights
     recent_peleas = await db.peleas.find({"user_id": user_id}).sort("fecha", -1).limit(5).to_list(5)
     peleas_data = []
     for p in recent_peleas:
@@ -1592,11 +1611,9 @@ async def get_dashboard(current_user: dict = Depends(get_current_user)):
             "ave_nombre": ave.get("nombre") if ave else None
         })
     
-    # Fight stats
     total_peleas = await db.peleas.count_documents({"user_id": user_id})
     peleas_ganadas = await db.peleas.count_documents({"user_id": user_id, "resultado": "GANO"})
     
-    # Health reminders
     today = datetime.utcnow().strftime("%Y-%m-%d")
     week_later = (datetime.utcnow() + timedelta(days=7)).strftime("%Y-%m-%d")
     recordatorios = await db.salud.count_documents({
@@ -1628,11 +1645,9 @@ async def get_dashboard(current_user: dict = Depends(get_current_user)):
 
 @api_router.post("/sync/upload")
 async def sync_upload(data: SyncData, current_user: dict = Depends(get_current_user)):
-    """Upload local data to cloud (last edit wins)"""
     user_id = current_user["id"]
     results = {"aves": 0, "cruces": 0, "camadas": 0, "peleas": 0, "salud": 0}
     
-    # Sync aves
     for ave in data.aves:
         ave["user_id"] = user_id
         ave["updated_at"] = datetime.utcnow()
@@ -1651,7 +1666,6 @@ async def sync_upload(data: SyncData, current_user: dict = Depends(get_current_u
             await db.aves.insert_one(ave)
         results["aves"] += 1
     
-    # Similar for other collections
     for cruce in data.cruces:
         cruce["user_id"] = user_id
         cruce["updated_at"] = datetime.utcnow()
@@ -1674,7 +1688,6 @@ async def sync_upload(data: SyncData, current_user: dict = Depends(get_current_u
 
 @api_router.get("/sync/download")
 async def sync_download(since: Optional[str] = None, current_user: dict = Depends(get_current_user)):
-    """Download cloud data to local"""
     user_id = current_user["id"]
     query = {"user_id": user_id}
     
@@ -1706,7 +1719,6 @@ async def sync_download(since: Optional[str] = None, current_user: dict = Depend
 async def health_check():
     return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
 
-# Include router
 app.include_router(api_router)
 
 app.add_middleware(

@@ -15,7 +15,8 @@
       "infoPlist": {
         "NSCameraUsageDescription": "Tomar fotos de tus aves para identificarlas fácilmente",
         "NSPhotoLibraryUsageDescription": "Seleccionar fotos de tus aves desde tu galería",
-        "NSPhotoLibraryAddUsageDescription": "Guardar fotos de tus aves en tu galería"
+        "NSPhotoLibraryAddUsageDescription": "Guardar fotos de tus aves en tu galería",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -25,12 +26,13 @@
       },
       "edgeToEdgeEnabled": true,
       "package": "com.migalleria.app",
-      "versionCode": 1,
+      "versionCode": 2,
       "permissions": [
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
-        "READ_MEDIA_IMAGES"
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -43,8 +45,8 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
+          "image": "./assets/images/splash-image.png",
+          "imageWidth": 320,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
@@ -61,9 +63,11 @@
       "typedRoutes": true
     },
     "extra": {
+      "router": {},
       "eas": {
-        "projectId": "mi-galleria-app"
+        "projectId": "2a3aa418-280d-4658-bc45-a701790f2604"
       }
-    }
+    },
+    "owner": "nuevo19"
   }
 }

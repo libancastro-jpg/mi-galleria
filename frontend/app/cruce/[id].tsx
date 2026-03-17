@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,9 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Image,
+  Switch,
+  GestureResponderEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -22,6 +25,18 @@ interface Ave {
   codigo: string;
   nombre?: string;
   tipo: string;
+  foto?: string;
+  imagen?: string;
+  image_url?: string;
+}
+
+interface Criador {
+  id: string;
+  nombre?: string;
+  nombre_completo?: string;
+  alias?: string;
+  name?: string;
+  full_name?: string;
 }
 
 interface Consanguinidad {
@@ -36,37 +51,75 @@ interface Consanguinidad {
   total_comunes: number;
 }
 
+type MarcaTipo = 'pie_izquierdo' | 'pie_derecho' | 'nariz' | 'marca_casera' | '';
+type MarcaLado = 'izquierda' | 'derecha' | '';
+
+const pieIzquierdoImg = require('../../assets/images/pie_izquierdo.png');
+const pieDerechoImg = require('../../assets/images/pie_derecho.png');
+const narizImg = require('../../assets/images/nariz.png');
+
+const CASERA_COLORS = [
+  '#ffffff',
+  '#111111',
+  '#6b7280',
+  '#7c2d12',
+  '#ea580c',
+  '#f59e0b',
+  '#dc2626',
+  '#ec4899',
+  '#7c3aed',
+  '#2563eb',
+  '#16a34a',
+  '#92400e',
+];
+
+const MARCA_DOT_COLOR = '#b9b9b9';
+
 export default function CruceFormScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const isEdit = id && id !== 'new';
+  const isEdit = !!id && id !== 'new';
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+
   const [gallos, setGallos] = useState<Ave[]>([]);
   const [gallinas, setGallinas] = useState<Ave[]>([]);
+  const [criadores, setCriadores] = useState<Criador[]>([]);
+
+  const [showCriadorList, setShowCriadorList] = useState(false);
   const [showPadreList, setShowPadreList] = useState(false);
   const [showMadreList, setShowMadreList] = useState(false);
   const [showPadreExterno, setShowPadreExterno] = useState(false);
   const [showMadreExterno, setShowMadreExterno] = useState(false);
+
   const [padreGalleria, setPadreGalleria] = useState('');
   const [madreGalleria, setMadreGalleria] = useState('');
+
   const [consanguinidad, setConsanguinidad] = useState<Consanguinidad | null>(null);
   const [calculatingConsang, setCalculatingConsang] = useState(false);
+
+  const [sinMarca, setSinMarca] = useState(false);
+  const [marcaNacimiento, setMarcaNacimiento] = useState<MarcaTipo>('');
+  const [marcaPosicion, setMarcaPosicion] = useState<MarcaLado>('');
+  const [marcaColor, setMarcaColor] = useState<string>('#dc2626');
+  const [showCaseraColors, setShowCaseraColors] = useState(false);
 
   const [formData, setFormData] = useState({
     padre_id: '',
     madre_id: '',
     padre_externo: '',
     madre_externo: '',
+    criador_id: '',
+    cantidad_huevos_pollitos: '',
     fecha: new Date().toISOString().split('T')[0],
-    objetivo: '',
     notas: '',
     estado: 'planeado',
   });
 
   useEffect(() => {
     fetchAves();
+    fetchCriadores();
     if (isEdit) {
       fetchCruce();
     }
@@ -80,32 +133,160 @@ export default function CruceFormScreen() {
     }
   }, [formData.padre_id, formData.madre_id]);
 
+  const padreSeleccionado = useMemo(
+    () => gallos.find((g) => g.id === formData.padre_id),
+    [gallos, formData.padre_id]
+  );
+
+  const madreSeleccionada = useMemo(
+    () => gallinas.find((g) => g.id === formData.madre_id),
+    [gallinas, formData.madre_id]
+  );
+
+  const criadorSeleccionado = useMemo(
+    () => criadores.find((c) => c.id === formData.criador_id),
+    [criadores, formData.criador_id]
+  );
+
+  const getCriadorDisplayName = (item?: Criador) => {
+    if (!item) return 'Seleccionar criador / castador';
+    return (
+      item.nombre ||
+      item.nombre_completo ||
+      item.alias ||
+      item.name ||
+      item.full_name ||
+      'Seleccionar criador / castador'
+    );
+  };
+
   const fetchAves = async () => {
     try {
       const aves = await api.get('/aves');
-      setGallos(aves.filter((a: Ave) => a.tipo === 'gallo'));
-      setGallinas(aves.filter((a: Ave) => a.tipo === 'gallina'));
+      const avesArray = Array.isArray(aves)
+        ? aves
+        : Array.isArray(aves?.data)
+          ? aves.data
+          : [];
+
+      setGallos(avesArray.filter((a: Ave) => a.tipo === 'gallo'));
+      setGallinas(avesArray.filter((a: Ave) => a.tipo === 'gallina'));
     } catch (error) {
       console.error('Error fetching aves:', error);
+    }
+  };
+
+  const fetchCriadores = async () => {
+    try {
+      let raw: any = null;
+
+      try {
+        raw = await api.get('/criadores');
+      } catch {
+        try {
+          raw = await api.get('/castadores');
+        } catch {
+          try {
+            raw = await api.get('/criador');
+          } catch {
+            try {
+              raw = await api.get('/castador');
+            } catch {
+              raw = [];
+            }
+          }
+        }
+      }
+
+      const data = Array.isArray(raw)
+        ? raw
+        : Array.isArray(raw?.data)
+          ? raw.data
+          : Array.isArray(raw?.items)
+            ? raw.items
+            : Array.isArray(raw?.results)
+              ? raw.results
+              : [];
+
+      const normalized: Criador[] = data
+        .map((item: any) => ({
+          id: String(item?.id || item?._id || item?.uuid || ''),
+          nombre:
+            item?.nombre ||
+            item?.nombre_completo ||
+            item?.alias ||
+            item?.name ||
+            item?.full_name ||
+            'Sin nombre',
+          nombre_completo: item?.nombre_completo || item?.full_name || item?.nombre || '',
+          alias: item?.alias || '',
+          name: item?.name || '',
+          full_name: item?.full_name || '',
+        }))
+        .filter((c: Criador) => c.id);
+
+      setCriadores(normalized);
+    } catch (error) {
+      console.error('Error fetching criadores/castadores:', error);
+      setCriadores([]);
     }
   };
 
   const fetchCruce = async () => {
     setLoading(true);
     try {
-      const cruce = await api.get(`/cruces/${id}`);
+      const cruce: any = await api.get(`/cruces/${id}`);
+
       setFormData({
-        padre_id: cruce.padre_id || '',
-        madre_id: cruce.madre_id || '',
-        padre_externo: cruce.padre_externo || '',
-        madre_externo: cruce.madre_externo || '',
-        fecha: cruce.fecha || '',
-        objetivo: cruce.objetivo || '',
-        notas: cruce.notas || '',
-        estado: cruce.estado || 'planeado',
+        padre_id: cruce?.padre_id || '',
+        madre_id: cruce?.madre_id || '',
+        padre_externo: cruce?.padre_externo || '',
+        madre_externo: cruce?.madre_externo || '',
+        criador_id: cruce?.criador_id || cruce?.castador_id || '',
+        cantidad_huevos_pollitos: String(
+          cruce?.cantidad_huevos_pollitos ??
+            cruce?.cantidad_registrada ??
+            cruce?.cantidad_huevos ??
+            cruce?.cantidad_pollitos ??
+            ''
+        ),
+        fecha: cruce?.fecha || '',
+        notas: cruce?.notas || '',
+        estado: cruce?.estado || 'planeado',
       });
+
+      if (cruce?.padre_externo) {
+        const match = cruce.padre_externo.match(/^(.*?)\s*\((.*?)\)\s*$/);
+        if (match) setPadreGalleria(match[2]);
+      }
+
+      if (cruce?.madre_externo) {
+        const match = cruce.madre_externo.match(/^(.*?)\s*\((.*?)\)\s*$/);
+        if (match) setMadreGalleria(match[2]);
+      }
+
+      if (
+        cruce?.marca_nacimiento === 'pie_izquierdo' ||
+        cruce?.marca_nacimiento === 'pie_derecho' ||
+        cruce?.marca_nacimiento === 'nariz' ||
+        cruce?.marca_nacimiento === 'marca_casera'
+      ) {
+        setMarcaNacimiento(cruce.marca_nacimiento);
+      }
+
+      if (cruce?.sin_marca) {
+        setSinMarca(true);
+      }
+
+      if (cruce?.marca_lado === 'izquierda' || cruce?.marca_lado === 'derecha') {
+        setMarcaPosicion(cruce.marca_lado);
+      }
+
+      if (typeof cruce?.marca_color === 'string' && cruce.marca_color.trim()) {
+        setMarcaColor(cruce.marca_color);
+      }
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      Alert.alert('Error', error.message || 'No se pudo cargar el cruce');
     } finally {
       setLoading(false);
     }
@@ -126,26 +307,361 @@ export default function CruceFormScreen() {
     }
   };
 
+  const getConsangColor = (nivel: string) => {
+    switch (nivel) {
+      case 'bajo':
+        return '#16a34a';
+      case 'medio':
+        return '#f59e0b';
+      case 'alto':
+        return '#ef4444';
+      default:
+        return '#6b7280';
+    }
+  };
+
+  const formatAveLabel = (ave?: Ave) => {
+    if (!ave) return 'Seleccionado';
+    return ave.nombre ? `${ave.codigo} - ${ave.nombre}` : ave.codigo;
+  };
+
+  const clearPadre = () => {
+    setFormData((prev) => ({
+      ...prev,
+      padre_id: '',
+      padre_externo: '',
+    }));
+    setPadreGalleria('');
+    setShowPadreList(false);
+    setShowPadreExterno(false);
+  };
+
+  const clearMadre = () => {
+    setFormData((prev) => ({
+      ...prev,
+      madre_id: '',
+      madre_externo: '',
+    }));
+    setMadreGalleria('');
+    setShowMadreList(false);
+    setShowMadreExterno(false);
+  };
+
+  const toggleParentMenu = (type: 'padre' | 'madre') => {
+    if (type === 'padre') {
+      const willOpen = !showPadreList;
+      setShowPadreList(willOpen);
+      setShowPadreExterno(false);
+      setShowMadreList(false);
+      setShowMadreExterno(false);
+      setShowCriadorList(false);
+    } else {
+      const willOpen = !showMadreList;
+      setShowMadreList(willOpen);
+      setShowMadreExterno(false);
+      setShowPadreList(false);
+      setShowPadreExterno(false);
+      setShowCriadorList(false);
+    }
+  };
+
+  const getTappedSide = (event: GestureResponderEvent): MarcaLado => {
+    const { locationX } = event.nativeEvent;
+    return locationX < 70 ? 'izquierda' : 'derecha';
+  };
+
+  const handleTapMarca = (
+    tipo: 'pie_izquierdo' | 'pie_derecho' | 'nariz',
+    event: GestureResponderEvent
+  ) => {
+    setMarcaNacimiento(tipo);
+    setMarcaPosicion(getTappedSide(event));
+    setShowCaseraColors(false);
+  };
+
+  const handleSelectMarcaCasera = () => {
+    setMarcaNacimiento('marca_casera');
+    setMarcaPosicion('');
+    setShowCaseraColors((prev) => !prev);
+  };
+
+  const renderMarcaDot = (tipo: MarcaTipo) => {
+    if (sinMarca || marcaNacimiento !== tipo) return null;
+
+    if (tipo === 'marca_casera') {
+      return (
+        <View
+          style={[
+            styles.marcaDot,
+            styles.dotCasera,
+            { backgroundColor: marcaColor, borderColor: '#d7dde5' },
+          ]}
+        />
+      );
+    }
+
+    let dotStyle = styles.dotLeftPieIzquierdo;
+
+    if (tipo === 'pie_izquierdo') {
+      dotStyle =
+        marcaPosicion === 'izquierda'
+          ? styles.dotLeftPieIzquierdo
+          : styles.dotRightPieIzquierdo;
+    } else if (tipo === 'pie_derecho') {
+      dotStyle =
+        marcaPosicion === 'izquierda'
+          ? styles.dotLeftPieDerecho
+          : styles.dotRightPieDerecho;
+    } else if (tipo === 'nariz') {
+      dotStyle =
+        marcaPosicion === 'izquierda' ? styles.dotLeftNariz : styles.dotRightNariz;
+    }
+
+    return (
+      <View
+        style={[
+          styles.marcaDot,
+          dotStyle,
+          { backgroundColor: MARCA_DOT_COLOR, borderColor: '#a3a3a3' },
+        ]}
+      />
+    );
+  };
+
+  const renderParentSelection = (
+    type: 'padre' | 'madre',
+    selectedText: string,
+    selectedInternal: boolean
+  ) => {
+    const isPadre = type === 'padre';
+    const showList = isPadre ? showPadreList : showMadreList;
+    const showExterno = isPadre ? showPadreExterno : showMadreExterno;
+    const items = isPadre ? gallos : gallinas;
+
+    return (
+      <View style={styles.parentOptionsWrap}>
+        {showList && (
+          <View style={styles.dropdownList}>
+            {items.length === 0 ? (
+              <Text style={styles.emptyListText}>
+                {isPadre ? 'No hay gallos registrados' : 'No hay gallinas registradas'}
+              </Text>
+            ) : (
+              items.map((item, index) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[
+                    styles.dropdownItem,
+                    index === items.length - 1 && styles.dropdownItemLast,
+                  ]}
+                  onPress={() => {
+                    if (isPadre) {
+                      setFormData((prev) => ({
+                        ...prev,
+                        padre_id: item.id,
+                        padre_externo: '',
+                      }));
+                      setPadreGalleria('');
+                      setShowPadreList(false);
+                    } else {
+                      setFormData((prev) => ({
+                        ...prev,
+                        madre_id: item.id,
+                        madre_externo: '',
+                      }));
+                      setMadreGalleria('');
+                      setShowMadreList(false);
+                    }
+                  }}
+                >
+                  <Text style={styles.dropdownItemText}>
+                    {item.codigo} {item.nombre ? `- ${item.nombre}` : ''}
+                  </Text>
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
+        )}
+
+        <TouchableOpacity
+          style={styles.externalOptionButton}
+          onPress={() => {
+            if (isPadre) {
+              setShowPadreExterno(!showPadreExterno);
+              setShowPadreList(false);
+              setShowMadreList(false);
+              setShowMadreExterno(false);
+              setShowCriadorList(false);
+            } else {
+              setShowMadreExterno(!showMadreExterno);
+              setShowMadreList(false);
+              setShowPadreList(false);
+              setShowPadreExterno(false);
+              setShowCriadorList(false);
+            }
+          }}
+        >
+          <Text style={styles.externalOptionText}>
+            {isPadre ? 'Agregar Padre Externo' : 'Agregar Madre Externa'}
+          </Text>
+          <Ionicons
+            name={showExterno ? 'chevron-up' : 'chevron-forward'}
+            size={24}
+            color="#b45309"
+          />
+        </TouchableOpacity>
+
+        {showExterno && (
+          <View style={styles.externalForm}>
+            <Text style={styles.fieldSmallLabel}>
+              {isPadre ? 'Placa del padre externo' : 'Placa de la madre externa'}
+            </Text>
+
+            <TextInput
+              style={styles.externalInput}
+              value={
+                isPadre
+                  ? formData.padre_externo.split(' (')[0]
+                  : formData.madre_externo.split(' (')[0]
+              }
+              onChangeText={(text) => {
+                if (isPadre) {
+                  setFormData((prev) => ({
+                    ...prev,
+                    padre_externo: text,
+                    padre_id: '',
+                  }));
+                } else {
+                  setFormData((prev) => ({
+                    ...prev,
+                    madre_externo: text,
+                    madre_id: '',
+                  }));
+                }
+              }}
+              placeholder={isPadre ? 'Ej: P-102' : 'Ej: M-210'}
+              placeholderTextColor="#9ca3af"
+            />
+
+            <Text style={styles.fieldSmallLabel}>Gallería / Criador (opcional)</Text>
+            <TextInput
+              style={styles.externalInput}
+              value={isPadre ? padreGalleria : madreGalleria}
+              onChangeText={isPadre ? setPadreGalleria : setMadreGalleria}
+              placeholder="Nombre de la gallería o criador"
+              placeholderTextColor="#9ca3af"
+            />
+
+            <TouchableOpacity
+              style={styles.confirmExternalButton}
+              onPress={() => {
+                if (isPadre) {
+                  if (!formData.padre_externo.trim()) {
+                    Alert.alert('Error', 'Debes escribir la placa del padre externo');
+                    return;
+                  }
+
+                  const placa = formData.padre_externo.split(' (')[0].trim();
+                  const finalValue = padreGalleria.trim()
+                    ? `${placa} (${padreGalleria.trim()})`
+                    : placa;
+
+                  setFormData((prev) => ({
+                    ...prev,
+                    padre_externo: finalValue,
+                    padre_id: '',
+                  }));
+                  setShowPadreExterno(false);
+                } else {
+                  if (!formData.madre_externo.trim()) {
+                    Alert.alert('Error', 'Debes escribir la placa de la madre externa');
+                    return;
+                  }
+
+                  const placa = formData.madre_externo.split(' (')[0].trim();
+                  const finalValue = madreGalleria.trim()
+                    ? `${placa} (${madreGalleria.trim()})`
+                    : placa;
+
+                  setFormData((prev) => ({
+                    ...prev,
+                    madre_externo: finalValue,
+                    madre_id: '',
+                  }));
+                  setShowMadreExterno(false);
+                }
+              }}
+            >
+              <Text style={styles.confirmExternalButtonText}>Confirmar</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {(selectedInternal ||
+          (!selectedInternal &&
+            selectedText !== (isPadre ? 'Agregar padre' : 'Agregar madre'))) && (
+          <TouchableOpacity
+            style={styles.clearSelectionButton}
+            onPress={isPadre ? clearPadre : clearMadre}
+          >
+            <Ionicons name="close-circle" size={18} color="#ef4444" />
+            <Text style={styles.clearSelectionText}>Quitar selección</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  };
+
+  const padreText = formData.padre_externo
+    ? `Padre externo: ${formData.padre_externo}`
+    : formData.padre_id
+      ? formatAveLabel(padreSeleccionado)
+      : 'Agregar padre';
+
+  const madreText = formData.madre_externo
+    ? `Madre externa: ${formData.madre_externo}`
+    : formData.madre_id
+      ? formatAveLabel(madreSeleccionada)
+      : 'Agregar madre';
+
   const handleSave = async () => {
-    // Validar que haya al menos padre interno o externo
     if (!formData.padre_id && !formData.padre_externo) {
       Alert.alert('Error', 'Debes seleccionar o agregar un padre');
       return;
     }
-    // Validar que haya al menos madre interna o externa
+
     if (!formData.madre_id && !formData.madre_externo) {
       Alert.alert('Error', 'Debes seleccionar o agregar una madre');
       return;
     }
 
+    if (!sinMarca && !marcaNacimiento) {
+      Alert.alert('Error', 'Debes seleccionar una marca o activar "Sin Marca"');
+      return;
+    }
+
     setSaving(true);
     try {
+      const cantidad = formData.cantidad_huevos_pollitos
+        ? Number(formData.cantidad_huevos_pollitos)
+        : null;
+
       const dataToSend = {
         ...formData,
         padre_id: formData.padre_id || null,
         madre_id: formData.madre_id || null,
         padre_externo: formData.padre_externo || null,
         madre_externo: formData.madre_externo || null,
+        criador_id: formData.criador_id || null,
+        castador_id: formData.criador_id || null,
+        cantidad_huevos_pollitos: cantidad,
+        cantidad_registrada: cantidad,
+        sin_marca: sinMarca,
+        marca_nacimiento: sinMarca ? null : marcaNacimiento || null,
+        marca_color:
+          sinMarca || marcaNacimiento !== 'marca_casera' ? null : marcaColor || null,
+        marca_lado:
+          sinMarca || marcaNacimiento === 'marca_casera' ? null : marcaPosicion || null,
       };
 
       if (isEdit) {
@@ -159,9 +675,10 @@ export default function CruceFormScreen() {
           Alert.alert('Éxito', 'Cruce creado correctamente');
         }
       }
+
       router.back();
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      Alert.alert('Error', error.message || 'No se pudo guardar el cruce');
     } finally {
       setSaving(false);
     }
@@ -170,7 +687,7 @@ export default function CruceFormScreen() {
   const handleDelete = () => {
     Alert.alert(
       'Eliminar Cruce',
-      '¿Estás seguro de que deseas eliminar este cruce? Esta acción no se puede deshacer.',
+      '¿Estás seguro de que deseas eliminar este cruce?',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -190,316 +707,177 @@ export default function CruceFormScreen() {
     );
   };
 
-  const getConsangColor = (nivel: string) => {
-    switch (nivel) {
-      case 'bajo':
-        return '#22c55e';
-      case 'medio':
-        return '#f59e0b';
-      case 'alto':
-        return '#ef4444';
-      default:
-        return '#555555';
-    }
-  };
-
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#f59e0b" />
+          <ActivityIndicator size="large" color="#111827" />
         </View>
       </SafeAreaView>
     );
   }
 
+  const madreMenuAbierto = showMadreList || showMadreExterno;
+  const padreMenuAbierto = showPadreList || showPadreExterno;
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
+        style={styles.flex}
       >
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#d4a017" />
+          <TouchableOpacity onPress={() => router.back()}>
+            <Text style={styles.cancelText}>Cancelar</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>{isEdit ? 'Editar Cruce' : 'Nuevo Cruce'}</Text>
-          <View style={styles.headerActions}>
-            {isEdit && (
-              <TouchableOpacity onPress={handleDelete} style={styles.deleteButton}>
-                <Ionicons name="trash-outline" size={22} color="#ef4444" />
-              </TouchableOpacity>
+
+          <Text style={styles.headerTitle}>
+            {isEdit ? 'Editar Cruce' : 'Registrar Nuevo Cruce'}
+          </Text>
+
+          <TouchableOpacity
+            onPress={handleSave}
+            disabled={saving}
+            style={styles.saveButton}
+          >
+            {saving ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.saveButtonText}>Guardar</Text>
             )}
-            <TouchableOpacity
-              onPress={handleSave}
-              disabled={saving}
-              style={styles.saveButton}
-            >
-              {saving ? (
-                <ActivityIndicator size="small" color="#000" />
-              ) : (
-                <Text style={styles.saveButtonText}>Guardar</Text>
-              )}
-            </TouchableOpacity>
-          </View>
+          </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.form} contentContainerStyle={styles.formContent}>
-          {/* Sección Padre */}
-          <View style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionIconMale}>
-                <Ionicons name="male" size={20} color="#3b82f6" />
-              </View>
-              <Text style={styles.sectionTitle}>Padre (Gallo)</Text>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <DatePickerField
+            label="Fecha del cruce *"
+            value={formData.fecha}
+            onChange={(date) => setFormData((prev) => ({ ...prev, fecha: date }))}
+            placeholder="Seleccionar fecha"
+          />
+
+          <Text style={styles.sectionLabel}>Criador / Castador</Text>
+
+          <TouchableOpacity
+            style={styles.selectOptionCard}
+            onPress={() => {
+              setShowCriadorList((prev) => !prev);
+              setShowPadreList(false);
+              setShowPadreExterno(false);
+              setShowMadreList(false);
+              setShowMadreExterno(false);
+            }}
+          >
+            <Text style={styles.selectOptionText}>
+              {getCriadorDisplayName(criadorSeleccionado)}
+            </Text>
+            <Ionicons
+              name={showCriadorList ? 'chevron-up' : 'chevron-forward'}
+              size={24}
+              color="#111827"
+            />
+          </TouchableOpacity>
+
+          {showCriadorList && (
+            <View style={styles.dropdownList}>
+              {criadores.length === 0 ? (
+                <Text style={styles.emptyListText}>
+                  No hay criadores o castadores registrados
+                </Text>
+              ) : (
+                criadores.map((criador, index) => (
+                  <TouchableOpacity
+                    key={criador.id}
+                    style={[
+                      styles.dropdownItem,
+                      index === criadores.length - 1 && styles.dropdownItemLast,
+                    ]}
+                    onPress={() => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        criador_id: criador.id,
+                      }));
+                      setShowCriadorList(false);
+                    }}
+                  >
+                    <Text style={styles.dropdownItemText}>
+                      {getCriadorDisplayName(criador)}
+                    </Text>
+                  </TouchableOpacity>
+                ))
+              )}
             </View>
+          )}
 
-            {/* Mostrar selección actual */}
-            {(formData.padre_id || formData.padre_externo) && (
-              <View style={styles.selectedParent}>
-                <View style={styles.selectedInfo}>
-                  <Ionicons name="checkmark-circle" size={20} color="#22c55e" />
-                  <Text style={styles.selectedText}>
-                    {formData.padre_externo
-                      ? `Externo: ${formData.padre_externo}`
-                      : gallos.find((g) => g.id === formData.padre_id)?.codigo || 'Seleccionado'}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() => {
-                    setFormData({ ...formData, padre_id: '', padre_externo: '' });
-                    setPadreGalleria('');
-                  }}
-                >
-                  <Ionicons name="close-circle" size={24} color="#ef4444" />
-                </TouchableOpacity>
+          <Text style={styles.sectionLabel}>Cantidad de Huevos/Pollitos</Text>
+          <TextInput
+            style={styles.quantityInput}
+            value={formData.cantidad_huevos_pollitos}
+            onChangeText={(text) =>
+              setFormData((prev) => ({
+                ...prev,
+                cantidad_huevos_pollitos: text.replace(/[^0-9]/g, ''),
+              }))
+            }
+            placeholder="Ej: 12"
+            placeholderTextColor="#9ca3af"
+            keyboardType="numeric"
+          />
+
+          <Text style={styles.sectionLabel}>Información de los padres *</Text>
+
+          <TouchableOpacity
+            style={styles.parentCard}
+            activeOpacity={0.9}
+            onPress={() => toggleParentMenu('madre')}
+          >
+            <View style={styles.parentCardLeft}>
+              <View style={styles.madreIconBox}>
+                <Ionicons name="female" size={28} color="#2563eb" />
               </View>
-            )}
-
-            {/* Opciones de selección */}
-            {!formData.padre_id && !formData.padre_externo && (
-              <View style={styles.selectionOptions}>
-                {/* Botón seleccionar de mi gallería */}
-                <TouchableOpacity
-                  style={styles.optionButton}
-                  onPress={() => {
-                    setShowPadreList(!showPadreList);
-                    setShowPadreExterno(false);
-                  }}
-                >
-                  <Ionicons name="list" size={20} color="#3b82f6" />
-                  <Text style={styles.optionButtonText}>Seleccionar de mi Gallería</Text>
-                  <Ionicons name={showPadreList ? 'chevron-up' : 'chevron-down'} size={18} color="#555555" />
-                </TouchableOpacity>
-
-                {/* Lista de gallos */}
-                {showPadreList && (
-                  <View style={styles.optionsList}>
-                    {gallos.length === 0 ? (
-                      <Text style={styles.noAvesText}>No hay gallos registrados</Text>
-                    ) : (
-                      gallos.map((gallo) => (
-                        <TouchableOpacity
-                          key={gallo.id}
-                          style={styles.optionItem}
-                          onPress={() => {
-                            setFormData({ ...formData, padre_id: gallo.id, padre_externo: '' });
-                            setPadreGalleria('');
-                            setShowPadreList(false);
-                          }}
-                        >
-                          <Text style={styles.optionItemText}>
-                            {gallo.codigo} {gallo.nombre ? `- ${gallo.nombre}` : ''}
-                          </Text>
-                        </TouchableOpacity>
-                      ))
-                    )}
-                  </View>
-                )}
-
-                {/* Botón agregar externo */}
-                <TouchableOpacity
-                  style={[styles.optionButton, styles.optionButtonExternal]}
-                  onPress={() => {
-                    setShowPadreExterno(!showPadreExterno);
-                    setShowPadreList(false);
-                  }}
-                >
-                  <Ionicons name="add-circle" size={20} color="#f59e0b" />
-                  <Text style={[styles.optionButtonText, { color: '#f59e0b' }]}>Agregar Padre Externo</Text>
-                  <Ionicons name={showPadreExterno ? 'chevron-up' : 'chevron-down'} size={18} color="#555555" />
-                </TouchableOpacity>
-
-                {/* Formulario externo */}
-                {showPadreExterno && (
-                  <View style={styles.externalForm}>
-                    <TextInput
-                      style={styles.externalInput}
-                      value={formData.padre_externo.split(' (')[0]}
-                      onChangeText={(text) => setFormData({ ...formData, padre_externo: text, padre_id: '' })}
-                      placeholder="Placa del padre externo"
-                      placeholderTextColor="#707070"
-                    />
-                    <TextInput
-                      style={styles.externalInput}
-                      value={padreGalleria}
-                      onChangeText={setPadreGalleria}
-                      placeholder="Gallería / Criador (opcional)"
-                      placeholderTextColor="#707070"
-                    />
-                    <TouchableOpacity
-                      style={styles.confirmButton}
-                      onPress={() => {
-                        if (formData.padre_externo) {
-                          const placaConGalleria = padreGalleria
-                            ? `${formData.padre_externo} (${padreGalleria})`
-                            : formData.padre_externo;
-                          setFormData({ ...formData, padre_externo: placaConGalleria, padre_id: '' });
-                        }
-                        setShowPadreExterno(false);
-                      }}
-                    >
-                      <Text style={styles.confirmButtonText}>Confirmar Padre</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-              </View>
-            )}
-          </View>
-
-          {/* Icono de cruce central */}
-          <View style={styles.cruceIconCenter}>
-            <Ionicons name="git-merge" size={32} color="#f59e0b" />
-          </View>
-
-          {/* Sección Madre */}
-          <View style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionIconFemale}>
-                <Ionicons name="female" size={20} color="#ec4899" />
-              </View>
-              <Text style={styles.sectionTitle}>Madre (Gallina)</Text>
+              <Text style={styles.parentCardText}>{madreText}</Text>
             </View>
+            <Ionicons
+              name={madreMenuAbierto ? 'chevron-up' : 'chevron-forward'}
+              size={28}
+              color="#111827"
+            />
+          </TouchableOpacity>
 
-            {/* Mostrar selección actual */}
-            {(formData.madre_id || formData.madre_externo) && (
-              <View style={styles.selectedParent}>
-                <View style={styles.selectedInfo}>
-                  <Ionicons name="checkmark-circle" size={20} color="#22c55e" />
-                  <Text style={styles.selectedText}>
-                    {formData.madre_externo
-                      ? `Externa: ${formData.madre_externo}`
-                      : gallinas.find((g) => g.id === formData.madre_id)?.codigo || 'Seleccionada'}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() => {
-                    setFormData({ ...formData, madre_id: '', madre_externo: '' });
-                    setMadreGalleria('');
-                  }}
-                >
-                  <Ionicons name="close-circle" size={24} color="#ef4444" />
-                </TouchableOpacity>
+          {madreMenuAbierto &&
+            renderParentSelection('madre', madreText, !!formData.madre_id)}
+
+          <TouchableOpacity
+            style={styles.parentCard}
+            activeOpacity={0.9}
+            onPress={() => toggleParentMenu('padre')}
+          >
+            <View style={styles.parentCardLeft}>
+              <View style={styles.padreIconBox}>
+                <Ionicons name="male" size={28} color="#16a34a" />
               </View>
-            )}
+              <Text style={styles.parentCardText}>{padreText}</Text>
+            </View>
+            <Ionicons
+              name={padreMenuAbierto ? 'chevron-up' : 'chevron-forward'}
+              size={28}
+              color="#111827"
+            />
+          </TouchableOpacity>
 
-            {/* Opciones de selección */}
-            {!formData.madre_id && !formData.madre_externo && (
-              <View style={styles.selectionOptions}>
-                {/* Botón seleccionar de mi gallería */}
-                <TouchableOpacity
-                  style={styles.optionButton}
-                  onPress={() => {
-                    setShowMadreList(!showMadreList);
-                    setShowMadreExterno(false);
-                  }}
-                >
-                  <Ionicons name="list" size={20} color="#ec4899" />
-                  <Text style={styles.optionButtonText}>Seleccionar de mi Gallería</Text>
-                  <Ionicons name={showMadreList ? 'chevron-up' : 'chevron-down'} size={18} color="#555555" />
-                </TouchableOpacity>
+          {padreMenuAbierto &&
+            renderParentSelection('padre', padreText, !!formData.padre_id)}
 
-                {/* Lista de gallinas */}
-                {showMadreList && (
-                  <View style={styles.optionsList}>
-                    {gallinas.length === 0 ? (
-                      <Text style={styles.noAvesText}>No hay gallinas registradas</Text>
-                    ) : (
-                      gallinas.map((gallina) => (
-                        <TouchableOpacity
-                          key={gallina.id}
-                          style={styles.optionItem}
-                          onPress={() => {
-                            setFormData({ ...formData, madre_id: gallina.id, madre_externo: '' });
-                            setMadreGalleria('');
-                            setShowMadreList(false);
-                          }}
-                        >
-                          <Text style={styles.optionItemText}>
-                            {gallina.codigo} {gallina.nombre ? `- ${gallina.nombre}` : ''}
-                          </Text>
-                        </TouchableOpacity>
-                      ))
-                    )}
-                  </View>
-                )}
-
-                {/* Botón agregar externo */}
-                <TouchableOpacity
-                  style={[styles.optionButton, styles.optionButtonExternal]}
-                  onPress={() => {
-                    setShowMadreExterno(!showMadreExterno);
-                    setShowMadreList(false);
-                  }}
-                >
-                  <Ionicons name="add-circle" size={20} color="#f59e0b" />
-                  <Text style={[styles.optionButtonText, { color: '#f59e0b' }]}>Agregar Madre Externa</Text>
-                  <Ionicons name={showMadreExterno ? 'chevron-up' : 'chevron-down'} size={18} color="#555555" />
-                </TouchableOpacity>
-
-                {/* Formulario externo */}
-                {showMadreExterno && (
-                  <View style={styles.externalForm}>
-                    <TextInput
-                      style={styles.externalInput}
-                      value={formData.madre_externo.split(' (')[0]}
-                      onChangeText={(text) => setFormData({ ...formData, madre_externo: text, madre_id: '' })}
-                      placeholder="Placa de la madre externa"
-                      placeholderTextColor="#707070"
-                    />
-                    <TextInput
-                      style={styles.externalInput}
-                      value={madreGalleria}
-                      onChangeText={setMadreGalleria}
-                      placeholder="Gallería / Criador (opcional)"
-                      placeholderTextColor="#707070"
-                    />
-                    <TouchableOpacity
-                      style={[styles.confirmButton, { backgroundColor: '#ec4899' }]}
-                      onPress={() => {
-                        if (formData.madre_externo) {
-                          const placaConGalleria = madreGalleria
-                            ? `${formData.madre_externo} (${madreGalleria})`
-                            : formData.madre_externo;
-                          setFormData({ ...formData, madre_externo: placaConGalleria, madre_id: '' });
-                        }
-                        setShowMadreExterno(false);
-                      }}
-                    >
-                      <Text style={styles.confirmButtonText}>Confirmar Madre</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-              </View>
-            )}
-          </View>
-
-          {/* Consanguinidad */}
           {(consanguinidad || calculatingConsang) && (
             <View style={styles.consanguinidadCard}>
-              <Text style={styles.consanguinidadTitle}>Consanguinidad Estimada</Text>
+              <Text style={styles.consanguinidadTitle}>Porcentaje de consanguinidad</Text>
+
               {calculatingConsang ? (
-                <ActivityIndicator size="small" color="#f59e0b" />
+                <ActivityIndicator size="small" color="#111827" />
               ) : consanguinidad ? (
                 <>
                   <View style={styles.consanguinidadRow}>
@@ -511,15 +889,18 @@ export default function CruceFormScreen() {
                     >
                       {consanguinidad.porcentaje_estimado.toFixed(1)}%
                     </Text>
+
                     <View
                       style={[
-                        styles.nivelBadge,
-                        { backgroundColor: getConsangColor(consanguinidad.nivel) + '20' },
+                        styles.consanguinidadBadge,
+                        {
+                          backgroundColor: `${getConsangColor(consanguinidad.nivel)}20`,
+                        },
                       ]}
                     >
                       <Text
                         style={[
-                          styles.nivelText,
+                          styles.consanguinidadBadgeText,
                           { color: getConsangColor(consanguinidad.nivel) },
                         ]}
                       >
@@ -527,14 +908,17 @@ export default function CruceFormScreen() {
                       </Text>
                     </View>
                   </View>
+
                   {consanguinidad.total_comunes > 0 && (
-                    <View style={styles.ancestrosComunes}>
+                    <View style={styles.ancestrosBox}>
                       <Text style={styles.ancestrosTitle}>
-                        Ancestros en común ({consanguinidad.total_comunes}):
+                        Ancestros en común ({consanguinidad.total_comunes})
                       </Text>
+
                       {consanguinidad.ancestros_comunes.slice(0, 3).map((anc) => (
                         <Text key={anc.id} style={styles.ancestroItem}>
-                          • {anc.codigo} (Gen {anc.closest_generation})
+                          • {anc.codigo}
+                          {anc.nombre ? ` - ${anc.nombre}` : ''} (Gen {anc.closest_generation})
                         </Text>
                       ))}
                     </View>
@@ -544,61 +928,209 @@ export default function CruceFormScreen() {
             </View>
           )}
 
-          {/* Fecha */}
-          <DatePickerField
-            label="Fecha del Cruce"
-            value={formData.fecha}
-            onChange={(date) => setFormData({ ...formData, fecha: date })}
-            placeholder="Seleccionar fecha"
-          />
-
-          {/* Estado */}
-          <Text style={styles.label}>Estado</Text>
-          <View style={styles.estadoContainer}>
-            {['planeado', 'hecho', 'cancelado'].map((estado) => (
-              <TouchableOpacity
-                key={estado}
-                style={[
-                  styles.estadoButton,
-                  formData.estado === estado && styles.estadoButtonActive,
-                ]}
-                onPress={() => setFormData({ ...formData, estado })}
-              >
-                <Text
-                  style={[
-                    styles.estadoText,
-                    formData.estado === estado && styles.estadoTextActive,
-                  ]}
-                >
-                  {estado.charAt(0).toUpperCase() + estado.slice(1)}
-                </Text>
-              </TouchableOpacity>
-            ))}
+          <View style={styles.estadoBlock}>
+            <Text style={styles.sectionLabel}>Estado</Text>
+            <View style={styles.estadoContainer}>
+              {['planeado', 'hecho', 'cancelado'].map((estado, index) => {
+                const isActive = formData.estado === estado;
+                return (
+                  <TouchableOpacity
+                    key={estado}
+                    style={[
+                      styles.estadoButton,
+                      isActive && styles.estadoButtonActive,
+                      index === 2 && styles.estadoButtonLast,
+                    ]}
+                    onPress={() => setFormData((prev) => ({ ...prev, estado }))}
+                  >
+                    <Text style={[styles.estadoText, isActive && styles.estadoTextActive]}>
+                      {estado.charAt(0).toUpperCase() + estado.slice(1)}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
 
-          {/* Objetivo */}
-          <Text style={styles.label}>Objetivo del cruce</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.objetivo}
-            onChangeText={(text) => setFormData({ ...formData, objetivo: text })}
-            placeholder="Ej: Mejorar resistencia, color..."
-            placeholderTextColor="#555555"
-          />
+          <View style={styles.marcaHeaderRow}>
+            <Text style={styles.sectionLabel}>Marca de Nacimiento *</Text>
 
-          {/* Notas */}
-          <Text style={styles.label}>Notas</Text>
+            <View style={styles.switchRow}>
+              <Text style={styles.switchLabel}>Sin Marca</Text>
+              <Switch
+                value={sinMarca}
+                onValueChange={(value) => {
+                  setSinMarca(value);
+                  if (value) {
+                    setMarcaNacimiento('');
+                    setMarcaPosicion('');
+                    setShowCaseraColors(false);
+                  }
+                }}
+                trackColor={{ false: '#d4d4d8', true: '#111827' }}
+                thumbColor="#ffffff"
+              />
+            </View>
+          </View>
+
+          {!sinMarca && (
+            <>
+              <View style={styles.marcaGrid}>
+                <TouchableOpacity
+                  style={[
+                    styles.marcaCard,
+                    marcaNacimiento === 'pie_izquierdo' && styles.marcaCardActive,
+                  ]}
+                  activeOpacity={0.95}
+                  onPress={(e) => handleTapMarca('pie_izquierdo', e)}
+                >
+                  <View style={styles.marcaImageWrap}>
+                    <Image
+                      source={pieIzquierdoImg}
+                      style={styles.marcaImageLeft}
+                      resizeMode="contain"
+                    />
+                    {renderMarcaDot('pie_izquierdo')}
+                  </View>
+                  <Text
+                    style={[
+                      styles.marcaText,
+                      marcaNacimiento === 'pie_izquierdo' && styles.marcaTextActive,
+                    ]}
+                  >
+                    PIE IZQUIERDO
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.marcaCard,
+                    marcaNacimiento === 'pie_derecho' && styles.marcaCardActive,
+                  ]}
+                  activeOpacity={0.95}
+                  onPress={(e) => handleTapMarca('pie_derecho', e)}
+                >
+                  <View style={styles.marcaImageWrap}>
+                    <Image
+                      source={pieDerechoImg}
+                      style={styles.marcaImageRight}
+                      resizeMode="contain"
+                    />
+                    {renderMarcaDot('pie_derecho')}
+                  </View>
+                  <Text
+                    style={[
+                      styles.marcaText,
+                      marcaNacimiento === 'pie_derecho' && styles.marcaTextActive,
+                    ]}
+                  >
+                    PIE DERECHO
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.marcaCard,
+                    marcaNacimiento === 'nariz' && styles.marcaCardActive,
+                  ]}
+                  activeOpacity={0.95}
+                  onPress={(e) => handleTapMarca('nariz', e)}
+                >
+                  <View style={styles.marcaImageWrap}>
+                    <Image source={narizImg} style={styles.marcaImageNose} resizeMode="contain" />
+                    {renderMarcaDot('nariz')}
+                  </View>
+                  <Text
+                    style={[
+                      styles.marcaText,
+                      marcaNacimiento === 'nariz' && styles.marcaTextActive,
+                    ]}
+                  >
+                    Nariz
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.caseraRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.marcaCaseraMiniCard,
+                    marcaNacimiento === 'marca_casera' && styles.marcaCardActive,
+                  ]}
+                  activeOpacity={0.9}
+                  onPress={handleSelectMarcaCasera}
+                >
+                  <View style={styles.marcaCaseraMiniTop}>
+                    <View
+                      style={[
+                        styles.marcaCaseraSelectedCircle,
+                        { backgroundColor: marcaColor },
+                      ]}
+                    />
+                  </View>
+                  <Text
+                    style={[
+                      styles.marcaCaseraMiniText,
+                      marcaNacimiento === 'marca_casera' && styles.marcaTextActive,
+                    ]}
+                  >
+                    Marca casera
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {showCaseraColors && (
+                <View style={styles.caseraColorsWrap}>
+                  <View style={styles.caseraPalette}>
+                    {CASERA_COLORS.map((color) => (
+                      <TouchableOpacity
+                        key={color}
+                        style={[
+                          styles.caseraColorItem,
+                          marcaColor === color && styles.caseraColorItemActive,
+                        ]}
+                        onPress={() => {
+                          setMarcaNacimiento('marca_casera');
+                          setMarcaColor(color);
+                        }}
+                      >
+                        <View
+                          style={[
+                            styles.caseraColorDot,
+                            {
+                              backgroundColor: color,
+                              borderWidth: color === '#ffffff' ? 1 : 0,
+                              borderColor: color === '#ffffff' ? '#d1d5db' : 'transparent',
+                            },
+                          ]}
+                        />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+            </>
+          )}
+
+          <Text style={styles.sectionLabel}>Notas de objetivo</Text>
           <TextInput
-            style={[styles.input, styles.textArea]}
+            style={styles.notesInput}
             value={formData.notas}
-            onChangeText={(text) => setFormData({ ...formData, notas: text })}
-            placeholder="Notas adicionales..."
-            placeholderTextColor="#555555"
+            onChangeText={(text) => setFormData((prev) => ({ ...prev, notas: text }))}
+            placeholder="Escribe observaciones adicionales..."
+            placeholderTextColor="#9ca3af"
             multiline
-            numberOfLines={4}
+            numberOfLines={5}
           />
 
-          <View style={{ height: 40 }} />
+          {isEdit && (
+            <TouchableOpacity style={styles.deleteAction} onPress={handleDelete}>
+              <Ionicons name="trash-outline" size={18} color="#ef4444" />
+              <Text style={styles.deleteActionText}>Eliminar cruce</Text>
+            </TouchableOpacity>
+          )}
+
+          <View style={{ height: 30 }} />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -606,6 +1138,9 @@ export default function CruceFormScreen() {
 }
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
@@ -616,286 +1151,500 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   header: {
+    height: 84,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+    backgroundColor: '#ffffff',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+  cancelText: {
+    fontSize: 16,
+    color: '#111827',
+    fontWeight: '500',
   },
-  title: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1a1a1a',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  deleteButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderRadius: 8,
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#111827',
   },
   saveButton: {
-    backgroundColor: '#f59e0b',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    backgroundColor: '#1f1f2e',
+    paddingHorizontal: 18,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 92,
   },
   saveButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#000',
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '700',
   },
-  form: {
+  scroll: {
     flex: 1,
   },
-  formContent: {
-    padding: 16,
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 40,
   },
-  // Nuevo diseño de secciones
-  sectionCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  sectionIconMale: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  sectionIconFemale: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(236, 72, 153, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  sectionTitle: {
+  sectionLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1a1a1a',
+    color: '#334155',
+    marginTop: 22,
+    marginBottom: 12,
   },
-  selectedParent: {
+  selectOptionCard: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#d7dde5',
+    borderRadius: 18,
+    minHeight: 64,
+    paddingHorizontal: 18,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(34, 197, 94, 0.1)',
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(34, 197, 94, 0.3)',
+    marginBottom: 10,
   },
-  selectedInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  selectedText: {
+  selectOptionText: {
     fontSize: 15,
-    color: '#22c55e',
+    color: '#111827',
     fontWeight: '500',
-    marginLeft: 8,
+    flex: 1,
   },
-  selectionOptions: {
-    gap: 8,
+  quantityInput: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#d7dde5',
+    borderRadius: 18,
+    minHeight: 58,
+    paddingHorizontal: 16,
+    fontSize: 15,
+    color: '#111827',
+    marginBottom: 8,
   },
-  optionButton: {
+  parentCard: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#d7dde5',
+    borderRadius: 20,
+    minHeight: 92,
+    paddingHorizontal: 18,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-    padding: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
+    justifyContent: 'space-between',
+    marginBottom: 12,
   },
-  optionButtonExternal: {
-    borderColor: 'rgba(245, 158, 11, 0.3)',
-    borderStyle: 'dashed',
-  },
-  optionButtonText: {
-    fontSize: 15,
-    color: '#1a1a1a',
+  parentCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
     flex: 1,
-    marginLeft: 10,
   },
-  optionsList: {
-    backgroundColor: '#f5f5f5',
-    borderRadius: 12,
+  madreIconBox: {
+    width: 82,
+    height: 82,
+    borderRadius: 20,
+    backgroundColor: '#dbeafe',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  padreIconBox: {
+    width: 82,
+    height: 82,
+    borderRadius: 20,
+    backgroundColor: '#dcfce7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  parentCardText: {
+    fontSize: 16,
+    color: '#334155',
+    fontWeight: '500',
+    flex: 1,
+  },
+  parentOptionsWrap: {
+    marginBottom: 6,
+  },
+  externalOptionButton: {
+    backgroundColor: '#fffaf0',
     borderWidth: 1,
-    borderColor: '#e0e0e0',
-    maxHeight: 180,
+    borderStyle: 'dashed',
+    borderColor: '#f6c26b',
+    borderRadius: 18,
+    minHeight: 64,
+    paddingHorizontal: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  externalOptionText: {
+    fontSize: 15,
+    color: '#b45309',
+    fontWeight: '500',
+    flex: 1,
+  },
+  dropdownList: {
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#d7dde5',
+    marginBottom: 10,
     overflow: 'hidden',
   },
-  optionItem: {
-    padding: 14,
+  dropdownItem: {
+    paddingHorizontal: 18,
+    paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: '#edf2f7',
   },
-  optionItemText: {
+  dropdownItemLast: {
+    borderBottomWidth: 0,
+  },
+  dropdownItemText: {
     fontSize: 15,
-    color: '#1a1a1a',
+    color: '#111827',
+  },
+  emptyListText: {
+    padding: 16,
+    textAlign: 'center',
+    color: '#6b7280',
+    fontSize: 14,
   },
   externalForm: {
-    backgroundColor: '#f5f5f5',
-    borderRadius: 12,
-    padding: 12,
-    gap: 10,
+    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.3)',
+    borderColor: '#d7dde5',
+    borderRadius: 18,
+    padding: 14,
+    marginBottom: 10,
+  },
+  fieldSmallLabel: {
+    fontSize: 13,
+    color: '#475569',
+    fontWeight: '600',
+    marginBottom: 8,
+    marginTop: 2,
   },
   externalInput: {
     backgroundColor: '#ffffff',
-    borderRadius: 10,
-    padding: 14,
-    fontSize: 15,
-    color: '#1a1a1a',
     borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  confirmButton: {
-    backgroundColor: '#f59e0b',
-    padding: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  confirmButtonText: {
+    borderColor: '#d7dde5',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
     fontSize: 15,
-    fontWeight: '600',
-    color: '#000',
+    color: '#111827',
+    marginBottom: 12,
   },
-  cruceIconCenter: {
-    alignSelf: 'center',
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+  confirmExternalButton: {
+    backgroundColor: '#1f1f2e',
+    borderRadius: 14,
+    paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 12,
   },
-  noAvesText: {
+  confirmExternalButtonText: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  clearSelectionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingVertical: 6,
+    marginBottom: 8,
+  },
+  clearSelectionText: {
+    color: '#ef4444',
+    marginLeft: 6,
     fontSize: 14,
-    color: '#555555',
-    textAlign: 'center',
-    padding: 16,
+    fontWeight: '500',
   },
   consanguinidadCard: {
     backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 16,
-    marginTop: 16,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: '#d7dde5',
+    borderRadius: 20,
+    padding: 18,
+    marginTop: 8,
+    marginBottom: 8,
   },
   consanguinidadTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#9ca3af',
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#334155',
     marginBottom: 12,
   },
   consanguinidadRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 12,
   },
   consanguinidadValue: {
-    fontSize: 32,
-    fontWeight: 'bold',
+    fontSize: 34,
+    fontWeight: '800',
   },
-  nivelBadge: {
+  consanguinidadBadge: {
     paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
   },
-  nivelText: {
+  consanguinidadBadgeText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
   },
-  ancestrosComunes: {
-    marginTop: 12,
+  ancestrosBox: {
+    marginTop: 14,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: '#edf2f7',
   },
   ancestrosTitle: {
-    fontSize: 13,
-    color: '#9ca3af',
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#475569',
     marginBottom: 8,
   },
   ancestroItem: {
-    fontSize: 13,
-    color: '#555555',
+    fontSize: 14,
+    color: '#475569',
     marginBottom: 4,
   },
-  label: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#9ca3af',
-    marginBottom: 8,
-    marginTop: 16,
-  },
-  input: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: '#1a1a1a',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  textArea: {
-    minHeight: 100,
-    textAlignVertical: 'top',
+  estadoBlock: {
+    marginTop: 4,
   },
   estadoContainer: {
     flexDirection: 'row',
-    gap: 8,
+    justifyContent: 'space-between',
   },
   estadoButton: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 12,
+    height: 56,
+    borderRadius: 18,
     backgroundColor: '#ffffff',
-    alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: '#d7dde5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  estadoButtonLast: {
+    marginRight: 0,
   },
   estadoButtonActive: {
     backgroundColor: '#f59e0b',
     borderColor: '#f59e0b',
   },
   estadoText: {
-    fontSize: 14,
-    color: '#9ca3af',
+    fontSize: 15,
+    color: '#6b7280',
+    fontWeight: '500',
   },
   estadoTextActive: {
-    color: '#000',
+    color: '#111827',
+    fontWeight: '700',
+  },
+  marcaHeaderRow: {
+    marginTop: 10,
+  },
+  switchRow: {
+    position: 'absolute',
+    right: 0,
+    top: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  switchLabel: {
+    marginRight: 10,
+    color: '#334155',
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  marcaGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
+  marcaCard: {
+    width: '30.5%',
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#d7dde5',
+    borderRadius: 16,
+    paddingHorizontal: 6,
+    paddingVertical: 8,
+    alignItems: 'center',
+    minHeight: 170,
+    marginBottom: 10,
+  },
+  marcaCardActive: {
+    borderColor: '#1f1f2e',
+    borderWidth: 2,
+  },
+  marcaImageWrap: {
+    width: 130,
+    height: 130,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    marginBottom: 4,
+  },
+  marcaImageLeft: {
+    width: 190,
+    height: 190,
+    marginTop: -18,
+  },
+  marcaImageRight: {
+    width: 136,
+    height: 136,
+  },
+  marcaImageNose: {
+    width: 112,
+    height: 112,
+  },
+  marcaDot: {
+    width: 19,
+    height: 19,
+    borderRadius: 9.5,
+    position: 'absolute',
+    borderWidth: 1.5,
+  },
+  dotLeftPieIzquierdo: {
+    left: 46,
+    top: 36,
+  },
+  dotRightPieIzquierdo: {
+    left: 70,
+    top: 42,
+  },
+  dotLeftPieDerecho: {
+    left: 52,
+    top: 39,
+  },
+  dotRightPieDerecho: {
+    left: 74,
+    top: 38,
+  },
+  dotLeftNariz: {
+    left: 42,
+    top: 30,
+  },
+  dotRightNariz: {
+    left: 60,
+    top: 30,
+  },
+  dotCasera: {
+    left: 46,
+    top: 9,
+  },
+  marcaText: {
+    fontSize: 10.5,
+    color: '#475569',
+    fontWeight: '500',
+    textAlign: 'center',
+    marginTop: -2,
+  },
+  marcaTextActive: {
+    color: '#111827',
+    fontWeight: '700',
+  },
+  caseraRow: {
+    flexDirection: 'row',
+    marginTop: -2,
+    marginBottom: 4,
+  },
+  marcaCaseraMiniCard: {
+    width: 112,
+    height: 72,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#d7dde5',
+    borderRadius: 16,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  marcaCaseraMiniTop: {
+    marginBottom: 6,
+  },
+  marcaCaseraSelectedCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#d7dde5',
+  },
+  marcaCaseraMiniText: {
+    fontSize: 10,
+    color: '#475569',
     fontWeight: '600',
+    textAlign: 'center',
+  },
+  caseraColorsWrap: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#d7dde5',
+    borderRadius: 16,
+    padding: 12,
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  caseraPalette: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  caseraColorItem: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#d7dde5',
+    marginRight: 10,
+    marginBottom: 10,
+    backgroundColor: '#ffffff',
+  },
+  caseraColorItemActive: {
+    borderColor: '#111827',
+    borderWidth: 2,
+  },
+  caseraColorDot: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+  },
+  notesInput: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#d7dde5',
+    borderRadius: 20,
+    minHeight: 170,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    fontSize: 16,
+    color: '#111827',
+    textAlignVertical: 'top',
+  },
+  deleteAction: {
+    marginTop: 24,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  deleteActionText: {
+    color: '#ef4444',
+    fontSize: 15,
+    fontWeight: '600',
+    marginLeft: 8,
   },
 });

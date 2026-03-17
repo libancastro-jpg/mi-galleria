@@ -10,6 +10,7 @@ import {
   Modal,
   ActivityIndicator,
   Platform,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, Stack } from 'expo-router';
@@ -32,10 +33,13 @@ const COLORS = {
   background: '#f5f5f5',
 };
 
+const PRIVACY_URL = 'https://sites.google.com/view/migalleria-privacidad';
+const TERMS_URL = 'https://sites.google.com/view/migalleria-terminos';
+
 export default function PerfilScreen() {
   const router = useRouter();
   const { user, logout, refreshUser } = useAuth();
-  
+
   // Estados para edición
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
@@ -48,23 +52,35 @@ export default function PerfilScreen() {
   const [syncing, setSyncing] = useState(false);
   const [exporting, setExporting] = useState(false);
 
+  // ✅ NUEVO: Estado para desplegar Configuración
+  const [configOpen, setConfigOpen] = useState(false);
+
+  const openUrl = async (url: string) => {
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (!supported) {
+        Alert.alert('Error', 'No se pudo abrir el enlace.');
+        return;
+      }
+      await Linking.openURL(url);
+    } catch {
+      Alert.alert('Error', 'Ocurrió un error al abrir el enlace.');
+    }
+  };
+
   const handleLogout = async () => {
     // En web, usar modal personalizado en lugar de Alert
     if (Platform.OS === 'web') {
       setShowLogoutConfirm(true);
     } else {
-      Alert.alert(
-        'Cerrar Sesión',
-        '¿Estás seguro de que quieres cerrar sesión?',
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          {
-            text: 'Cerrar Sesión',
-            style: 'destructive',
-            onPress: confirmLogout,
-          },
-        ]
-      );
+      Alert.alert('Cerrar Sesión', '¿Estás seguro de que quieres cerrar sesión?', [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Cerrar Sesión',
+          style: 'destructive',
+          onPress: confirmLogout,
+        },
+      ]);
     }
   };
 
@@ -119,9 +135,9 @@ export default function PerfilScreen() {
 
     setSaving(true);
     try {
-      await api.put('/auth/change-pin', { 
-        current_pin: currentPin, 
-        new_pin: newPin 
+      await api.put('/auth/change-pin', {
+        current_pin: currentPin,
+        new_pin: newPin,
       });
       setShowPinModal(false);
       setCurrentPin('');
@@ -158,18 +174,18 @@ export default function PerfilScreen() {
       Alert.alert(
         'Exportar Datos',
         'Esta función generará un archivo PDF/CSV con todos tus datos.\n\n' +
-        `Total de aves: ${response.aves || 0}\n` +
-        `Total de cruces: ${response.cruces || 0}\n` +
-        `Total de camadas: ${response.camadas || 0}\n` +
-        `Total de peleas: ${response.peleas || 0}`,
+          `Total de aves: ${response.aves || 0}\n` +
+          `Total de cruces: ${response.cruces || 0}\n` +
+          `Total de camadas: ${response.camadas || 0}\n` +
+          `Total de peleas: ${response.peleas || 0}`,
         [
           { text: 'Cancelar', style: 'cancel' },
-          { 
-            text: 'Descargar PDF', 
+          {
+            text: 'Descargar PDF',
             onPress: () => {
               Alert.alert('Info', 'La descarga de PDF estará disponible próximamente');
-            }
-          }
+            },
+          },
         ]
       );
     } catch (error: any) {
@@ -213,7 +229,7 @@ export default function PerfilScreen() {
           {/* User Info Section */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Información Personal</Text>
-            
+
             <View style={styles.infoCard}>
               <View style={styles.infoRow}>
                 <View style={styles.infoIcon}>
@@ -224,9 +240,9 @@ export default function PerfilScreen() {
                   <Text style={styles.infoValue}>{formatPhoneNumber(user?.telefono)}</Text>
                 </View>
               </View>
-              
+
               <View style={styles.divider} />
-              
+
               <View style={styles.infoRow}>
                 <View style={styles.infoIcon}>
                   <Ionicons name="mail" size={20} color={COLORS.gold} />
@@ -236,10 +252,10 @@ export default function PerfilScreen() {
                   <Text style={styles.infoValue}>{user?.email || 'No registrado'}</Text>
                 </View>
               </View>
-              
+
               <View style={styles.divider} />
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={styles.infoRow}
                 onPress={() => {
                   setEditingGalleria(user?.nombre || '');
@@ -258,64 +274,98 @@ export default function PerfilScreen() {
             </View>
           </View>
 
-          {/* Actions Section */}
+          {/* ✅ CONFIGURACIÓN desplegable */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Configuración</Text>
-            
-            <TouchableOpacity 
-              style={styles.actionItem}
-              onPress={() => {
-                setEditingGalleria(user?.nombre || '');
-                setShowEditModal(true);
-              }}
+            <TouchableOpacity
+              onPress={() => setConfigOpen((v) => !v)}
+              style={styles.configHeader}
+              activeOpacity={0.8}
             >
-              <View style={styles.actionIcon}>
-                <Ionicons name="create" size={20} color={COLORS.gold} />
+              <Text style={styles.sectionTitle}>Configuración</Text>
+              <Ionicons
+                name={configOpen ? 'chevron-up' : 'chevron-down'}
+                size={18}
+                color={COLORS.grayLight}
+                style={{ marginTop: -2 }}
+              />
+            </TouchableOpacity>
+
+            {configOpen && (
+              <View style={{ marginTop: 8 }}>
+                <TouchableOpacity
+                  style={styles.actionItem}
+                  onPress={() => {
+                    setEditingGalleria(user?.nombre || '');
+                    setShowEditModal(true);
+                  }}
+                >
+                  <View style={styles.actionIcon}>
+                    <Ionicons name="create" size={20} color={COLORS.gold} />
+                  </View>
+                  <Text style={styles.actionText}>Editar Galleria</Text>
+                  <Ionicons name="chevron-forward" size={20} color={COLORS.grayLight} />
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.actionItem} onPress={() => setShowPinModal(true)}>
+                  <View style={styles.actionIcon}>
+                    <Ionicons name="lock-closed" size={20} color={COLORS.gold} />
+                  </View>
+                  <Text style={styles.actionText}>Cambiar PIN</Text>
+                  <Ionicons name="chevron-forward" size={20} color={COLORS.grayLight} />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.actionItem}
+                  onPress={handleSyncData}
+                  disabled={syncing}
+                >
+                  <View style={styles.actionIcon}>
+                    {syncing ? (
+                      <ActivityIndicator size="small" color={COLORS.gold} />
+                    ) : (
+                      <Ionicons name="sync" size={20} color={COLORS.gold} />
+                    )}
+                  </View>
+                  <Text style={styles.actionText}>Sincronizar Datos</Text>
+                  <Ionicons name="chevron-forward" size={20} color={COLORS.grayLight} />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.actionItem}
+                  onPress={handleExportData}
+                  disabled={exporting}
+                >
+                  <View style={styles.actionIcon}>
+                    {exporting ? (
+                      <ActivityIndicator size="small" color={COLORS.gold} />
+                    ) : (
+                      <Ionicons name="download" size={20} color={COLORS.gold} />
+                    )}
+                  </View>
+                  <Text style={styles.actionText}>Exportar Datos (PDF/CSV)</Text>
+                  <Ionicons name="chevron-forward" size={20} color={COLORS.grayLight} />
+                </TouchableOpacity>
               </View>
-              <Text style={styles.actionText}>Editar Galleria</Text>
+            )}
+          </View>
+
+          {/* LEGAL Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Legal</Text>
+
+            <TouchableOpacity style={styles.actionItem} onPress={() => openUrl(PRIVACY_URL)}>
+              <View style={styles.actionIcon}>
+                <Ionicons name="document-text-outline" size={20} color={COLORS.gold} />
+              </View>
+              <Text style={styles.actionText}>Política de Privacidad</Text>
               <Ionicons name="chevron-forward" size={20} color={COLORS.grayLight} />
             </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.actionItem}
-              onPress={() => setShowPinModal(true)}
-            >
+
+            <TouchableOpacity style={styles.actionItem} onPress={() => openUrl(TERMS_URL)}>
               <View style={styles.actionIcon}>
-                <Ionicons name="lock-closed" size={20} color={COLORS.gold} />
+                <Ionicons name="document-outline" size={20} color={COLORS.gold} />
               </View>
-              <Text style={styles.actionText}>Cambiar PIN</Text>
-              <Ionicons name="chevron-forward" size={20} color={COLORS.grayLight} />
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.actionItem}
-              onPress={handleSyncData}
-              disabled={syncing}
-            >
-              <View style={styles.actionIcon}>
-                {syncing ? (
-                  <ActivityIndicator size="small" color={COLORS.gold} />
-                ) : (
-                  <Ionicons name="sync" size={20} color={COLORS.gold} />
-                )}
-              </View>
-              <Text style={styles.actionText}>Sincronizar Datos</Text>
-              <Ionicons name="chevron-forward" size={20} color={COLORS.grayLight} />
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.actionItem}
-              onPress={handleExportData}
-              disabled={exporting}
-            >
-              <View style={styles.actionIcon}>
-                {exporting ? (
-                  <ActivityIndicator size="small" color={COLORS.gold} />
-                ) : (
-                  <Ionicons name="download" size={20} color={COLORS.gold} />
-                )}
-              </View>
-              <Text style={styles.actionText}>Exportar Datos (PDF/CSV)</Text>
+              <Text style={styles.actionText}>Términos y Condiciones</Text>
               <Ionicons name="chevron-forward" size={20} color={COLORS.grayLight} />
             </TouchableOpacity>
           </View>
@@ -346,7 +396,7 @@ export default function PerfilScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modal}>
             <Text style={styles.modalTitle}>Editar Galleria</Text>
-            
+
             <Text style={styles.modalLabel}>Nombre de la Galleria</Text>
             <TextInput
               style={styles.modalInput}
@@ -356,7 +406,7 @@ export default function PerfilScreen() {
               placeholderTextColor={COLORS.grayLight}
               autoFocus
             />
-            
+
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={styles.modalCancelButton}
@@ -393,10 +443,8 @@ export default function PerfilScreen() {
               <Ionicons name="log-out" size={40} color={COLORS.redDeep} />
             </View>
             <Text style={styles.modalTitle}>Cerrar Sesión</Text>
-            <Text style={styles.logoutModalText}>
-              ¿Estás seguro de que quieres cerrar sesión?
-            </Text>
-            
+            <Text style={styles.logoutModalText}>¿Estás seguro de que quieres cerrar sesión?</Text>
+
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={styles.modalCancelButton}
@@ -428,7 +476,7 @@ export default function PerfilScreen() {
               <Ionicons name="lock-closed" size={40} color={COLORS.gold} />
             </View>
             <Text style={styles.modalTitle}>Cambiar PIN</Text>
-            
+
             <Text style={styles.modalLabel}>PIN Actual</Text>
             <TextInput
               style={styles.modalInput}
@@ -440,7 +488,7 @@ export default function PerfilScreen() {
               secureTextEntry
               maxLength={6}
             />
-            
+
             <Text style={styles.modalLabel}>Nuevo PIN (4-6 dígitos)</Text>
             <TextInput
               style={styles.modalInput}
@@ -452,7 +500,7 @@ export default function PerfilScreen() {
               secureTextEntry
               maxLength={6}
             />
-            
+
             <Text style={styles.modalLabel}>Confirmar Nuevo PIN</Text>
             <TextInput
               style={styles.modalInput}
@@ -464,7 +512,7 @@ export default function PerfilScreen() {
               secureTextEntry
               maxLength={6}
             />
-            
+
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={styles.modalCancelButton}
@@ -548,6 +596,14 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 12,
   },
+
+  // ✅ NUEVO: header clickeable de Configuración
+  configHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+
   // Info Card
   infoCard: {
     backgroundColor: COLORS.grayDark,

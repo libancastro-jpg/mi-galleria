@@ -1,4 +1,6 @@
-const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://mi-galleria-final.preview.emergentagent.com';
+const BASE_URL =
+  process.env.EXPO_PUBLIC_BACKEND_URL?.trim() ||
+  'https://mi-galleria-backend.onrender.com';
 
 // Callback para manejar logout cuando hay error 401
 let onUnauthorized: (() => void) | null = null;
@@ -15,8 +17,10 @@ class ApiService {
   }
 
   private async request(endpoint: string, options: RequestInit = {}) {
-    const url = `${BASE_URL}/api${endpoint}`;
-    
+    const ep = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const base = BASE_URL.replace(/\/+$/, '');
+    const url = `${base}/api${ep}`;
+
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
       ...(options.headers || {}),
@@ -26,33 +30,41 @@ class ApiService {
       (headers as Record<string, string>)['Authorization'] = `Bearer ${this.token}`;
     }
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60000);
+
     try {
       const response = await fetch(url, {
         ...options,
         headers,
+        signal: controller.signal,
       });
 
-      // Si es 401 Unauthorized, forzar logout
+      // ✅ Si expira o es inválido el token
       if (response.status === 401) {
-        console.log('Token inválido, forzando logout...');
-        if (onUnauthorized) {
-          onUnauthorized();
-        }
-        throw new Error('Sesión expirada');
+        if (onUnauthorized) onUnauthorized();
       }
 
-      const data = await response.json();
+      const text = await response.text();
+      let data: any = null;
+
+      try {
+        data = text ? JSON.parse(text) : null;
+      } catch {
+        data = text;
+      }
 
       if (!response.ok) {
-        throw new Error(data.detail || 'Error en la solicitud');
+        throw new Error(
+          typeof data === 'string'
+            ? data
+            : data?.message || data?.detail || `HTTP ${response.status}`
+        );
       }
 
       return data;
-    } catch (error: any) {
-      if (error.message === 'Network request failed') {
-        throw new Error('Sin conexión a internet');
-      }
-      throw error;
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
