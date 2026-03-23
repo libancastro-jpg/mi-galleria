@@ -401,17 +401,18 @@ async def register(user_data: UserCreate):
     user_id = str(result.inserted_id)
     token = create_token(user_id)
 
-    return TokenResponse(
-        access_token=token,
-        user=UserResponse(
-            id=user_id,
-            telefono=user_doc["telefono"],
-            email=user_doc.get("email"),
-            nombre=user_doc.get("nombre"),
-            plan=user_doc.get("plan", "gratis"),
-            created_at=user_doc["created_at"]
-        )
-    )
+    return {
+    "access_token": token,
+    "token_type": "bearer",
+    "user": {
+        "id": user_id,
+        "telefono": user_doc["telefono"],
+        "email": user_doc.get("email"),
+        "nombre": user_doc.get("nombre"),
+        "plan": user_doc.get("plan", "gratis"),
+        "created_at": user_doc["created_at"]
+    }
+}
 
 @api_router.post("/auth/login", response_model=TokenResponse)
 async def login(credentials: UserLogin):
