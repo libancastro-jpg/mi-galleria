@@ -73,6 +73,7 @@ class UserResponse(BaseModel):
     email: Optional[str] = None
     nombre: Optional[str] = None
     plan: str = "gratis"
+    trial_start_at: Optional[datetime] = None
     created_at: datetime
 
 class TokenResponse(BaseModel):
@@ -392,6 +393,7 @@ async def register(user_data: UserCreate):
         "nombre": user_data.nombre,
         "pin": hash_pin(user_data.pin),
         "plan": "gratis",
+        "trial_start_at": datetime.utcnow(),
         "created_at": datetime.utcnow(),
         "updated_at": datetime.utcnow()
     }
@@ -413,6 +415,7 @@ async def register(user_data: UserCreate):
             "email": user_doc.get("email"),
             "nombre": user_doc.get("nombre"),
             "plan": user_doc.get("plan", "gratis"),
+            "trial_start_at": user_doc.get("trial_start_at"),
             "created_at": user_doc["created_at"]
         }
     }
@@ -437,6 +440,7 @@ async def login(credentials: UserLogin):
             email=user.get("email"),
             nombre=user.get("nombre"),
             plan=user.get("plan", "gratis"),
+            trial_start_at=user.get("trial_start_at"),
             created_at=user["created_at"]
         )
     )
@@ -445,6 +449,8 @@ async def login(credentials: UserLogin):
 async def get_me(current_user: dict = Depends(get_current_user)):
     if "plan" not in current_user or not current_user.get("plan"):
         current_user["plan"] = "gratis"
+    if "trial_start_at" not in current_user:
+        current_user["trial_start_at"] = None
     return UserResponse(**current_user)
 
 class ProfileUpdate(BaseModel):
