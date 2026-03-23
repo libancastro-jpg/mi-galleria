@@ -386,33 +386,36 @@ async def register(user_data: UserCreate):
     if not user_data.pin.isdigit() or len(user_data.pin) < 4 or len(user_data.pin) > 6:
         raise HTTPException(status_code=400, detail="El PIN debe ser de 4 a 6 dígitos")
     
-    now = datetime.utcnow()
     user_doc = {
         "telefono": user_data.telefono,
         "email": user_data.email,
         "nombre": user_data.nombre,
         "pin": hash_pin(user_data.pin),
         "plan": "gratis",
-        "created_at": now,
-        "updated_at": now
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow()
     }
 
+    # ✅ GUARDAR EN DB
     result = await db.users.insert_one(user_doc)
     user_id = str(result.inserted_id)
+
+    # ✅ CREAR TOKEN
     token = create_token(user_id)
 
+    # ✅ RESPUESTA
     return {
-    "access_token": token,
-    "token_type": "bearer",
-    "user": {
-        "id": user_id,
-        "telefono": user_doc["telefono"],
-        "email": user_doc.get("email"),
-        "nombre": user_doc.get("nombre"),
-        "plan": user_doc.get("plan", "gratis"),
-        "created_at": user_doc["created_at"]
+        "access_token": token,
+        "token_type": "bearer",
+        "user": {
+            "id": user_id,
+            "telefono": user_doc["telefono"],
+            "email": user_doc.get("email"),
+            "nombre": user_doc.get("nombre"),
+            "plan": user_doc.get("plan", "gratis"),
+            "created_at": user_doc["created_at"]
+        }
     }
-}
 
 @api_router.post("/auth/login", response_model=TokenResponse)
 async def login(credentials: UserLogin):
