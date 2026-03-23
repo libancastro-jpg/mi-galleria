@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -17,13 +17,22 @@ import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../src/context/AuthContext';
 import { api } from '../src/services/api';
+import {
+  initializeIAP,
+  startPurchaseListeners,
+  disconnectIAP,
+} from '../src/services/iap';
 
 // Color palette
 const COLORS = {
   gold: '#F5A623',
   goldLight: 'rgba(245, 166, 35, 0.15)',
-  greenDark: '#22c55e',
-  greenLight: 'rgba(34, 197, 94, 0.15)',
+  greenDark: '#16a34a',
+  greenLight: 'rgba(22, 163, 74, 0.12)',
+  blueDark: '#0f6ea8',
+  blueLight: 'rgba(15, 110, 168, 0.12)',
+  eliteDark: '#d4a017',
+  eliteLight: 'rgba(212, 160, 23, 0.12)',
   redDeep: '#ef4444',
   redLight: 'rgba(239, 68, 68, 0.15)',
   grayDark: '#f5f5f5',
@@ -31,10 +40,12 @@ const COLORS = {
   grayLight: '#555555',
   white: '#ffffff',
   background: '#f5f5f5',
+  textDark: '#1a1a1a',
 };
 
 const PRIVACY_URL = 'https://sites.google.com/view/migalleria-privacidad';
 const TERMS_URL = 'https://sites.google.com/view/migalleria-terminos';
+const SUPPORT_URL = 'https://sites.google.com/view/migalleria-soporte';
 
 export default function PerfilScreen() {
   const router = useRouter();
@@ -44,6 +55,7 @@ export default function PerfilScreen() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showPlansModal, setShowPlansModal] = useState(false);
   const [editingGalleria, setEditingGalleria] = useState(user?.nombre || '');
   const [currentPin, setCurrentPin] = useState('');
   const [newPin, setNewPin] = useState('');
@@ -53,8 +65,42 @@ export default function PerfilScreen() {
   const [exporting, setExporting] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
 
-  // ✅ NUEVO: Estado para desplegar Configuración
+  // Estado para desplegar Configuración
   const [configOpen, setConfigOpen] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const setupIAP = async () => {
+      const connected = await initializeIAP();
+
+      if (connected && isMounted) {
+        startPurchaseListeners(
+          async (purchase) => {
+            console.log('Compra exitosa:', purchase);
+            Alert.alert(
+              'Compra exitosa',
+              'Tu suscripción premium fue procesada correctamente.'
+            );
+          },
+          (error) => {
+            console.log('Error en compra:', error);
+            Alert.alert(
+              'Error en la compra',
+              error?.message || 'No se pudo completar la suscripción.'
+            );
+          }
+        );
+      }
+    };
+
+    setupIAP();
+
+    return () => {
+      isMounted = false;
+      disconnectIAP();
+    };
+  }, []);
 
   const openUrl = async (url: string) => {
     try {
@@ -69,8 +115,23 @@ export default function PerfilScreen() {
     }
   };
 
+  const handleSelectPlan = (plan: 'criador' | 'plus' | 'elite') => {
+    setShowPlansModal(false);
+
+    if (plan === 'criador') {
+      Alert.alert('Plan Criador', 'Aquí conectaremos la compra del plan Criador.');
+      return;
+    }
+
+    if (plan === 'plus') {
+      Alert.alert('Plan Criador Plus', 'Aquí conectaremos la compra del plan Criador Plus.');
+      return;
+    }
+
+    Alert.alert('Plan Criador Elite', 'Aquí conectaremos la compra del plan Criador Elite.');
+  };
+
   const handleLogout = async () => {
-    // En web, usar modal personalizado en lugar de Alert
     if (Platform.OS === 'web') {
       setShowLogoutConfirm(true);
     } else {
@@ -183,7 +244,6 @@ export default function PerfilScreen() {
   const handleSyncData = async () => {
     setSyncing(true);
     try {
-      // Refrescar los datos del usuario
       if (refreshUser) {
         await refreshUser();
       }
@@ -199,7 +259,6 @@ export default function PerfilScreen() {
     setExporting(true);
     try {
       const response = await api.get('/export/data');
-      // En una app real, esto generaría un PDF/CSV
       Alert.alert(
         'Exportar Datos',
         'Esta función generará un archivo PDF/CSV con todos tus datos.\n\n' +
@@ -246,7 +305,6 @@ export default function PerfilScreen() {
       />
       <SafeAreaView style={styles.container} edges={['bottom']}>
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-          {/* Profile Header */}
           <View style={styles.profileHeader}>
             <View style={styles.avatarContainer}>
               <Ionicons name="person" size={50} color={COLORS.gold} />
@@ -255,7 +313,50 @@ export default function PerfilScreen() {
             <Text style={styles.userRole}>Criador de Gallos de Pelea</Text>
           </View>
 
-          {/* User Info Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Premium</Text>
+
+            <View style={styles.premiumCard}>
+              <View style={styles.premiumHeader}>
+                <View style={styles.premiumIconBox}>
+                  <Ionicons name="diamond" size={24} color={COLORS.gold} />
+                </View>
+                <View style={styles.premiumTextBox}>
+                  <Text style={styles.premiumTitle}>Mi Galleria Premium</Text>
+                  <Text style={styles.premiumSubtitle}>
+                    Desbloquea funciones premium y amplía el uso de tu app.
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.premiumFeatures}>
+                <View style={styles.premiumFeatureRow}>
+                  <Ionicons name="checkmark-circle" size={18} color={COLORS.greenDark} />
+                  <Text style={styles.premiumFeatureText}>Más capacidad de registros</Text>
+                </View>
+
+                <View style={styles.premiumFeatureRow}>
+                  <Ionicons name="checkmark-circle" size={18} color={COLORS.greenDark} />
+                  <Text style={styles.premiumFeatureText}>Acceso a funciones avanzadas</Text>
+                </View>
+
+                <View style={styles.premiumFeatureRow}>
+                  <Ionicons name="checkmark-circle" size={18} color={COLORS.greenDark} />
+                  <Text style={styles.premiumFeatureText}>Planes premium desde la app</Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={styles.premiumButton}
+                onPress={() => setShowPlansModal(true)}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="diamond-outline" size={20} color={COLORS.white} />
+                <Text style={styles.premiumButtonText}>Hazte Premium</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Información Personal</Text>
 
@@ -303,7 +404,6 @@ export default function PerfilScreen() {
             </View>
           </View>
 
-          {/* ✅ CONFIGURACIÓN desplegable */}
           <View style={styles.section}>
             <TouchableOpacity
               onPress={() => setConfigOpen((v) => !v)}
@@ -378,7 +478,6 @@ export default function PerfilScreen() {
             )}
           </View>
 
-          {/* LEGAL Section */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Legal</Text>
 
@@ -397,9 +496,16 @@ export default function PerfilScreen() {
               <Text style={styles.actionText}>Términos y Condiciones</Text>
               <Ionicons name="chevron-forward" size={20} color={COLORS.grayLight} />
             </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionItem} onPress={() => openUrl(SUPPORT_URL)}>
+              <View style={styles.actionIcon}>
+                <Ionicons name="help-circle-outline" size={20} color={COLORS.gold} />
+              </View>
+              <Text style={styles.actionText}>Soporte</Text>
+              <Ionicons name="chevron-forward" size={20} color={COLORS.grayLight} />
+            </TouchableOpacity>
           </View>
 
-          {/* Logout / Delete Section */}
           <View style={styles.section}>
             <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
               <Ionicons name="log-out" size={22} color={COLORS.redDeep} />
@@ -420,7 +526,6 @@ export default function PerfilScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* App Info */}
           <View style={styles.appInfo}>
             <Text style={styles.appName}>Mi Galleria</Text>
             <Text style={styles.appVersion}>Versión 1.0.0</Text>
@@ -428,7 +533,157 @@ export default function PerfilScreen() {
         </ScrollView>
       </SafeAreaView>
 
-      {/* Modal para editar Galleria */}
+      <Modal
+        visible={showPlansModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowPlansModal(false)}
+      >
+        <View style={styles.plansOverlay}>
+          <View style={styles.plansModalContainer}>
+            <View style={styles.plansHeader}>
+              <Text style={styles.plansModalTitle}>Membresías</Text>
+              <TouchableOpacity onPress={() => setShowPlansModal(false)}>
+                <Ionicons name="close" size={28} color={COLORS.textDark} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.plansScrollContent}
+            >
+              <View style={styles.clubCard}>
+                <Text style={styles.clubTitle}>GALLERO</Text>
+                <View style={styles.clubFeatureRow}>
+                  <Ionicons name="checkmark" size={24} color={COLORS.textDark} />
+                  <Text style={styles.clubFeatureText}>Hasta 20 registros en total</Text>
+                </View>
+                <View style={styles.clubFeatureRow}>
+                  <Ionicons name="checkmark" size={24} color={COLORS.textDark} />
+                  <Text style={styles.clubFeatureText}>
+                    Acceso a todas las funciones principales
+                  </Text>
+                </View>
+                <View style={styles.clubFooter}>
+                  <Text style={styles.clubFooterText}>ERES UN GALLERO ACTIVO GRATIS</Text>
+                </View>
+              </View>
+
+              <Text style={styles.upgradeText}>
+                Actualiza para disfrutar de todos los beneficios:
+              </Text>
+
+              <View style={styles.planCardGreen}>
+                <Text style={styles.planTitleGreen}>CRIADOR</Text>
+                <Text style={styles.planPrice}>USD 29.99/año</Text>
+
+                <View style={styles.planFeatureRow}>
+                  <Ionicons name="checkmark" size={24} color={COLORS.greenDark} />
+                  <Text style={styles.planFeatureLabel}>350 registros/año</Text>
+                </View>
+
+                <View style={styles.planFeatureRow}>
+                  <Ionicons name="checkmark" size={24} color={COLORS.greenDark} />
+                  <Text style={styles.planFeatureLabel}>1 dispositivo</Text>
+                </View>
+
+                <View style={styles.planFeatureRow}>
+                  <Ionicons name="checkmark" size={24} color={COLORS.greenDark} />
+                  <Text style={styles.planFeatureLabel}>
+                    <Text style={styles.boldText}>Copia de seguridad</Text> diaria de datos
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.planButtonGreen}
+                  onPress={() => handleSelectPlan('criador')}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.planButtonLabelWhite}>Activar Criador Por USD 29.99/año</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.planCardBlue}>
+                <Text style={styles.planTitleBlue}>CRIADOR PLUS</Text>
+                <Text style={styles.planPrice}>USD 59.99/año</Text>
+
+                <View style={styles.planFeatureRow}>
+                  <Ionicons name="checkmark" size={24} color={COLORS.blueDark} />
+                  <Text style={styles.planFeatureLabel}>550 registros/año</Text>
+                </View>
+
+                <View style={styles.planFeatureRow}>
+                  <Ionicons name="checkmark" size={24} color={COLORS.blueDark} />
+                  <Text style={styles.planFeatureLabel}>2 dispositivos</Text>
+                </View>
+
+                <View style={styles.planFeatureRow}>
+                  <Ionicons name="checkmark" size={24} color={COLORS.blueDark} />
+                  <Text style={styles.planFeatureLabel}>Fotos ilimitadas</Text>
+                </View>
+
+                <View style={styles.planFeatureRow}>
+                  <Ionicons name="checkmark" size={24} color={COLORS.blueDark} />
+                  <Text style={styles.planFeatureLabel}>
+                    <Text style={styles.boldText}>Copia de seguridad</Text> diaria de datos
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.planButtonBlue}
+                  onPress={() => handleSelectPlan('plus')}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.planButtonLabelWhite}>Activar Criador Plus Por USD 59.99/año</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.planCardElite}>
+                <Text style={styles.planTitleElite}>CRIADOR ELITE</Text>
+                <Text style={styles.planPrice}>USD 89.99/año</Text>
+
+                <View style={styles.planFeatureRow}>
+                  <Ionicons name="checkmark" size={24} color={COLORS.eliteDark} />
+                  <Text style={styles.planFeatureLabel}>Registros ilimitados</Text>
+                </View>
+
+                <View style={styles.planFeatureRow}>
+                  <Ionicons name="checkmark" size={24} color={COLORS.eliteDark} />
+                  <Text style={styles.planFeatureLabel}>Dispositivos ilimitados</Text>
+                </View>
+
+                <View style={styles.planFeatureRow}>
+                  <Ionicons name="checkmark" size={24} color={COLORS.eliteDark} />
+                  <Text style={styles.planFeatureLabel}>Fotos ilimitadas</Text>
+                </View>
+
+                <View style={styles.planFeatureRow}>
+                  <Ionicons name="checkmark" size={24} color={COLORS.eliteDark} />
+                  <Text style={styles.planFeatureLabel}>
+                    <Text style={styles.boldText}>Copia de seguridad</Text> diaria de datos
+                  </Text>
+                </View>
+
+                <View style={styles.planFeatureRow}>
+                  <Ionicons name="checkmark" size={24} color={COLORS.eliteDark} />
+                  <Text style={styles.planFeatureLabel}>
+                    Soporte <Text style={styles.boldText}>prioritario</Text>
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.planButtonElite}
+                  onPress={() => handleSelectPlan('elite')}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.planButtonLabelWhite}>Activar Criador Elite Por USD 89.99/año</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
       <Modal
         visible={showEditModal}
         transparent
@@ -472,7 +727,6 @@ export default function PerfilScreen() {
         </View>
       </Modal>
 
-      {/* Modal de confirmación de Logout (para web) */}
       <Modal
         visible={showLogoutConfirm}
         transparent
@@ -505,7 +759,6 @@ export default function PerfilScreen() {
         </View>
       </Modal>
 
-      {/* Modal para cambiar PIN */}
       <Modal
         visible={showPinModal}
         transparent
@@ -598,7 +851,6 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 32,
   },
-  // Profile Header
   profileHeader: {
     alignItems: 'center',
     paddingVertical: 24,
@@ -618,7 +870,7 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1a1a1a',
+    color: COLORS.textDark,
   },
   userRole: {
     fontSize: 14,
@@ -626,7 +878,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontWeight: '500',
   },
-  // Section
   section: {
     marginBottom: 24,
   },
@@ -638,15 +889,68 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 12,
   },
-
-  // Header clickeable de Configuración
+  premiumCard: {
+    backgroundColor: '#fff7e6',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#f5d08a',
+  },
+  premiumHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 14,
+  },
+  premiumIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: COLORS.goldLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  premiumTextBox: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  premiumTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.textDark,
+  },
+  premiumSubtitle: {
+    fontSize: 14,
+    color: COLORS.grayLight,
+    marginTop: 4,
+    lineHeight: 20,
+  },
+  premiumFeatures: {
+    marginBottom: 16,
+    gap: 10,
+  },
+  premiumFeatureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  premiumFeatureText: {
+    fontSize: 14,
+    color: COLORS.textDark,
+    marginLeft: 8,
+  },
+  premiumButton: {
+    height: 50,
+    borderRadius: 14,
+    backgroundColor: COLORS.greenDark,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
   configHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-
-  // Info Card
   infoCard: {
     backgroundColor: COLORS.grayDark,
     borderRadius: 16,
@@ -678,7 +982,7 @@ const styles = StyleSheet.create({
   },
   infoValue: {
     fontSize: 15,
-    color: '#1a1a1a',
+    color: COLORS.textDark,
     fontWeight: '500',
   },
   divider: {
@@ -686,8 +990,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.grayMedium,
     marginHorizontal: 14,
   },
-
-  // Action Items
   actionItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -709,11 +1011,9 @@ const styles = StyleSheet.create({
   actionText: {
     flex: 1,
     fontSize: 15,
-    color: '#1a1a1a',
+    color: COLORS.textDark,
     marginLeft: 14,
   },
-
-  // Logout
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -730,8 +1030,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.redDeep,
   },
-
-  // Delete account discreto
   deleteContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -744,8 +1042,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textDecorationLine: 'underline',
   },
-
-  // App Info
   appInfo: {
     alignItems: 'center',
     paddingVertical: 24,
@@ -761,7 +1057,185 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 
-  // Modal
+  plansOverlay: {
+    flex: 1,
+    backgroundColor: COLORS.white,
+  },
+  plansModalContainer: {
+    flex: 1,
+    paddingTop: 56,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  plansHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 22,
+  },
+  plansModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.textDark,
+  },
+  plansScrollContent: {
+    paddingBottom: 40,
+  },
+  clubCard: {
+    borderWidth: 1.5,
+    borderColor: '#222',
+    borderRadius: 22,
+    backgroundColor: COLORS.white,
+    overflow: 'hidden',
+    marginBottom: 20,
+  },
+  clubTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: COLORS.textDark,
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 8,
+  },
+  clubFeatureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    marginBottom: 10,
+  },
+  clubFeatureText: {
+    fontSize: 16,
+    color: COLORS.textDark,
+    marginLeft: 10,
+    fontWeight: '500',
+  },
+  clubFooter: {
+    borderTopWidth: 1,
+    borderTopColor: '#222',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    marginTop: 10,
+  },
+  clubFooterText: {
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.textDark,
+  },
+  upgradeText: {
+    fontSize: 16,
+    color: COLORS.textDark,
+    marginBottom: 18,
+  },
+
+  planCardGreen: {
+    borderWidth: 2,
+    borderColor: COLORS.greenDark,
+    borderRadius: 24,
+    backgroundColor: COLORS.white,
+    padding: 18,
+    marginBottom: 22,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
+  },
+  planCardBlue: {
+    borderWidth: 2,
+    borderColor: COLORS.blueDark,
+    borderRadius: 24,
+    backgroundColor: COLORS.white,
+    padding: 18,
+    marginBottom: 22,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
+  },
+  planCardElite: {
+    borderWidth: 2,
+    borderColor: COLORS.eliteDark,
+    borderRadius: 24,
+    backgroundColor: COLORS.white,
+    padding: 18,
+    marginBottom: 22,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
+  },
+  planTitleGreen: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: COLORS.greenDark,
+    marginBottom: 6,
+  },
+  planTitleBlue: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: COLORS.blueDark,
+    marginBottom: 6,
+  },
+  planTitleElite: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: COLORS.eliteDark,
+    marginBottom: 6,
+  },
+  planPrice: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.textDark,
+    marginBottom: 18,
+  },
+  planFeatureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  planFeatureLabel: {
+    fontSize: 17,
+    color: COLORS.textDark,
+    marginLeft: 12,
+    flex: 1,
+    lineHeight: 24,
+  },
+  boldText: {
+    fontWeight: '800',
+  },
+  planButtonGreen: {
+    backgroundColor: COLORS.greenDark,
+    borderRadius: 999,
+    height: 58,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 18,
+  },
+  planButtonBlue: {
+    backgroundColor: COLORS.greenDark,
+    borderRadius: 999,
+    height: 58,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 18,
+  },
+  planButtonElite: {
+    backgroundColor: COLORS.greenDark,
+    borderRadius: 999,
+    height: 58,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 18,
+  },
+  planButtonLabelWhite: {
+    color: COLORS.white,
+    fontWeight: '800',
+    fontSize: 17,
+  },
+
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.8)',
@@ -779,7 +1253,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#1a1a1a',
+    color: COLORS.textDark,
     marginBottom: 20,
     textAlign: 'center',
   },
@@ -793,7 +1267,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 14,
     fontSize: 16,
-    color: '#1a1a1a',
+    color: COLORS.textDark,
     marginBottom: 20,
   },
   modalButtons: {
@@ -833,5 +1307,10 @@ const styles = StyleSheet.create({
     color: COLORS.grayLight,
     textAlign: 'center',
     marginBottom: 24,
+  },
+  premiumButtonText: {
+    fontSize: 16,
+    color: COLORS.white,
+    fontWeight: '700',
   },
 });

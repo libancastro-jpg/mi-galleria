@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.migalleria.app",
-      "buildNumber": "1",
+      "buildNumber": "2",
       "infoPlist": {
         "NSCameraUsageDescription": "Tomar fotos de tus aves para identificarlas fácilmente",
         "NSPhotoLibraryUsageDescription": "Seleccionar fotos de tus aves desde tu galería",
@@ -40,6 +40,8 @@
     },
     "plugins": [
       "expo-router",
+      "react-native-iap",
+      "expo-dev-client",
       [
         "expo-splash-screen",
         {
