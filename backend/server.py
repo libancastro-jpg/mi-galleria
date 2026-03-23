@@ -72,6 +72,7 @@ class UserResponse(BaseModel):
     telefono: str
     email: Optional[str] = None
     nombre: Optional[str] = None
+    plan: str = "gratis"
     created_at: datetime
 
 class TokenResponse(BaseModel):
@@ -385,26 +386,29 @@ async def register(user_data: UserCreate):
     if not user_data.pin.isdigit() or len(user_data.pin) < 4 or len(user_data.pin) > 6:
         raise HTTPException(status_code=400, detail="El PIN debe ser de 4 a 6 dígitos")
     
+    now = datetime.utcnow()
     user_doc = {
         "telefono": user_data.telefono,
         "email": user_data.email,
         "nombre": user_data.nombre,
         "pin": hash_pin(user_data.pin),
-        "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow()
+        "plan": "gratis",
+        "created_at": now,
+        "updated_at": now
     }
-    
+
     result = await db.users.insert_one(user_doc)
     user_id = str(result.inserted_id)
     token = create_token(user_id)
-    
+
     return TokenResponse(
         access_token=token,
         user=UserResponse(
             id=user_id,
-            telefono=user_data.telefono,
-            email=user_data.email,
-            nombre=user_data.nombre,
+            telefono=user_doc["telefono"],
+            email=user_doc.get("email"),
+            nombre=user_doc.get("nombre"),
+            plan=user_doc.get("plan", "gratis"),
             created_at=user_doc["created_at"]
         )
     )
@@ -428,12 +432,15 @@ async def login(credentials: UserLogin):
             telefono=user["telefono"],
             email=user.get("email"),
             nombre=user.get("nombre"),
+            plan=user.get("plan", "gratis"),
             created_at=user["created_at"]
         )
     )
 
 @api_router.get("/auth/me", response_model=UserResponse)
 async def get_me(current_user: dict = Depends(get_current_user)):
+    if "plan" not in current_user or not current_user.get("plan"):
+        current_user["plan"] = "gratis"
     return UserResponse(**current_user)
 
 class ProfileUpdate(BaseModel):
@@ -464,6 +471,7 @@ async def update_profile(
             "telefono": updated_user["telefono"],
             "email": updated_user.get("email"),
             "nombre": updated_user.get("nombre"),
+            "plan": updated_user.get("plan", "gratis"),
             "created_at": updated_user["created_at"]
         }
     }
