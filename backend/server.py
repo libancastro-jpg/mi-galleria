@@ -494,6 +494,25 @@ async def change_pin(
     
     return {"message": "PIN actualizado correctamente"}
 
+@api_router.delete("/auth/delete-account")
+async def delete_account(current_user: dict = Depends(get_current_user)):
+    user_id = current_user["id"]
+
+    # Eliminar todos los datos asociados al usuario
+    await db.aves.delete_many({"user_id": user_id})
+    await db.cruces.delete_many({"user_id": user_id})
+    await db.camadas.delete_many({"user_id": user_id})
+    await db.peleas.delete_many({"user_id": user_id})
+    await db.salud.delete_many({"user_id": user_id})
+    await db.cuido.delete_many({"user_id": user_id})
+
+    # Eliminar usuario
+    result = await db.users.delete_one({"_id": ObjectId(user_id)})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    return {"message": "Cuenta eliminada correctamente"}
+
 @api_router.get("/export/data")
 async def export_data(current_user: dict = Depends(get_current_user)):
     user_id = current_user["id"]
