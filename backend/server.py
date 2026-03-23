@@ -376,6 +376,24 @@ def serialize_doc(doc: dict) -> dict:
                 result[k] = v
     return result
 
+def is_free_trial_active(user: dict) -> bool:
+    plan = user.get("plan", "gratis")
+
+    if plan != "gratis":
+        return True
+
+    trial_start_at = user.get("trial_start_at")
+    if not trial_start_at:
+        return False
+
+    if isinstance(trial_start_at, str):
+        try:
+            trial_start_at = datetime.fromisoformat(trial_start_at)
+        except Exception:
+            return False
+
+    trial_end_at = trial_start_at + timedelta(days=15)
+    return datetime.utcnow() <= trial_end_at
 # ============== AUTH ROUTES ==============
 
 @api_router.post("/auth/register", response_model=TokenResponse)
@@ -551,6 +569,13 @@ async def export_data(current_user: dict = Depends(get_current_user)):
 
 @api_router.post("/aves", response_model=AveResponse)
 async def create_ave(ave: AveCreate, current_user: dict = Depends(get_current_user)):
+    # 🔒 Validar plan gratis
+    if not is_free_trial_active(current_user):
+        raise HTTPException(
+            status_code=403,
+            detail="Tu periodo gratis ha expirado. Actualiza a premium para seguir agregando aves."
+        )
+
     if ave.padre_id:
         padre = await db.aves.find_one({"_id": ObjectId(ave.padre_id), "user_id": current_user["id"]})
         if padre and padre.get("tipo") != "gallo":
