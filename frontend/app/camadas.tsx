@@ -143,7 +143,8 @@ export default function CamadasScreen() {
             </View>
             <Text style={styles.emptyTitle}>Sin camadas registradas</Text>
             <Text style={styles.emptySubtitle}>
-              Las camadas se crean a partir de un cruce realizado
+              Organiza camadas facilmente desde un solo registro,
+              ahorrando tiempo y teniendo un mejor control en tu galleria.
             </Text>
             <TouchableOpacity 
               style={styles.emptyButton}

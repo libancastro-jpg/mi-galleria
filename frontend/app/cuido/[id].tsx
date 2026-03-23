@@ -10,6 +10,8 @@ import {
   ActivityIndicator,
   Image,
   Modal,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -255,6 +257,7 @@ export default function CuidoDetailScreen() {
   };
 
   const resetAddModal = () => {
+    Keyboard.dismiss();
     setShowAddModal(false);
     setActividadTipo(null);
     setActividadTiempo('');
@@ -273,6 +276,7 @@ export default function CuidoDetailScreen() {
 
     try {
       await api.post(`/cuido/${cuido.id}/descanso?dias=${dias}`);
+      Keyboard.dismiss();
       setShowDescansoModal(false);
       setDiasDescanso('');
       fetchCuido();
@@ -352,7 +356,7 @@ export default function CuidoDetailScreen() {
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.content}>
+        <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
           <Text style={styles.sectionTitle}>Seleccionar Gallo</Text>
           <TouchableOpacity
             style={styles.selectButton}
@@ -451,7 +455,7 @@ export default function CuidoDetailScreen() {
         </View>
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.galloCard}>
           {cuido?.ave_foto ? (
             <Image source={{ uri: cuido.ave_foto }} style={styles.galloDetailPhoto} />
@@ -612,154 +616,187 @@ export default function CuidoDetailScreen() {
         animationType="fade"
         onRequestClose={resetAddModal}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modal}>
-            <Text style={styles.modalTitle}>
-              Agregar {actividadTipo === 'tope' ? 'Tope' : 'Trabajo'}
-            </Text>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View style={styles.modal}>
+                <ScrollView
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={false}
+                >
+                  <Text style={styles.modalTitle}>
+                    Agregar {actividadTipo === 'tope' ? 'Tope' : 'Trabajo'}
+                  </Text>
 
-            {actividadTipo === null && (
-              <>
-                <Text style={styles.modalLabel}>Tipo de actividad</Text>
-                <View style={styles.tipoButtons}>
-                  <TouchableOpacity
-                    style={[styles.tipoButton, actividadTipo === 'tope' && styles.tipoButtonActive]}
-                    onPress={() => setActividadTipo('tope')}
-                  >
-                    <Ionicons name="flash" size={24} color={COLORS.gold} />
-                    <Text style={styles.tipoButtonText}>Tope</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.tipoButton, actividadTipo === 'trabajo' && styles.tipoButtonActive]}
-                    onPress={() => setActividadTipo('trabajo')}
-                  >
-                    <Ionicons name="barbell" size={24} color={COLORS.gold} />
-                    <Text style={styles.tipoButtonText}>Trabajo</Text>
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
+                  {actividadTipo === null && (
+                    <>
+                      <Text style={styles.modalLabel}>Tipo de actividad</Text>
+                      <View style={styles.tipoButtons}>
+                        <TouchableOpacity
+                          style={[styles.tipoButton, actividadTipo === 'tope' && styles.tipoButtonActive]}
+                          onPress={() => setActividadTipo('tope')}
+                        >
+                          <Ionicons name="flash" size={24} color={COLORS.gold} />
+                          <Text style={styles.tipoButtonText}>Tope</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.tipoButton, actividadTipo === 'trabajo' && styles.tipoButtonActive]}
+                          onPress={() => setActividadTipo('trabajo')}
+                        >
+                          <Ionicons name="barbell" size={24} color={COLORS.gold} />
+                          <Text style={styles.tipoButtonText}>Trabajo</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </>
+                  )}
 
-            {actividadTipo === 'trabajo' && (
-              <>
-                <Text style={styles.modalLabel}>Tiempo (minutos)</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  value={actividadTiempo}
-                  onChangeText={setActividadTiempo}
-                  keyboardType="numeric"
-                  placeholder="Ej: 15, 30, 45"
-                  placeholderTextColor={COLORS.grayLight}
-                />
-                <View style={styles.tiempoButtons}>
-                  {[10, 15, 20, 30, 45].map((min) => (
-                    <TouchableOpacity
-                      key={min}
-                      style={[
-                        styles.tiempoButton,
-                        actividadTiempo === min.toString() && styles.tiempoButtonActive,
-                      ]}
-                      onPress={() => setActividadTiempo(min.toString())}
-                    >
-                      <Text
-                        style={[
-                          styles.tiempoButtonText,
-                          actividadTiempo === min.toString() && styles.tiempoButtonTextActive,
-                        ]}
-                      >
-                        {min}m
-                      </Text>
+                  {actividadTipo === 'trabajo' && (
+                    <>
+                      <Text style={styles.modalLabel}>Tiempo (minutos)</Text>
+                      <TextInput
+                        style={styles.modalInput}
+                        value={actividadTiempo}
+                        onChangeText={setActividadTiempo}
+                        keyboardType="numeric"
+                        placeholder="Ej: 15, 30, 45"
+                        placeholderTextColor={COLORS.grayLight}
+                        returnKeyType="done"
+                        blurOnSubmit
+                      />
+                      <View style={styles.tiempoButtons}>
+                        {[10, 15, 20, 30, 45].map((min) => (
+                          <TouchableOpacity
+                            key={min}
+                            style={[
+                              styles.tiempoButton,
+                              actividadTiempo === min.toString() && styles.tiempoButtonActive,
+                            ]}
+                            onPress={() => {
+                              Keyboard.dismiss();
+                              setActividadTiempo(min.toString());
+                            }}
+                          >
+                            <Text
+                              style={[
+                                styles.tiempoButtonText,
+                                actividadTiempo === min.toString() && styles.tiempoButtonTextActive,
+                              ]}
+                            >
+                              {min}m
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </>
+                  )}
+
+                  <DatePickerField
+                    label="Fecha"
+                    value={actividadFecha}
+                    onChange={setActividadFecha}
+                    placeholder="Seleccionar fecha"
+                  />
+
+                  <Text style={styles.modalLabel}>Notas (opcional)</Text>
+                  <TextInput
+                    style={[styles.modalInput, styles.modalInputMultiline]}
+                    value={actividadNotas}
+                    onChangeText={setActividadNotas}
+                    placeholder="Observaciones..."
+                    placeholderTextColor={COLORS.grayLight}
+                    multiline
+                    numberOfLines={2}
+                    textAlignVertical="top"
+                  />
+
+                  <View style={styles.modalButtons}>
+                    <TouchableOpacity style={styles.modalCancelButton} onPress={resetAddModal}>
+                      <Text style={styles.modalCancelText}>Cancelar</Text>
                     </TouchableOpacity>
-                  ))}
-                </View>
-              </>
-            )}
-
-            <DatePickerField
-              label="Fecha"
-              value={actividadFecha}
-              onChange={setActividadFecha}
-              placeholder="Seleccionar fecha"
-            />
-
-            <Text style={styles.modalLabel}>Notas (opcional)</Text>
-            <TextInput
-              style={[styles.modalInput, styles.modalInputMultiline]}
-              value={actividadNotas}
-              onChangeText={setActividadNotas}
-              placeholder="Observaciones..."
-              placeholderTextColor={COLORS.grayLight}
-              multiline
-              numberOfLines={2}
-            />
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity style={styles.modalCancelButton} onPress={resetAddModal}>
-                <Text style={styles.modalCancelText}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.modalConfirmButton} onPress={handleAddActividad}>
-                <Text style={styles.modalConfirmText}>Agregar</Text>
-              </TouchableOpacity>
-            </View>
+                    <TouchableOpacity style={styles.modalConfirmButton} onPress={handleAddActividad}>
+                      <Text style={styles.modalConfirmText}>Agregar</Text>
+                    </TouchableOpacity>
+                  </View>
+                </ScrollView>
+              </View>
+            </TouchableWithoutFeedback>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
 
       <Modal
         visible={showDescansoModal}
         transparent
         animationType="fade"
-        onRequestClose={() => setShowDescansoModal(false)}
+        onRequestClose={() => {
+          Keyboard.dismiss();
+          setShowDescansoModal(false);
+        }}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modal}>
-            <Text style={styles.modalTitle}>Iniciar Descanso</Text>
-            <Text style={styles.modalLabel}>Días de descanso (1-30)</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={diasDescanso}
-              onChangeText={setDiasDescanso}
-              keyboardType="numeric"
-              placeholder="Ej: 5, 10, 15"
-              placeholderTextColor={COLORS.grayLight}
-            />
-            <View style={styles.diasButtons}>
-              {[5, 7, 10, 14, 21].map((dias) => (
-                <TouchableOpacity
-                  key={dias}
-                  style={[
-                    styles.diasButton,
-                    diasDescanso === dias.toString() && styles.diasButtonActive,
-                  ]}
-                  onPress={() => setDiasDescanso(dias.toString())}
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View style={styles.modal}>
+                <ScrollView
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={false}
                 >
-                  <Text
-                    style={[
-                      styles.diasButtonText,
-                      diasDescanso === dias.toString() && styles.diasButtonTextActive,
-                    ]}
-                  >
-                    {dias}d
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.modalCancelButton}
-                onPress={() => {
-                  setShowDescansoModal(false);
-                  setDiasDescanso('');
-                }}
-              >
-                <Text style={styles.modalCancelText}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.modalConfirmButton} onPress={handleDescanso}>
-                <Text style={styles.modalConfirmText}>Iniciar</Text>
-              </TouchableOpacity>
-            </View>
+                  <Text style={styles.modalTitle}>Iniciar Descanso</Text>
+                  <Text style={styles.modalLabel}>Días de descanso (1-30)</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    value={diasDescanso}
+                    onChangeText={setDiasDescanso}
+                    keyboardType="numeric"
+                    placeholder="Ej: 5, 10, 15"
+                    placeholderTextColor={COLORS.grayLight}
+                    returnKeyType="done"
+                    blurOnSubmit
+                  />
+                  <View style={styles.diasButtons}>
+                    {[5, 7, 10, 14, 21].map((dias) => (
+                      <TouchableOpacity
+                        key={dias}
+                        style={[
+                          styles.diasButton,
+                          diasDescanso === dias.toString() && styles.diasButtonActive,
+                        ]}
+                        onPress={() => {
+                          Keyboard.dismiss();
+                          setDiasDescanso(dias.toString());
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.diasButtonText,
+                            diasDescanso === dias.toString() && styles.diasButtonTextActive,
+                          ]}
+                        >
+                          {dias}d
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <View style={styles.modalButtons}>
+                    <TouchableOpacity
+                      style={styles.modalCancelButton}
+                      onPress={() => {
+                        Keyboard.dismiss();
+                        setShowDescansoModal(false);
+                        setDiasDescanso('');
+                      }}
+                    >
+                      <Text style={styles.modalCancelText}>Cancelar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.modalConfirmButton} onPress={handleDescanso}>
+                      <Text style={styles.modalConfirmText}>Iniciar</Text>
+                    </TouchableOpacity>
+                  </View>
+                </ScrollView>
+              </View>
+            </TouchableWithoutFeedback>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
 
       <Modal
@@ -1220,6 +1257,7 @@ const styles = StyleSheet.create({
     padding: 24,
     width: '100%',
     maxWidth: 340,
+    maxHeight: '85%',
   },
   modalTitle: {
     fontSize: 20,
@@ -1273,6 +1311,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 16,
+    gap: 8,
+    flexWrap: 'wrap',
   },
   tiempoButton: {
     paddingHorizontal: 14,
@@ -1295,6 +1335,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 20,
+    gap: 8,
+    flexWrap: 'wrap',
   },
   diasButton: {
     paddingHorizontal: 14,
@@ -1316,6 +1358,7 @@ const styles = StyleSheet.create({
   modalButtons: {
     flexDirection: 'row',
     gap: 12,
+    marginTop: 8,
   },
   modalCancelButton: {
     flex: 1,

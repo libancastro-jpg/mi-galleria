@@ -31,9 +31,9 @@
   "submit": {
     "production": {
       "ios": {
-        "appleId": "TU_APPLE_ID@email.com",
-        "ascAppId": "TU_APP_STORE_CONNECT_ID",
-        "appleTeamId": "TU_TEAM_ID"
+        "appleId": "liban_castro@hotmail.com",
+        "ascAppId": "6760793399",
+        "appleTeamId": "24YHWWB57N"
       },
       "android": {
         "track": "production",

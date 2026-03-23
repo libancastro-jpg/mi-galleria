@@ -51,6 +51,7 @@ export default function PerfilScreen() {
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   // ✅ NUEVO: Estado para desplegar Configuración
   const [configOpen, setConfigOpen] = useState(false);
@@ -82,6 +83,34 @@ export default function PerfilScreen() {
         },
       ]);
     }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deletingAccount) return;
+
+    Alert.alert(
+      'Eliminar cuenta',
+      'Esta acción eliminará tu cuenta permanentemente junto con tus datos asociados. ¿Deseas continuar?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setDeletingAccount(true);
+              await api.delete('/auth/delete-account');
+              await logout();
+              router.replace('/(auth)/login');
+            } catch (error: any) {
+              Alert.alert('Error', error?.message || 'No se pudo eliminar la cuenta');
+            } finally {
+              setDeletingAccount(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const confirmLogout = async () => {
@@ -370,11 +399,24 @@ export default function PerfilScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Logout Section */}
+          {/* Logout / Delete Section */}
           <View style={styles.section}>
             <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
               <Ionicons name="log-out" size={22} color={COLORS.redDeep} />
               <Text style={styles.logoutText}>Cerrar Sesión</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.deleteContainer}
+              onPress={handleDeleteAccount}
+              disabled={deletingAccount}
+              activeOpacity={0.7}
+            >
+              {deletingAccount ? (
+                <ActivityIndicator size="small" color={COLORS.redDeep} />
+              ) : (
+                <Text style={styles.deleteText}>Eliminar cuenta permanentemente</Text>
+              )}
             </TouchableOpacity>
           </View>
 
@@ -597,7 +639,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
 
-  // ✅ NUEVO: header clickeable de Configuración
+  // Header clickeable de Configuración
   configHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -644,6 +686,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.grayMedium,
     marginHorizontal: 14,
   },
+
   // Action Items
   actionItem: {
     flexDirection: 'row',
@@ -669,6 +712,7 @@ const styles = StyleSheet.create({
     color: '#1a1a1a',
     marginLeft: 14,
   },
+
   // Logout
   logoutButton: {
     flexDirection: 'row',
@@ -686,6 +730,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.redDeep,
   },
+
+  // Delete account discreto
+  deleteContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    paddingVertical: 4,
+  },
+  deleteText: {
+    fontSize: 13,
+    color: COLORS.redDeep,
+    fontWeight: '500',
+    textDecorationLine: 'underline',
+  },
+
   // App Info
   appInfo: {
     alignItems: 'center',
@@ -701,6 +760,7 @@ const styles = StyleSheet.create({
     color: COLORS.grayLight,
     marginTop: 4,
   },
+
   // Modal
   modalOverlay: {
     flex: 1,

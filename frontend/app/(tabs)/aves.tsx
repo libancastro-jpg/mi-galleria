@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -22,10 +22,16 @@ interface Ave {
   codigo: string;
   nombre?: string;
   foto_principal?: string;
+  foto?: string;
+  imagen?: string;
+  image_url?: string;
   color?: string;
   linea?: string;
   estado: string;
 }
+
+const galloDefaultImg = require('../../assets/images/gallo.png');
+const gallinaDefaultImg = require('../../assets/images/gallina.png');
 
 export default function AvesScreen() {
   const router = useRouter();
@@ -36,15 +42,32 @@ export default function AvesScreen() {
   const [filterTipo, setFilterTipo] = useState<string | null>(null);
   const [filterEstado, setFilterEstado] = useState<string | null>('activo');
 
+  const getAveImageSource = (ave: Ave) => {
+    if (ave.foto_principal) return { uri: ave.foto_principal };
+    if (ave.foto) return { uri: ave.foto };
+    if (ave.imagen) return { uri: ave.imagen };
+    if (ave.image_url) return { uri: ave.image_url };
+    return ave.tipo === 'gallo' ? galloDefaultImg : gallinaDefaultImg;
+  };
+
   const fetchAves = async () => {
     try {
       const params: Record<string, string> = {};
       if (filterTipo) params.tipo = filterTipo;
       if (filterEstado) params.estado = filterEstado;
+
       const result = await api.get('/aves', params);
-      setAves(result);
+
+      const avesData: Ave[] = Array.isArray(result)
+        ? result
+        : Array.isArray(result?.data)
+          ? result.data
+          : [];
+
+      setAves(avesData);
     } catch (error) {
       console.error('Error fetching aves:', error);
+      setAves([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -65,8 +88,9 @@ export default function AvesScreen() {
   const filteredAves = aves.filter((ave) => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
+
     return (
-      ave.codigo.toLowerCase().includes(query) ||
+      ave.codigo?.toLowerCase().includes(query) ||
       ave.nombre?.toLowerCase().includes(query) ||
       ave.color?.toLowerCase().includes(query) ||
       ave.linea?.toLowerCase().includes(query)
@@ -79,17 +103,11 @@ export default function AvesScreen() {
       onPress={() => router.push(`/ave/detail/${item.id}`)}
     >
       <View style={styles.aveImageContainer}>
-        {item.foto_principal ? (
-          <Image source={{ uri: item.foto_principal }} style={styles.aveImage} />
-        ) : (
-          <View style={styles.avePlaceholder}>
-            <Ionicons
-              name={item.tipo === 'gallo' ? 'fitness' : 'egg'}
-              size={32}
-              color="#555555"
-            />
-          </View>
-        )}
+        <Image
+          source={getAveImageSource(item)}
+          style={styles.aveImage}
+          resizeMode="cover"
+        />
         <View
           style={[
             styles.tipoIndicator,
@@ -97,22 +115,26 @@ export default function AvesScreen() {
           ]}
         />
       </View>
+
       <View style={styles.aveInfo}>
         <Text style={styles.aveCodigo}>{item.codigo}</Text>
-        {item.nombre && <Text style={styles.aveNombre}>{item.nombre}</Text>}
+        {item.nombre ? <Text style={styles.aveNombre}>{item.nombre}</Text> : null}
+
         <View style={styles.aveDetails}>
-          {item.color && (
+          {item.color ? (
             <View style={styles.detailTag}>
               <Text style={styles.detailText}>{item.color}</Text>
             </View>
-          )}
-          {item.linea && (
+          ) : null}
+
+          {item.linea ? (
             <View style={styles.detailTag}>
               <Text style={styles.detailText}>{item.linea}</Text>
             </View>
-          )}
+          ) : null}
         </View>
       </View>
+
       <Ionicons name="chevron-forward" size={20} color="#555555" />
     </TouchableOpacity>
   );
@@ -138,11 +160,11 @@ export default function AvesScreen() {
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
-        {searchQuery && (
+        {searchQuery ? (
           <TouchableOpacity onPress={() => setSearchQuery('')}>
             <Ionicons name="close-circle" size={20} color="#555555" />
           </TouchableOpacity>
-        )}
+        ) : null}
       </View>
 
       <View style={styles.filters}>
@@ -154,6 +176,7 @@ export default function AvesScreen() {
             Todos
           </Text>
         </TouchableOpacity>
+
         <TouchableOpacity
           style={[styles.filterButton, filterTipo === 'gallo' && styles.filterActive]}
           onPress={() => setFilterTipo('gallo')}
@@ -163,6 +186,7 @@ export default function AvesScreen() {
             Gallos
           </Text>
         </TouchableOpacity>
+
         <TouchableOpacity
           style={[styles.filterButton, filterTipo === 'gallina' && styles.filterActive]}
           onPress={() => setFilterTipo('gallina')}
@@ -218,7 +242,8 @@ export default function AvesScreen() {
               <Ionicons name="fitness-outline" size={64} color="#4b5563" />
               <Text style={styles.emptyTitle}>Sin aves</Text>
               <Text style={styles.emptyText}>
-                Agrega tu primer ave para comenzar
+                Agrega tu primer ave para comenzar y
+                llevar el control de tu galleria a otro nivel.
               </Text>
               <TouchableOpacity
                 style={styles.emptyButton}
@@ -354,14 +379,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 12,
-  },
-  avePlaceholder: {
-    width: 64,
-    height: 64,
-    borderRadius: 12,
     backgroundColor: '#e0e0e0',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   tipoIndicator: {
     position: 'absolute',

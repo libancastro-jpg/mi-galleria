@@ -28,6 +28,7 @@ interface Ave {
   foto?: string;
   imagen?: string;
   image_url?: string;
+  castado_por?: string;
 }
 
 interface Criador {
@@ -88,6 +89,9 @@ export default function CruceFormScreen() {
   const [criadores, setCriadores] = useState<Criador[]>([]);
 
   const [showCriadorList, setShowCriadorList] = useState(false);
+  const [showNuevoCriadorInput, setShowNuevoCriadorInput] = useState(false);
+  const [nuevoCriadorNombre, setNuevoCriadorNombre] = useState('');
+
   const [showPadreList, setShowPadreList] = useState(false);
   const [showMadreList, setShowMadreList] = useState(false);
   const [showPadreExterno, setShowPadreExterno] = useState(false);
@@ -118,11 +122,7 @@ export default function CruceFormScreen() {
   });
 
   useEffect(() => {
-    fetchAves();
-    fetchCriadores();
-    if (isEdit) {
-      fetchCruce();
-    }
+    loadInitialData();
   }, [id]);
 
   useEffect(() => {
@@ -160,10 +160,54 @@ export default function CruceFormScreen() {
     );
   };
 
-  const fetchAves = async () => {
+  const normalizeCriadores = (data: any[]): Criador[] => {
+    return data
+      .map((item: any) => ({
+        id: String(item?.id || item?._id || item?.uuid || ''),
+        nombre:
+          item?.nombre ||
+          item?.nombre_completo ||
+          item?.alias ||
+          item?.name ||
+          item?.full_name ||
+          'Sin nombre',
+        nombre_completo: item?.nombre_completo || item?.full_name || item?.nombre || '',
+        alias: item?.alias || '',
+        name: item?.name || '',
+        full_name: item?.full_name || '',
+      }))
+      .filter((c: Criador) => c.id);
+  };
+
+  const buildCriadoresFromAves = (avesArray: Ave[]): Criador[] => {
+    const seen = new Set<string>();
+    const result: Criador[] = [];
+
+    for (const ave of avesArray) {
+      const nombre = (ave.castado_por || '').trim();
+      if (!nombre) continue;
+
+      const key = nombre.toLowerCase();
+      if (seen.has(key)) continue;
+
+      seen.add(key);
+      result.push({
+        id: `castado_por_${key.replace(/\s+/g, '_')}`,
+        nombre,
+      });
+    }
+
+    return result.sort((a, b) =>
+      getCriadorDisplayName(a).localeCompare(getCriadorDisplayName(b), 'es', {
+        sensitivity: 'base',
+      })
+    );
+  };
+
+  const fetchAves = async (): Promise<Ave[]> => {
     try {
       const aves = await api.get('/aves');
-      const avesArray = Array.isArray(aves)
+      const avesArray: Ave[] = Array.isArray(aves)
         ? aves
         : Array.isArray(aves?.data)
           ? aves.data
@@ -171,12 +215,16 @@ export default function CruceFormScreen() {
 
       setGallos(avesArray.filter((a: Ave) => a.tipo === 'gallo'));
       setGallinas(avesArray.filter((a: Ave) => a.tipo === 'gallina'));
+      return avesArray;
     } catch (error) {
       console.error('Error fetching aves:', error);
+      setGallos([]);
+      setGallinas([]);
+      return [];
     }
   };
 
-  const fetchCriadores = async () => {
+  const fetchCriadores = async (avesArray: Ave[]) => {
     try {
       let raw: any = null;
 
@@ -198,7 +246,7 @@ export default function CruceFormScreen() {
         }
       }
 
-      const data = Array.isArray(raw)
+      const endpointData = Array.isArray(raw)
         ? raw
         : Array.isArray(raw?.data)
           ? raw.data
@@ -208,27 +256,46 @@ export default function CruceFormScreen() {
               ? raw.results
               : [];
 
-      const normalized: Criador[] = data
-        .map((item: any) => ({
-          id: String(item?.id || item?._id || item?.uuid || ''),
-          nombre:
-            item?.nombre ||
-            item?.nombre_completo ||
-            item?.alias ||
-            item?.name ||
-            item?.full_name ||
-            'Sin nombre',
-          nombre_completo: item?.nombre_completo || item?.full_name || item?.nombre || '',
-          alias: item?.alias || '',
-          name: item?.name || '',
-          full_name: item?.full_name || '',
-        }))
-        .filter((c: Criador) => c.id);
+      const normalizedFromEndpoint = normalizeCriadores(endpointData);
+      const normalizedFromAves = buildCriadoresFromAves(avesArray);
 
-      setCriadores(normalized);
+      const mergedMap = new Map<string, Criador>();
+
+      for (const item of normalizedFromEndpoint) {
+        mergedMap.set(item.id, item);
+      }
+
+      for (const item of normalizedFromAves) {
+        const existingByName = Array.from(mergedMap.values()).find(
+          (x) =>
+            getCriadorDisplayName(x).trim().toLowerCase() ===
+            getCriadorDisplayName(item).trim().toLowerCase()
+        );
+
+        if (!existingByName) {
+          mergedMap.set(item.id, item);
+        }
+      }
+
+      const finalList = Array.from(mergedMap.values()).sort((a, b) =>
+        getCriadorDisplayName(a).localeCompare(getCriadorDisplayName(b), 'es', {
+          sensitivity: 'base',
+        })
+      );
+
+      setCriadores(finalList);
     } catch (error) {
       console.error('Error fetching criadores/castadores:', error);
-      setCriadores([]);
+      setCriadores(buildCriadoresFromAves(avesArray));
+    }
+  };
+
+  const loadInitialData = async () => {
+    const avesArray = await fetchAves();
+    await fetchCriadores(avesArray);
+
+    if (isEdit) {
+      await fetchCruce();
     }
   };
 
@@ -251,7 +318,7 @@ export default function CruceFormScreen() {
             ''
         ),
         fecha: cruce?.fecha || '',
-        notas: cruce?.notas || '',
+        notas: cruce?.notas || cruce?.objetivo || '',
         estado: cruce?.estado || 'planeado',
       });
 
@@ -355,6 +422,8 @@ export default function CruceFormScreen() {
       setShowMadreList(false);
       setShowMadreExterno(false);
       setShowCriadorList(false);
+      setShowNuevoCriadorInput(false);
+      setNuevoCriadorNombre('');
     } else {
       const willOpen = !showMadreList;
       setShowMadreList(willOpen);
@@ -362,6 +431,8 @@ export default function CruceFormScreen() {
       setShowPadreList(false);
       setShowPadreExterno(false);
       setShowCriadorList(false);
+      setShowNuevoCriadorInput(false);
+      setNuevoCriadorNombre('');
     }
   };
 
@@ -383,6 +454,52 @@ export default function CruceFormScreen() {
     setMarcaNacimiento('marca_casera');
     setMarcaPosicion('');
     setShowCaseraColors((prev) => !prev);
+  };
+
+  const handleAgregarNuevoCriador = () => {
+    const nombre = nuevoCriadorNombre.trim();
+
+    if (!nombre) {
+      Alert.alert('Error', 'Debes escribir el nombre del criador o castador');
+      return;
+    }
+
+    const existing = criadores.find(
+      (c) => getCriadorDisplayName(c).trim().toLowerCase() === nombre.toLowerCase()
+    );
+
+    if (existing) {
+      setFormData((prev) => ({
+        ...prev,
+        criador_id: existing.id,
+      }));
+      setNuevoCriadorNombre('');
+      setShowNuevoCriadorInput(false);
+      setShowCriadorList(false);
+      return;
+    }
+
+    const nuevoCriador: Criador = {
+      id: `manual_${Date.now()}`,
+      nombre,
+    };
+
+    setCriadores((prev) =>
+      [...prev, nuevoCriador].sort((a, b) =>
+        getCriadorDisplayName(a).localeCompare(getCriadorDisplayName(b), 'es', {
+          sensitivity: 'base',
+        })
+      )
+    );
+
+    setFormData((prev) => ({
+      ...prev,
+      criador_id: nuevoCriador.id,
+    }));
+
+    setNuevoCriadorNombre('');
+    setShowNuevoCriadorInput(false);
+    setShowCriadorList(false);
   };
 
   const renderMarcaDot = (tipo: MarcaTipo) => {
@@ -492,12 +609,16 @@ export default function CruceFormScreen() {
               setShowMadreList(false);
               setShowMadreExterno(false);
               setShowCriadorList(false);
+              setShowNuevoCriadorInput(false);
+              setNuevoCriadorNombre('');
             } else {
               setShowMadreExterno(!showMadreExterno);
               setShowMadreList(false);
               setShowPadreList(false);
               setShowPadreExterno(false);
               setShowCriadorList(false);
+              setShowNuevoCriadorInput(false);
+              setNuevoCriadorNombre('');
             }
           }}
         >
@@ -646,14 +767,24 @@ export default function CruceFormScreen() {
         ? Number(formData.cantidad_huevos_pollitos)
         : null;
 
+      const selectedCriador = criadores.find((c) => c.id === formData.criador_id);
+      const selectedCriadorName = getCriadorDisplayName(selectedCriador);
+
       const dataToSend = {
-        ...formData,
         padre_id: formData.padre_id || null,
         madre_id: formData.madre_id || null,
         padre_externo: formData.padre_externo || null,
         madre_externo: formData.madre_externo || null,
         criador_id: formData.criador_id || null,
         castador_id: formData.criador_id || null,
+        criador_nombre:
+          formData.criador_id && selectedCriadorName !== 'Seleccionar criador / castador'
+            ? selectedCriadorName
+            : null,
+        fecha: formData.fecha,
+        objetivo: formData.notas || '',
+        notas: formData.notas || '',
+        estado: formData.estado,
         cantidad_huevos_pollitos: cantidad,
         cantidad_registrada: cantidad,
         sin_marca: sinMarca,
@@ -770,6 +901,8 @@ export default function CruceFormScreen() {
               setShowPadreExterno(false);
               setShowMadreList(false);
               setShowMadreExterno(false);
+              setShowNuevoCriadorInput(false);
+              setNuevoCriadorNombre('');
             }}
           >
             <Text style={styles.selectOptionText}>
@@ -794,7 +927,9 @@ export default function CruceFormScreen() {
                     key={criador.id}
                     style={[
                       styles.dropdownItem,
-                      index === criadores.length - 1 && styles.dropdownItemLast,
+                      index === criadores.length - 1 &&
+                        !showNuevoCriadorInput &&
+                        styles.dropdownItemLast,
                     ]}
                     onPress={() => {
                       setFormData((prev) => ({
@@ -802,6 +937,8 @@ export default function CruceFormScreen() {
                         criador_id: criador.id,
                       }));
                       setShowCriadorList(false);
+                      setShowNuevoCriadorInput(false);
+                      setNuevoCriadorNombre('');
                     }}
                   >
                     <Text style={styles.dropdownItemText}>
@@ -809,6 +946,49 @@ export default function CruceFormScreen() {
                     </Text>
                   </TouchableOpacity>
                 ))
+              )}
+
+              <TouchableOpacity
+                style={[
+                  styles.dropdownItem,
+                  !showNuevoCriadorInput && styles.dropdownItemLast,
+                ]}
+                onPress={() => setShowNuevoCriadorInput((prev) => !prev)}
+              >
+                <Text style={styles.addNewCriadorText}>
+                  + Agregar nuevo criador / castador
+                </Text>
+              </TouchableOpacity>
+
+              {showNuevoCriadorInput && (
+                <View style={styles.nuevoCriadorBox}>
+                  <TextInput
+                    style={styles.nuevoCriadorInput}
+                    value={nuevoCriadorNombre}
+                    onChangeText={setNuevoCriadorNombre}
+                    placeholder="Nombre del criador o castador"
+                    placeholderTextColor="#9ca3af"
+                  />
+
+                  <View style={styles.nuevoCriadorActions}>
+                    <TouchableOpacity
+                      style={styles.nuevoCriadorCancelBtn}
+                      onPress={() => {
+                        setShowNuevoCriadorInput(false);
+                        setNuevoCriadorNombre('');
+                      }}
+                    >
+                      <Text style={styles.nuevoCriadorCancelText}>Cancelar</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.nuevoCriadorSaveBtn}
+                      onPress={handleAgregarNuevoCriador}
+                    >
+                      <Text style={styles.nuevoCriadorSaveText}>Agregar</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
               )}
             </View>
           )}
@@ -931,7 +1111,7 @@ export default function CruceFormScreen() {
           <View style={styles.estadoBlock}>
             <Text style={styles.sectionLabel}>Estado</Text>
             <View style={styles.estadoContainer}>
-              {['planeado', 'hecho', 'cancelado'].map((estado, index) => {
+              {['Prueba', 'hecho', 'Repetidos'].map((estado, index) => {
                 const isActive = formData.estado === estado;
                 return (
                   <TouchableOpacity
@@ -1646,5 +1826,52 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  addNewCriadorText: {
+    fontSize: 15,
+    color: '#2563eb',
+    fontWeight: '600',
+  },
+  nuevoCriadorBox: {
+    padding: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#edf2f7',
+    backgroundColor: '#ffffff',
+  },
+  nuevoCriadorInput: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#d7dde5',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: '#111827',
+  },
+  nuevoCriadorActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 12,
+  },
+  nuevoCriadorCancelBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginRight: 10,
+  },
+  nuevoCriadorCancelText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6b7280',
+  },
+  nuevoCriadorSaveBtn: {
+    backgroundColor: '#1f1f2e',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  nuevoCriadorSaveText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#ffffff',
   },
 });

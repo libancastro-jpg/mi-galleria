@@ -205,6 +205,7 @@ export default function CuidoScreen() {
               <Text style={styles.emptyTitle}>Sin gallos en cuido</Text>
               <Text style={styles.emptyText}>
                 Agrega un gallo para iniciar su preparación
+                fisica antes de competir.
               </Text>
               <TouchableOpacity
                 style={styles.emptyButton}
