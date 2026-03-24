@@ -21,16 +21,14 @@ import {
   initializeIAP,
   startPurchaseListeners,
   disconnectIAP,
+  buyPremiumSubscription,
 } from '../src/services/iap';
 
-// Color palette
 const COLORS = {
   gold: '#F5A623',
   goldLight: 'rgba(245, 166, 35, 0.15)',
   greenDark: '#16a34a',
   greenLight: 'rgba(22, 163, 74, 0.12)',
-  blueDark: '#0f6ea8',
-  blueLight: 'rgba(15, 110, 168, 0.12)',
   eliteDark: '#d4a017',
   eliteLight: 'rgba(212, 160, 23, 0.12)',
   redDeep: '#ef4444',
@@ -47,11 +45,12 @@ const PRIVACY_URL = 'https://sites.google.com/view/migalleria-privacidad';
 const TERMS_URL = 'https://sites.google.com/view/migalleria-terminos';
 const SUPPORT_URL = 'https://sites.google.com/view/migalleria-soporte';
 
+type BillingCycle = 'monthly' | 'yearly';
+
 export default function PerfilScreen() {
   const router = useRouter();
   const { user, logout, refreshUser } = useAuth();
 
-  // Estados para edición
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -64,9 +63,9 @@ export default function PerfilScreen() {
   const [syncing, setSyncing] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
-
-  // Estado para desplegar Configuración
   const [configOpen, setConfigOpen] = useState(false);
+  const [selectedBilling, setSelectedBilling] = useState<BillingCycle>('monthly');
+  const [purchasingPlan, setPurchasingPlan] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -78,6 +77,7 @@ export default function PerfilScreen() {
         startPurchaseListeners(
           async (purchase) => {
             console.log('Compra exitosa:', purchase);
+            setPurchasingPlan(false);
             Alert.alert(
               'Compra exitosa',
               'Tu suscripción premium fue procesada correctamente.'
@@ -85,6 +85,7 @@ export default function PerfilScreen() {
           },
           (error) => {
             console.log('Error en compra:', error);
+            setPurchasingPlan(false);
             Alert.alert(
               'Error en la compra',
               error?.message || 'No se pudo completar la suscripción.'
@@ -115,20 +116,21 @@ export default function PerfilScreen() {
     }
   };
 
-  const handleSelectPlan = (plan: 'criador' | 'plus' | 'elite') => {
-    setShowPlansModal(false);
+  const handleSelectPlan = async (billing: BillingCycle) => {
+    try {
+      setPurchasingPlan(true);
+      setShowPlansModal(false);
 
-    if (plan === 'criador') {
-      Alert.alert('Plan Criador', 'Aquí conectaremos la compra del plan Criador.');
-      return;
+      if (billing === 'monthly') {
+        await buyPremiumSubscription('com.migalleria.criadorolite.mensual');
+        return;
+      }
+
+      await buyPremiumSubscription('com.migalleria.criadorolite.anual');
+    } catch (error: any) {
+      setPurchasingPlan(false);
+      Alert.alert('Error', error?.message || 'No se pudo iniciar la compra');
     }
-
-    if (plan === 'plus') {
-      Alert.alert('Plan Criador Plus', 'Aquí conectaremos la compra del plan Criador Plus.');
-      return;
-    }
-
-    Alert.alert('Plan Criador Elite', 'Aquí conectaremos la compra del plan Criador Elite.');
   };
 
   const handleLogout = async () => {
@@ -288,6 +290,14 @@ export default function PerfilScreen() {
     return phone;
   };
 
+  const elitePriceText =
+    selectedBilling === 'monthly' ? 'USD 7.95/mes' : 'USD 66.78/año';
+
+  const eliteButtonText =
+    selectedBilling === 'monthly'
+      ? 'Activar Criador Elite por USD 7.95/mes'
+      : 'Activar Criador Elite por USD 66.78/año';
+
   return (
     <>
       <Stack.Screen
@@ -303,6 +313,7 @@ export default function PerfilScreen() {
           ),
         }}
       />
+
       <SafeAreaView style={styles.container} edges={['bottom']}>
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
           <View style={styles.profileHeader}>
@@ -573,74 +584,58 @@ export default function PerfilScreen() {
                 Actualiza para disfrutar de todos los beneficios:
               </Text>
 
-              <View style={styles.planCardGreen}>
-                <Text style={styles.planTitleGreen}>CRIADOR</Text>
-                <Text style={styles.planPrice}>USD 29.99/año</Text>
-
-                <View style={styles.planFeatureRow}>
-                  <Ionicons name="checkmark" size={24} color={COLORS.greenDark} />
-                  <Text style={styles.planFeatureLabel}>350 registros/año</Text>
-                </View>
-
-                <View style={styles.planFeatureRow}>
-                  <Ionicons name="checkmark" size={24} color={COLORS.greenDark} />
-                  <Text style={styles.planFeatureLabel}>1 dispositivo</Text>
-                </View>
-
-                <View style={styles.planFeatureRow}>
-                  <Ionicons name="checkmark" size={24} color={COLORS.greenDark} />
-                  <Text style={styles.planFeatureLabel}>
-                    <Text style={styles.boldText}>Copia de seguridad</Text> diaria de datos
-                  </Text>
-                </View>
-
+              <View style={styles.billingToggleWrap}>
                 <TouchableOpacity
-                  style={styles.planButtonGreen}
-                  onPress={() => handleSelectPlan('criador')}
+                  style={[
+                    styles.billingToggleOption,
+                    selectedBilling === 'monthly' && styles.billingToggleOptionActive,
+                  ]}
+                  onPress={() => setSelectedBilling('monthly')}
                   activeOpacity={0.85}
                 >
-                  <Text style={styles.planButtonLabelWhite}>Activar Criador Por USD 29.99/año</Text>
+                  <Ionicons
+                    name={selectedBilling === 'monthly' ? 'checkmark-circle' : 'ellipse-outline'}
+                    size={22}
+                    color={selectedBilling === 'monthly' ? COLORS.greenDark : '#c4c4c4'}
+                  />
+                  <Text
+                    style={[
+                      styles.billingToggleText,
+                      selectedBilling === 'monthly' && styles.billingToggleTextActive,
+                    ]}
+                  >
+                    Mensual
+                  </Text>
                 </TouchableOpacity>
-              </View>
-
-              <View style={styles.planCardBlue}>
-                <Text style={styles.planTitleBlue}>CRIADOR PLUS</Text>
-                <Text style={styles.planPrice}>USD 59.99/año</Text>
-
-                <View style={styles.planFeatureRow}>
-                  <Ionicons name="checkmark" size={24} color={COLORS.blueDark} />
-                  <Text style={styles.planFeatureLabel}>550 registros/año</Text>
-                </View>
-
-                <View style={styles.planFeatureRow}>
-                  <Ionicons name="checkmark" size={24} color={COLORS.blueDark} />
-                  <Text style={styles.planFeatureLabel}>2 dispositivos</Text>
-                </View>
-
-                <View style={styles.planFeatureRow}>
-                  <Ionicons name="checkmark" size={24} color={COLORS.blueDark} />
-                  <Text style={styles.planFeatureLabel}>Fotos ilimitadas</Text>
-                </View>
-
-                <View style={styles.planFeatureRow}>
-                  <Ionicons name="checkmark" size={24} color={COLORS.blueDark} />
-                  <Text style={styles.planFeatureLabel}>
-                    <Text style={styles.boldText}>Copia de seguridad</Text> diaria de datos
-                  </Text>
-                </View>
 
                 <TouchableOpacity
-                  style={styles.planButtonBlue}
-                  onPress={() => handleSelectPlan('plus')}
+                  style={[
+                    styles.billingToggleOption,
+                    styles.billingToggleOptionDivider,
+                    selectedBilling === 'yearly' && styles.billingToggleOptionActive,
+                  ]}
+                  onPress={() => setSelectedBilling('yearly')}
                   activeOpacity={0.85}
                 >
-                  <Text style={styles.planButtonLabelWhite}>Activar Criador Plus Por USD 59.99/año</Text>
+                  <Ionicons
+                    name={selectedBilling === 'yearly' ? 'checkmark-circle' : 'ellipse-outline'}
+                    size={22}
+                    color={selectedBilling === 'yearly' ? COLORS.greenDark : '#c4c4c4'}
+                  />
+                  <Text
+                    style={[
+                      styles.billingToggleText,
+                      selectedBilling === 'yearly' && styles.billingToggleTextActive,
+                    ]}
+                  >
+                    Anual (Ahorra 30%)
+                  </Text>
                 </TouchableOpacity>
               </View>
 
               <View style={styles.planCardElite}>
                 <Text style={styles.planTitleElite}>CRIADOR ELITE</Text>
-                <Text style={styles.planPrice}>USD 89.99/año</Text>
+                <Text style={styles.planPrice}>{elitePriceText}</Text>
 
                 <View style={styles.planFeatureRow}>
                   <Ionicons name="checkmark" size={24} color={COLORS.eliteDark} />
@@ -672,11 +667,16 @@ export default function PerfilScreen() {
                 </View>
 
                 <TouchableOpacity
-                  style={styles.planButtonElite}
-                  onPress={() => handleSelectPlan('elite')}
+                  style={[styles.planButtonElite, purchasingPlan && styles.planButtonDisabled]}
+                  onPress={() => handleSelectPlan(selectedBilling)}
                   activeOpacity={0.85}
+                  disabled={purchasingPlan}
                 >
-                  <Text style={styles.planButtonLabelWhite}>Activar Criador Elite Por USD 89.99/año</Text>
+                  {purchasingPlan ? (
+                    <ActivityIndicator size="small" color={COLORS.white} />
+                  ) : (
+                    <Text style={styles.planButtonLabelWhite}>{eliteButtonText}</Text>
+                  )}
                 </TouchableOpacity>
               </View>
             </ScrollView>
@@ -946,6 +946,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
+  premiumButtonText: {
+    fontSize: 16,
+    color: COLORS.white,
+    fontWeight: '700',
+  },
   configHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1056,7 +1061,6 @@ const styles = StyleSheet.create({
     color: COLORS.grayLight,
     marginTop: 4,
   },
-
   plansOverlay: {
     flex: 1,
     backgroundColor: COLORS.white,
@@ -1127,32 +1131,39 @@ const styles = StyleSheet.create({
     color: COLORS.textDark,
     marginBottom: 18,
   },
-
-  planCardGreen: {
-    borderWidth: 2,
-    borderColor: COLORS.greenDark,
-    borderRadius: 24,
+  billingToggleWrap: {
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: '#d9d9d9',
+    borderRadius: 18,
+    overflow: 'hidden',
     backgroundColor: COLORS.white,
-    padding: 18,
-    marginBottom: 22,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
+    marginBottom: 18,
   },
-  planCardBlue: {
-    borderWidth: 2,
-    borderColor: COLORS.blueDark,
-    borderRadius: 24,
+  billingToggleOption: {
+    flex: 1,
+    minHeight: 66,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingHorizontal: 12,
     backgroundColor: COLORS.white,
-    padding: 18,
-    marginBottom: 22,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
+  },
+  billingToggleOptionDivider: {
+    borderLeftWidth: 1,
+    borderLeftColor: '#d9d9d9',
+  },
+  billingToggleOptionActive: {
+    backgroundColor: '#fafafa',
+  },
+  billingToggleText: {
+    fontSize: 15,
+    color: '#9ca3af',
+    fontWeight: '600',
+  },
+  billingToggleTextActive: {
+    color: COLORS.greenDark,
   },
   planCardElite: {
     borderWidth: 2,
@@ -1166,18 +1177,6 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 3 },
     elevation: 3,
-  },
-  planTitleGreen: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: COLORS.greenDark,
-    marginBottom: 6,
-  },
-  planTitleBlue: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: COLORS.blueDark,
-    marginBottom: 6,
   },
   planTitleElite: {
     fontSize: 22,
@@ -1206,22 +1205,6 @@ const styles = StyleSheet.create({
   boldText: {
     fontWeight: '800',
   },
-  planButtonGreen: {
-    backgroundColor: COLORS.greenDark,
-    borderRadius: 999,
-    height: 58,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 18,
-  },
-  planButtonBlue: {
-    backgroundColor: COLORS.greenDark,
-    borderRadius: 999,
-    height: 58,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 18,
-  },
   planButtonElite: {
     backgroundColor: COLORS.greenDark,
     borderRadius: 999,
@@ -1230,12 +1213,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 18,
   },
+  planButtonDisabled: {
+    opacity: 0.7,
+  },
   planButtonLabelWhite: {
     color: COLORS.white,
     fontWeight: '800',
     fontSize: 17,
+    textAlign: 'center',
+    paddingHorizontal: 14,
   },
-
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.8)',
@@ -1307,10 +1294,5 @@ const styles = StyleSheet.create({
     color: COLORS.grayLight,
     textAlign: 'center',
     marginBottom: 24,
-  },
-  premiumButtonText: {
-    fontSize: 16,
-    color: COLORS.white,
-    fontWeight: '700',
   },
 });

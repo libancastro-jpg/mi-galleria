@@ -32,6 +32,8 @@ export default function AveFormScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const isEdit = id && id !== 'new';
 
+  const MEMBERSHIP_PLANS_ROUTE = '/planes';
+
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [gallos, setGallos] = useState<Ave[]>([]);
@@ -52,9 +54,15 @@ export default function AveFormScreen() {
   const [showAbuelosPaternos, setShowAbuelosPaternos] = useState(false);
   const [showAbuelosMaternos, setShowAbuelosMaternos] = useState(false);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
-  const [castadores, setCastadores] = useState<{nombre: string, cantidad: number}[]>([]);
+  const [castadores, setCastadores] = useState<{ nombre: string; cantidad: number }[]>([]);
   const [nuevoCastador, setNuevoCastador] = useState('');
   const [showNuevoCastador, setShowNuevoCastador] = useState(false);
+
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [premiumModalTitle, setPremiumModalTitle] = useState('Función premium');
+  const [premiumModalMessage, setPremiumModalMessage] = useState(
+    'Necesitas un plan de membresía para continuar.'
+  );
 
   const COLORES_PLACA = [
     'Amarillo',
@@ -111,8 +119,8 @@ export default function AveFormScreen() {
     notas: '',
     padre_id: '',
     madre_id: '',
-    padre_externo: '',  // Placa de padre externo (otra gallería)
-    madre_externo: '',  // Placa de madre externo (otra gallería)
+    padre_externo: '',
+    madre_externo: '',
     marcaje_qr: '',
     castado_por: '',
   });
@@ -120,21 +128,81 @@ export default function AveFormScreen() {
   const [padreNombre, setPadreNombre] = useState('');
   const [madreNombre, setMadreNombre] = useState('');
 
-  // Función para obtener color hex de la placa
   const getColorPlaca = (color: string) => {
     const colores: { [key: string]: string } = {
-      'Amarillo': '#fbbf24',
-      'Azul': '#3b82f6',
-      'Rojo': '#ef4444',
-      'Verde': '#22c55e',
-      'Blanco': '#f5f5f5',
-      'Negro': '#1a1a1a',
-      'Naranja': '#f97316',
-      'Morado': '#a855f7',
-      'Rosado': '#ec4899',
-      'Gris': '#6b7280',
+      Amarillo: '#fbbf24',
+      Azul: '#3b82f6',
+      Rojo: '#ef4444',
+      Verde: '#22c55e',
+      Blanco: '#f5f5f5',
+      Negro: '#1a1a1a',
+      Naranja: '#f97316',
+      Morado: '#a855f7',
+      Rosado: '#ec4899',
+      Gris: '#6b7280',
     };
     return colores[color] || '#d4a017';
+  };
+
+  const extractErrorMessage = (error: any) => {
+    return (
+      error?.response?.data?.detail?.message ||
+      error?.response?.data?.detail ||
+      error?.response?.data?.message ||
+      error?.message ||
+      'Ocurrió un error'
+    );
+  };
+
+  const isPremiumLimitError = (error: any) => {
+    const code =
+      error?.response?.data?.detail?.code ||
+      error?.response?.data?.code ||
+      error?.code;
+
+    const message = String(
+      error?.response?.data?.detail?.message ||
+        error?.response?.data?.detail ||
+        error?.response?.data?.message ||
+        error?.message ||
+        ''
+    ).toLowerCase();
+
+    return (
+      code === 'PREMIUM_REQUIRED' ||
+      code === 'FREE_PLAN_LIMIT_REACHED' ||
+      code === 'TRIAL_EXPIRED' ||
+      code === 'PLAN_REQUIRED' ||
+      message.includes('premium') ||
+      message.includes('membres') ||
+      message.includes('trial') ||
+      message.includes('prueba gratis') ||
+      message.includes('límite') ||
+      message.includes('limite') ||
+      message.includes('plan requerido')
+    );
+  };
+
+  const openPremiumModalFromError = (error: any) => {
+    const title =
+      error?.response?.data?.detail?.title ||
+      error?.response?.data?.title ||
+      'Límite alcanzado';
+
+    const message =
+      error?.response?.data?.detail?.message ||
+      error?.response?.data?.detail ||
+      error?.response?.data?.message ||
+      'Has alcanzado el límite de tu plan. Ve a Planes de membresía para continuar.';
+
+    setPremiumModalTitle(title);
+    setPremiumModalMessage(message);
+    setShowPremiumModal(true);
+  };
+
+  const goToMembershipPlans = () => {
+    setShowPremiumModal(false);
+    router.push(MEMBERSHIP_PLANS_ROUTE as any);
   };
 
   useEffect(() => {
@@ -158,7 +226,6 @@ export default function AveFormScreen() {
   const fetchCastadores = async () => {
     try {
       const aves = await api.get('/aves');
-      // Obtener castadores únicos y contar aves por cada uno
       const castadoresMap: { [key: string]: number } = {};
       aves.forEach((ave: any) => {
         if (ave.castado_por && ave.castado_por.trim() !== '') {
@@ -166,10 +233,11 @@ export default function AveFormScreen() {
           castadoresMap[nombre] = (castadoresMap[nombre] || 0) + 1;
         }
       });
-      // Convertir a array y ordenar por cantidad
+
       const castadoresList = Object.entries(castadoresMap)
         .map(([nombre, cantidad]) => ({ nombre, cantidad }))
         .sort((a, b) => b.cantidad - a.cantidad);
+
       setCastadores(castadoresList);
     } catch (error) {
       console.error('Error fetching castadores:', error);
@@ -209,7 +277,7 @@ export default function AveFormScreen() {
         setMadreNombre(madre?.codigo || 'Seleccionada');
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      Alert.alert('Error', extractErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -226,7 +294,7 @@ export default function AveFormScreen() {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.3,  // Reducido para carga más rápida
+      quality: 0.3,
       base64: true,
     });
 
@@ -248,7 +316,7 @@ export default function AveFormScreen() {
     const result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.3,  // Reducido para carga más rápida
+      quality: 0.3,
       base64: true,
     });
 
@@ -287,9 +355,14 @@ export default function AveFormScreen() {
           Alert.alert('Éxito', 'Ave creada correctamente');
         }
       }
+
       router.back();
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      if (isPremiumLimitError(error)) {
+        openPremiumModalFromError(error);
+      } else {
+        Alert.alert('Error', extractErrorMessage(error));
+      }
     } finally {
       setSaving(false);
     }
@@ -330,7 +403,6 @@ export default function AveFormScreen() {
         </View>
 
         <ScrollView style={styles.form} contentContainerStyle={styles.formContent}>
-          {/* Photo - Circular centrado con + */}
           <View style={styles.photoSectionCentered}>
             <TouchableOpacity
               style={styles.photoContainerCircle}
@@ -370,7 +442,6 @@ export default function AveFormScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Tipo */}
           <Text style={styles.label}>Tipo *</Text>
           <View style={styles.tipoContainer}>
             <TouchableOpacity
@@ -417,7 +488,6 @@ export default function AveFormScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Número de Placa con Color */}
           <Text style={styles.label}>Número de Placa *</Text>
           <View style={styles.placaContainer}>
             <TextInput
@@ -428,16 +498,25 @@ export default function AveFormScreen() {
               placeholderTextColor="#555555"
             />
             <TouchableOpacity
-              style={[styles.colorPlacaButton, formData.color_placa && { borderColor: '#d4a017' }]}
+              style={[
+                styles.colorPlacaButton,
+                formData.color_placa && { borderColor: '#d4a017' },
+              ]}
               onPress={() => setShowColorPlacaList(!showColorPlacaList)}
             >
-              <View style={[styles.colorPlacaDot, { backgroundColor: getColorPlaca(formData.color_placa) }]} />
+              <View
+                style={[
+                  styles.colorPlacaDot,
+                  { backgroundColor: getColorPlaca(formData.color_placa) },
+                ]}
+              />
               <Text style={styles.colorPlacaText}>
                 {formData.color_placa || 'Color'}
               </Text>
               <Ionicons name="chevron-down" size={16} color="#555555" />
             </TouchableOpacity>
           </View>
+
           {showColorPlacaList && (
             <View style={styles.colorPlacaGrid}>
               {COLORES_PLACA.map((color) => (
@@ -452,20 +531,29 @@ export default function AveFormScreen() {
                     setShowColorPlacaList(false);
                   }}
                 >
-                  <View style={[styles.colorPlacaDotSmall, { backgroundColor: getColorPlaca(color) }]} />
+                  <View
+                    style={[
+                      styles.colorPlacaDotSmall,
+                      { backgroundColor: getColorPlaca(color) },
+                    ]}
+                  />
                   <Text style={styles.colorPlacaOptionText}>{color}</Text>
                 </TouchableOpacity>
               ))}
             </View>
           )}
 
-          {/* Color del Ave */}
           <Text style={styles.label}>Color del Ave</Text>
           <TouchableOpacity
             style={styles.selectButton}
             onPress={() => setShowColorList(!showColorList)}
           >
-            <Text style={[styles.selectButtonText, formData.color && { color: '#1a1a1a' }]}>
+            <Text
+              style={[
+                styles.selectButtonText,
+                formData.color && { color: '#1a1a1a' },
+              ]}
+            >
               {formData.color || 'Seleccionar color'}
             </Text>
             <Ionicons
@@ -474,6 +562,7 @@ export default function AveFormScreen() {
               color="#9ca3af"
             />
           </TouchableOpacity>
+
           {showColorList && (
             <View style={styles.colorGrid}>
               {COLORES.map((color) => (
@@ -501,13 +590,17 @@ export default function AveFormScreen() {
             </View>
           )}
 
-          {/* Tipo de Cresta */}
           <Text style={styles.label}>Tipo de Cresta</Text>
           <TouchableOpacity
             style={styles.selectButton}
             onPress={() => setShowCrestaList(!showCrestaList)}
           >
-            <Text style={[styles.selectButtonText, formData.cresta && { color: '#1a1a1a' }]}>
+            <Text
+              style={[
+                styles.selectButtonText,
+                formData.cresta && { color: '#1a1a1a' },
+              ]}
+            >
               {formData.cresta || 'Seleccionar cresta'}
             </Text>
             <Ionicons
@@ -516,6 +609,7 @@ export default function AveFormScreen() {
               color="#9ca3af"
             />
           </TouchableOpacity>
+
           {showCrestaList && (
             <View style={styles.colorGrid}>
               {TIPOS_CRESTA.map((cresta) => (
@@ -543,7 +637,6 @@ export default function AveFormScreen() {
             </View>
           )}
 
-          {/* Línea */}
           <Text style={styles.label}>Línea</Text>
           <TextInput
             style={styles.input}
@@ -553,13 +646,17 @@ export default function AveFormScreen() {
             placeholderTextColor="#555555"
           />
 
-          {/* Castador o Criador */}
           <Text style={styles.label}>Castador o Criador</Text>
           <TouchableOpacity
             style={styles.selectButton}
             onPress={() => setShowCastadorList(!showCastadorList)}
           >
-            <Text style={[styles.selectButtonText, formData.castado_por && { color: '#1a1a1a' }]}>
+            <Text
+              style={[
+                styles.selectButtonText,
+                formData.castado_por && { color: '#1a1a1a' },
+              ]}
+            >
               {formData.castado_por || 'Seleccionar o crear nuevo'}
             </Text>
             <Ionicons
@@ -568,9 +665,9 @@ export default function AveFormScreen() {
               color="#9ca3af"
             />
           </TouchableOpacity>
+
           {showCastadorList && (
             <View style={styles.castadorList}>
-              {/* Opción crear nuevo */}
               <TouchableOpacity
                 style={styles.castadorNuevoButton}
                 onPress={() => setShowNuevoCastador(!showNuevoCastador)}
@@ -578,7 +675,7 @@ export default function AveFormScreen() {
                 <Ionicons name="add-circle" size={20} color="#d4a017" />
                 <Text style={styles.castadorNuevoText}>Crear nuevo castador/criador</Text>
               </TouchableOpacity>
-              
+
               {showNuevoCastador && (
                 <View style={styles.nuevoCastadorForm}>
                   <TextInput
@@ -592,7 +689,10 @@ export default function AveFormScreen() {
                     style={styles.nuevoCastadorConfirm}
                     onPress={() => {
                       if (nuevoCastador.trim()) {
-                        setFormData({ ...formData, castado_por: nuevoCastador.trim() });
+                        setFormData({
+                          ...formData,
+                          castado_por: nuevoCastador.trim(),
+                        });
                         setNuevoCastador('');
                         setShowNuevoCastador(false);
                         setShowCastadorList(false);
@@ -603,8 +703,7 @@ export default function AveFormScreen() {
                   </TouchableOpacity>
                 </View>
               )}
-              
-              {/* Lista de castadores existentes */}
+
               {castadores.length > 0 && (
                 <View style={styles.castadoresExistentes}>
                   <Text style={styles.castadoresTitle}>Castadores/Criadores registrados:</Text>
@@ -613,7 +712,8 @@ export default function AveFormScreen() {
                       key={castador.nombre}
                       style={[
                         styles.castadorItem,
-                        formData.castado_por === castador.nombre && styles.castadorItemActive,
+                        formData.castado_por === castador.nombre &&
+                          styles.castadorItemActive,
                       ]}
                       onPress={() => {
                         setFormData({ ...formData, castado_por: castador.nombre });
@@ -622,20 +722,21 @@ export default function AveFormScreen() {
                     >
                       <Text style={styles.castadorNombre}>{castador.nombre}</Text>
                       <View style={styles.castadorCantidad}>
-                        <Text style={styles.castadorCantidadText}>{castador.cantidad} aves</Text>
+                        <Text style={styles.castadorCantidadText}>
+                          {castador.cantidad} aves
+                        </Text>
                       </View>
                     </TouchableOpacity>
                   ))}
                 </View>
               )}
-              
+
               {castadores.length === 0 && !showNuevoCastador && (
                 <Text style={styles.noCastadores}>No hay castadores registrados aún</Text>
               )}
             </View>
           )}
 
-          {/* Fecha nacimiento */}
           <DatePickerField
             label="Fecha de Nacimiento"
             value={formData.fecha_nacimiento}
@@ -643,7 +744,6 @@ export default function AveFormScreen() {
             placeholder="Seleccionar fecha"
           />
 
-          {/* Nombre del Ave */}
           <Text style={styles.label}>Nombre del Ave (opcional)</Text>
           <TextInput
             style={styles.input}
@@ -653,7 +753,6 @@ export default function AveFormScreen() {
             placeholderTextColor="#555555"
           />
 
-          {/* Estado */}
           <Text style={styles.label}>Estado</Text>
           <View style={styles.estadoContainer}>
             {['activo', 'vendido', 'retirado'].map((estado) => (
@@ -677,7 +776,6 @@ export default function AveFormScreen() {
             ))}
           </View>
 
-          {/* Sección de Padres - Árbol Genealógico */}
           <TouchableOpacity
             style={styles.padresSectionHeader}
             onPress={() => setShowPadresSection(!showPadresSection)}
@@ -695,9 +793,7 @@ export default function AveFormScreen() {
 
           {showPadresSection && (
             <View style={styles.padresSectionContent}>
-              {/* Vista de Árbol Genealógico */}
               <View style={styles.treeFormContainer}>
-                {/* Etiqueta del Ave Actual - Descendencia */}
                 <View style={styles.treeFormCurrentBird}>
                   <Text style={styles.treeFormLabelMain}>DESCENDENCIA</Text>
                   <View style={styles.treeFormNodeMain}>
@@ -705,10 +801,10 @@ export default function AveFormScreen() {
                       <Image source={{ uri: formData.foto_principal }} style={styles.treeFormPhoto} />
                     ) : (
                       <View style={styles.treeFormPhotoPlaceholder}>
-                        <Ionicons 
-                          name={formData.tipo === 'gallo' ? 'male' : 'female'} 
-                          size={20} 
-                          color="#d4a017" 
+                        <Ionicons
+                          name={formData.tipo === 'gallo' ? 'male' : 'female'}
+                          size={20}
+                          color="#d4a017"
                         />
                       </View>
                     )}
@@ -718,42 +814,51 @@ export default function AveFormScreen() {
                   </View>
                 </View>
 
-                {/* Conector vertical */}
                 <View style={styles.treeFormConnectorVertical} />
-                
-                {/* Conector horizontal */}
                 <View style={styles.treeFormConnectorHorizontal} />
 
-                {/* Padres */}
                 <View style={styles.treeFormParentsRow}>
-                  {/* Padre */}
                   <View style={styles.treeFormParentColumn}>
                     <Text style={styles.treeFormLabel}>Padre</Text>
                     <TouchableOpacity
                       style={[
                         styles.treeFormNode,
-                        (formData.padre_id || formData.padre_externo) && styles.treeFormNodeSelected
+                        (formData.padre_id || formData.padre_externo) &&
+                          styles.treeFormNodeSelected,
                       ]}
                       onPress={() => setShowPadreList(!showPadreList)}
                     >
                       {formData.padre_id ? (
                         <>
-                          <View style={[styles.treeFormPhotoPlaceholder, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
+                          <View
+                            style={[
+                              styles.treeFormPhotoPlaceholder,
+                              { backgroundColor: 'rgba(59, 130, 246, 0.15)' },
+                            ]}
+                          >
                             <Ionicons name="male" size={18} color="#3b82f6" />
                           </View>
                           <Text style={styles.treeFormNodeCode} numberOfLines={1}>
-                            {gallos.find((g) => g.id === formData.padre_id)?.codigo || 'Seleccionado'}
+                            {gallos.find((g) => g.id === formData.padre_id)?.codigo ||
+                              'Seleccionado'}
                           </Text>
                         </>
                       ) : formData.padre_externo ? (
                         <>
-                          <View style={[styles.treeFormPhotoPlaceholder, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
+                          <View
+                            style={[
+                              styles.treeFormPhotoPlaceholder,
+                              { backgroundColor: 'rgba(245, 158, 11, 0.15)' },
+                            ]}
+                          >
                             <Ionicons name="male" size={18} color="#f59e0b" />
                           </View>
                           <Text style={styles.treeFormNodeCode} numberOfLines={1}>
                             {formData.padre_externo}
                           </Text>
-                          {padreGalleria && <Text style={styles.treeFormNodeGalleria}>{padreGalleria}</Text>}
+                          {padreGalleria ? (
+                            <Text style={styles.treeFormNodeGalleria}>{padreGalleria}</Text>
+                          ) : null}
                           <Text style={styles.treeFormNodeExternal}>Externo</Text>
                         </>
                       ) : (
@@ -765,19 +870,21 @@ export default function AveFormScreen() {
                         </>
                       )}
                     </TouchableOpacity>
-                    
-                    {/* Botón + para abuelos paternos */}
+
                     {(formData.padre_id || formData.padre_externo) && (
                       <TouchableOpacity
                         style={styles.treeFormAddAbueloBtn}
                         onPress={() => setShowAbuelosPaternos(!showAbuelosPaternos)}
                       >
-                        <Ionicons name={showAbuelosPaternos ? "chevron-up" : "add"} size={16} color="#d4a017" />
+                        <Ionicons
+                          name={showAbuelosPaternos ? 'chevron-up' : 'add'}
+                          size={16}
+                          color="#d4a017"
+                        />
                         <Text style={styles.treeFormAddAbueloText}>Abuelos</Text>
                       </TouchableOpacity>
                     )}
-                    
-                    {/* Lista desplegable padre */}
+
                     {showPadreList && (
                       <View style={styles.treeFormSelectList}>
                         <TouchableOpacity
@@ -787,7 +894,7 @@ export default function AveFormScreen() {
                           <Ionicons name="add-circle" size={18} color="#f59e0b" />
                           <Text style={styles.treeFormSelectOptionTextAdd}>Padre Externo</Text>
                         </TouchableOpacity>
-                        
+
                         {showPadreExterno && (
                           <View style={styles.treeFormExternalInputContainer}>
                             <TextInput
@@ -808,7 +915,11 @@ export default function AveFormScreen() {
                               style={styles.treeFormConfirmBtn}
                               onPress={() => {
                                 if (padreExterno) {
-                                  setFormData({ ...formData, padre_externo: padreExterno, padre_id: '' });
+                                  setFormData({
+                                    ...formData,
+                                    padre_externo: padreExterno,
+                                    padre_id: '',
+                                  });
                                 }
                                 setShowPadreList(false);
                                 setShowPadreExterno(false);
@@ -818,7 +929,7 @@ export default function AveFormScreen() {
                             </TouchableOpacity>
                           </View>
                         )}
-                        
+
                         <TouchableOpacity
                           style={styles.treeFormSelectOption}
                           onPress={() => {
@@ -831,16 +942,21 @@ export default function AveFormScreen() {
                           <Ionicons name="close-circle" size={18} color="#9ca3af" />
                           <Text style={styles.treeFormSelectOptionText}>Ninguno</Text>
                         </TouchableOpacity>
-                        
+
                         {gallos.filter((g) => g.id !== id).map((gallo) => (
                           <TouchableOpacity
                             key={gallo.id}
                             style={[
                               styles.treeFormSelectOption,
-                              formData.padre_id === gallo.id && styles.treeFormSelectOptionActive
+                              formData.padre_id === gallo.id &&
+                                styles.treeFormSelectOptionActive,
                             ]}
                             onPress={() => {
-                              setFormData({ ...formData, padre_id: gallo.id, padre_externo: '' });
+                              setFormData({
+                                ...formData,
+                                padre_id: gallo.id,
+                                padre_externo: '',
+                              });
                               setPadreExterno('');
                               setPadreGalleria('');
                               setShowPadreList(false);
@@ -854,37 +970,49 @@ export default function AveFormScreen() {
                     )}
                   </View>
 
-                  {/* Separador */}
                   <View style={styles.treeFormDivider} />
 
-                  {/* Madre */}
                   <View style={styles.treeFormParentColumn}>
                     <Text style={styles.treeFormLabel}>Madre</Text>
                     <TouchableOpacity
                       style={[
                         styles.treeFormNode,
-                        (formData.madre_id || formData.madre_externo) && styles.treeFormNodeSelected
+                        (formData.madre_id || formData.madre_externo) &&
+                          styles.treeFormNodeSelected,
                       ]}
                       onPress={() => setShowMadreList(!showMadreList)}
                     >
                       {formData.madre_id ? (
                         <>
-                          <View style={[styles.treeFormPhotoPlaceholder, { backgroundColor: 'rgba(236, 72, 153, 0.15)' }]}>
+                          <View
+                            style={[
+                              styles.treeFormPhotoPlaceholder,
+                              { backgroundColor: 'rgba(236, 72, 153, 0.15)' },
+                            ]}
+                          >
                             <Ionicons name="female" size={18} color="#ec4899" />
                           </View>
                           <Text style={styles.treeFormNodeCode} numberOfLines={1}>
-                            {gallinas.find((g) => g.id === formData.madre_id)?.codigo || 'Seleccionada'}
+                            {gallinas.find((g) => g.id === formData.madre_id)?.codigo ||
+                              'Seleccionada'}
                           </Text>
                         </>
                       ) : formData.madre_externo ? (
                         <>
-                          <View style={[styles.treeFormPhotoPlaceholder, { backgroundColor: 'rgba(236, 72, 153, 0.15)' }]}>
+                          <View
+                            style={[
+                              styles.treeFormPhotoPlaceholder,
+                              { backgroundColor: 'rgba(236, 72, 153, 0.15)' },
+                            ]}
+                          >
                             <Ionicons name="female" size={18} color="#ec4899" />
                           </View>
                           <Text style={styles.treeFormNodeCode} numberOfLines={1}>
                             {formData.madre_externo}
                           </Text>
-                          {madreGalleria && <Text style={styles.treeFormNodeGalleria}>{madreGalleria}</Text>}
+                          {madreGalleria ? (
+                            <Text style={styles.treeFormNodeGalleria}>{madreGalleria}</Text>
+                          ) : null}
                           <Text style={styles.treeFormNodeExternal}>Externa</Text>
                         </>
                       ) : (
@@ -896,19 +1024,21 @@ export default function AveFormScreen() {
                         </>
                       )}
                     </TouchableOpacity>
-                    
-                    {/* Botón + para abuelos maternos */}
+
                     {(formData.madre_id || formData.madre_externo) && (
                       <TouchableOpacity
                         style={styles.treeFormAddAbueloBtn}
                         onPress={() => setShowAbuelosMaternos(!showAbuelosMaternos)}
                       >
-                        <Ionicons name={showAbuelosMaternos ? "chevron-up" : "add"} size={16} color="#d4a017" />
+                        <Ionicons
+                          name={showAbuelosMaternos ? 'chevron-up' : 'add'}
+                          size={16}
+                          color="#d4a017"
+                        />
                         <Text style={styles.treeFormAddAbueloText}>Abuelos</Text>
                       </TouchableOpacity>
                     )}
-                    
-                    {/* Lista desplegable madre */}
+
                     {showMadreList && (
                       <View style={styles.treeFormSelectList}>
                         <TouchableOpacity
@@ -916,9 +1046,13 @@ export default function AveFormScreen() {
                           onPress={() => setShowMadreExterno(!showMadreExterno)}
                         >
                           <Ionicons name="add-circle" size={18} color="#ec4899" />
-                          <Text style={[styles.treeFormSelectOptionTextAdd, { color: '#ec4899' }]}>Madre Externa</Text>
+                          <Text
+                            style={[styles.treeFormSelectOptionTextAdd, { color: '#ec4899' }]}
+                          >
+                            Madre Externa
+                          </Text>
                         </TouchableOpacity>
-                        
+
                         {showMadreExterno && (
                           <View style={styles.treeFormExternalInputContainer}>
                             <TextInput
@@ -939,7 +1073,11 @@ export default function AveFormScreen() {
                               style={[styles.treeFormConfirmBtn, { backgroundColor: '#ec4899' }]}
                               onPress={() => {
                                 if (madreExterno) {
-                                  setFormData({ ...formData, madre_externo: madreExterno, madre_id: '' });
+                                  setFormData({
+                                    ...formData,
+                                    madre_externo: madreExterno,
+                                    madre_id: '',
+                                  });
                                 }
                                 setShowMadreList(false);
                                 setShowMadreExterno(false);
@@ -949,7 +1087,7 @@ export default function AveFormScreen() {
                             </TouchableOpacity>
                           </View>
                         )}
-                        
+
                         <TouchableOpacity
                           style={styles.treeFormSelectOption}
                           onPress={() => {
@@ -962,16 +1100,21 @@ export default function AveFormScreen() {
                           <Ionicons name="close-circle" size={18} color="#9ca3af" />
                           <Text style={styles.treeFormSelectOptionText}>Ninguna</Text>
                         </TouchableOpacity>
-                        
+
                         {gallinas.filter((g) => g.id !== id).map((gallina) => (
                           <TouchableOpacity
                             key={gallina.id}
                             style={[
                               styles.treeFormSelectOption,
-                              formData.madre_id === gallina.id && styles.treeFormSelectOptionActive
+                              formData.madre_id === gallina.id &&
+                                styles.treeFormSelectOptionActive,
                             ]}
                             onPress={() => {
-                              setFormData({ ...formData, madre_id: gallina.id, madre_externo: '' });
+                              setFormData({
+                                ...formData,
+                                madre_id: gallina.id,
+                                madre_externo: '',
+                              });
                               setMadreExterno('');
                               setMadreGalleria('');
                               setShowMadreList(false);
@@ -986,7 +1129,6 @@ export default function AveFormScreen() {
                   </View>
                 </View>
 
-                {/* Sección de Abuelos Paternos - Árbol */}
                 {showAbuelosPaternos && (formData.padre_id || formData.padre_externo) && (
                   <View style={styles.abuelosTreeSection}>
                     <View style={styles.abuelosTreeConnectorFromParent} />
@@ -995,7 +1137,12 @@ export default function AveFormScreen() {
                       <View style={styles.abueloTreeItem}>
                         <Text style={styles.abueloTreeLabel}>Abuelo ♂</Text>
                         <View style={styles.abueloTreeNode}>
-                          <View style={[styles.abueloTreeIcon, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
+                          <View
+                            style={[
+                              styles.abueloTreeIcon,
+                              { backgroundColor: 'rgba(59, 130, 246, 0.15)' },
+                            ]}
+                          >
                             <Ionicons name="male" size={16} color="#3b82f6" />
                           </View>
                           <TextInput
@@ -1008,7 +1155,12 @@ export default function AveFormScreen() {
                       <View style={styles.abueloTreeItem}>
                         <Text style={styles.abueloTreeLabel}>Abuela ♀</Text>
                         <View style={styles.abueloTreeNode}>
-                          <View style={[styles.abueloTreeIcon, { backgroundColor: 'rgba(236, 72, 153, 0.15)' }]}>
+                          <View
+                            style={[
+                              styles.abueloTreeIcon,
+                              { backgroundColor: 'rgba(236, 72, 153, 0.15)' },
+                            ]}
+                          >
                             <Ionicons name="female" size={16} color="#ec4899" />
                           </View>
                           <TextInput
@@ -1022,7 +1174,6 @@ export default function AveFormScreen() {
                   </View>
                 )}
 
-                {/* Sección de Abuelos Maternos - Árbol */}
                 {showAbuelosMaternos && (formData.madre_id || formData.madre_externo) && (
                   <View style={styles.abuelosTreeSection}>
                     <View style={styles.abuelosTreeConnectorFromParent} />
@@ -1031,7 +1182,12 @@ export default function AveFormScreen() {
                       <View style={styles.abueloTreeItem}>
                         <Text style={styles.abueloTreeLabel}>Abuelo ♂</Text>
                         <View style={styles.abueloTreeNode}>
-                          <View style={[styles.abueloTreeIcon, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
+                          <View
+                            style={[
+                              styles.abueloTreeIcon,
+                              { backgroundColor: 'rgba(59, 130, 246, 0.15)' },
+                            ]}
+                          >
                             <Ionicons name="male" size={16} color="#3b82f6" />
                           </View>
                           <TextInput
@@ -1044,7 +1200,12 @@ export default function AveFormScreen() {
                       <View style={styles.abueloTreeItem}>
                         <Text style={styles.abueloTreeLabel}>Abuela ♀</Text>
                         <View style={styles.abueloTreeNode}>
-                          <View style={[styles.abueloTreeIcon, { backgroundColor: 'rgba(236, 72, 153, 0.15)' }]}>
+                          <View
+                            style={[
+                              styles.abueloTreeIcon,
+                              { backgroundColor: 'rgba(236, 72, 153, 0.15)' },
+                            ]}
+                          >
                             <Ionicons name="female" size={16} color="#ec4899" />
                           </View>
                           <TextInput
@@ -1061,7 +1222,6 @@ export default function AveFormScreen() {
             </View>
           )}
 
-          {/* Notas */}
           <Text style={styles.label}>Notas</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
@@ -1077,7 +1237,6 @@ export default function AveFormScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Modal para seleccionar foto (web) */}
       <Modal
         visible={showPhotoModal}
         transparent
@@ -1088,7 +1247,7 @@ export default function AveFormScreen() {
           <View style={styles.photoModal}>
             <Text style={styles.photoModalTitle}>Agregar Foto</Text>
             <Text style={styles.photoModalSubtitle}>Selecciona una opción</Text>
-            
+
             <TouchableOpacity
               style={styles.photoModalOption}
               onPress={() => {
@@ -1096,15 +1255,22 @@ export default function AveFormScreen() {
                 pickImage();
               }}
             >
-              <View style={[styles.photoModalIcon, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
+              <View
+                style={[
+                  styles.photoModalIcon,
+                  { backgroundColor: 'rgba(59, 130, 246, 0.15)' },
+                ]}
+              >
                 <Ionicons name="images" size={28} color="#3b82f6" />
               </View>
               <View>
                 <Text style={styles.photoModalOptionText}>Galería</Text>
-                <Text style={styles.photoModalOptionSubtext}>Seleccionar de tus fotos</Text>
+                <Text style={styles.photoModalOptionSubtext}>
+                  Seleccionar de tus fotos
+                </Text>
               </View>
             </TouchableOpacity>
-            
+
             <TouchableOpacity
               style={styles.photoModalOption}
               onPress={() => {
@@ -1112,7 +1278,12 @@ export default function AveFormScreen() {
                 takePhoto();
               }}
             >
-              <View style={[styles.photoModalIcon, { backgroundColor: 'rgba(34, 197, 94, 0.15)' }]}>
+              <View
+                style={[
+                  styles.photoModalIcon,
+                  { backgroundColor: 'rgba(34, 197, 94, 0.15)' },
+                ]}
+              >
                 <Ionicons name="camera" size={28} color="#22c55e" />
               </View>
               <View>
@@ -1120,12 +1291,44 @@ export default function AveFormScreen() {
                 <Text style={styles.photoModalOptionSubtext}>Tomar una foto nueva</Text>
               </View>
             </TouchableOpacity>
-            
+
             <TouchableOpacity
               style={styles.photoModalCancel}
               onPress={() => setShowPhotoModal(false)}
             >
               <Text style={styles.photoModalCancelText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showPremiumModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPremiumModal(false)}
+      >
+        <View style={styles.premiumModalOverlay}>
+          <View style={styles.premiumModal}>
+            <View style={styles.premiumIconWrap}>
+              <Ionicons name="lock-closed" size={30} color="#d4a017" />
+            </View>
+
+            <Text style={styles.premiumTitle}>{premiumModalTitle}</Text>
+            <Text style={styles.premiumMessage}>{premiumModalMessage}</Text>
+
+            <TouchableOpacity
+              style={styles.premiumPrimaryButton}
+              onPress={goToMembershipPlans}
+            >
+              <Text style={styles.premiumPrimaryButtonText}>Ver planes de membresía</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.premiumSecondaryButton}
+              onPress={() => setShowPremiumModal(false)}
+            >
+              <Text style={styles.premiumSecondaryButtonText}>Cerrar</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1471,7 +1674,6 @@ const styles = StyleSheet.create({
     color: '#555555',
     fontWeight: '500',
   },
-  // Estilos para placa con color
   placaContainer: {
     flexDirection: 'row',
     gap: 10,
@@ -1535,7 +1737,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#1a1a1a',
   },
-  // Estilos para castador/criador
   castadorList: {
     backgroundColor: '#ffffff',
     borderRadius: 12,
@@ -1630,7 +1831,6 @@ const styles = StyleSheet.create({
     color: '#555555',
     fontSize: 14,
   },
-  // Estilos para indicador de fotos
   photoIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1642,7 +1842,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#555555',
   },
-  // Estilos para sección de padres desplegable
   padresSectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1678,7 +1877,6 @@ const styles = StyleSheet.create({
     color: '#555555',
     marginBottom: 8,
   },
-  // Estilos para foto circular centrada
   photoSectionCentered: {
     alignItems: 'center',
     marginBottom: 20,
@@ -1725,7 +1923,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 12,
   },
-  // Estilos para árbol genealógico en formulario
   treeFormContainer: {
     alignItems: 'center',
     paddingVertical: 16,
@@ -1931,7 +2128,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#d4a017',
   },
-  // Estilos para sección de abuelos
   abuelosSection: {
     marginTop: 16,
     paddingTop: 16,
@@ -1950,7 +2146,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     gap: 12,
   },
-  // Estilos para árbol de abuelos en formulario
   abuelosTreeSection: {
     alignItems: 'center',
     marginTop: 8,
@@ -2031,5 +2226,68 @@ const styles = StyleSheet.create({
     borderColor: '#e0e0e0',
     width: '100%',
     textAlign: 'center',
+  },
+  premiumModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  premiumModal: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    padding: 24,
+    alignItems: 'center',
+  },
+  premiumIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(212, 160, 23, 0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  premiumTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  premiumMessage: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: '#555555',
+    textAlign: 'center',
+    marginBottom: 22,
+  },
+  premiumPrimaryButton: {
+    width: '100%',
+    backgroundColor: '#d4a017',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  premiumPrimaryButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#000',
+  },
+  premiumSecondaryButton: {
+    width: '100%',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  premiumSecondaryButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#555555',
   },
 });

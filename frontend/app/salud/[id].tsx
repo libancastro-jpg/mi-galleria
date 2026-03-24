@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -25,12 +26,19 @@ interface Ave {
 export default function SaludFormScreen() {
   const router = useRouter();
   const { id, ave_id: paramAveId } = useLocalSearchParams<{ id: string; ave_id?: string }>();
-  const isEdit = id && id !== 'new';
+  const isEdit = !!id && id !== 'new';
+  const MEMBERSHIP_PLANS_ROUTE = '/planes';
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [aves, setAves] = useState<Ave[]>([]);
   const [showAveList, setShowAveList] = useState(false);
+
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [premiumModalTitle, setPremiumModalTitle] = useState('Límite alcanzado');
+  const [premiumModalMessage, setPremiumModalMessage] = useState(
+    'Has alcanzado el límite de tu plan. Ve a Planes de membresía para continuar.'
+  );
 
   const TIPOS_SALUD = [
     { value: 'vitamina', label: 'Vitamina', icon: 'flask' },
@@ -56,12 +64,79 @@ export default function SaludFormScreen() {
     }
   }, [id]);
 
+  const extractErrorMessage = (error: any) => {
+    return (
+      error?.response?.data?.detail?.message ||
+      error?.response?.data?.detail ||
+      error?.response?.data?.message ||
+      error?.message ||
+      'Ocurrió un error'
+    );
+  };
+
+  const isPremiumLimitError = (error: any) => {
+    const code =
+      error?.response?.data?.detail?.code ||
+      error?.response?.data?.code ||
+      error?.code;
+
+    const message = String(
+      error?.response?.data?.detail?.message ||
+        error?.response?.data?.detail ||
+        error?.response?.data?.message ||
+        error?.message ||
+        ''
+    ).toLowerCase();
+
+    return (
+      code === 'PREMIUM_REQUIRED' ||
+      code === 'FREE_PLAN_LIMIT_REACHED' ||
+      code === 'TRIAL_EXPIRED' ||
+      code === 'PLAN_REQUIRED' ||
+      message.includes('premium') ||
+      message.includes('membres') ||
+      message.includes('trial') ||
+      message.includes('prueba gratis') ||
+      message.includes('límite') ||
+      message.includes('limite') ||
+      message.includes('plan requerido')
+    );
+  };
+
+  const openPremiumModalFromError = (error: any) => {
+    const title =
+      error?.response?.data?.detail?.title ||
+      error?.response?.data?.title ||
+      'Límite alcanzado';
+
+    const message =
+      error?.response?.data?.detail?.message ||
+      error?.response?.data?.detail ||
+      error?.response?.data?.message ||
+      'Has alcanzado el límite de tu plan. Ve a Planes de membresía para continuar.';
+
+    setPremiumModalTitle(title);
+    setPremiumModalMessage(message);
+    setShowPremiumModal(true);
+  };
+
+  const goToMembershipPlans = () => {
+    setShowPremiumModal(false);
+    router.push(MEMBERSHIP_PLANS_ROUTE as any);
+  };
+
   const fetchAves = async () => {
     try {
       const data = await api.get('/aves', { estado: 'activo' });
-      setAves(data);
+      const avesData = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.data)
+          ? data.data
+          : [];
+      setAves(avesData);
     } catch (error) {
       console.error('Error fetching aves:', error);
+      setAves([]);
     }
   };
 
@@ -79,7 +154,7 @@ export default function SaludFormScreen() {
         notas: data.notas || '',
       });
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      Alert.alert('Error', extractErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -106,7 +181,11 @@ export default function SaludFormScreen() {
       }
       router.back();
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      if (isPremiumLimitError(error)) {
+        openPremiumModalFromError(error);
+      } else {
+        Alert.alert('Error', extractErrorMessage(error));
+      }
     } finally {
       setSaving(false);
     }
@@ -149,7 +228,6 @@ export default function SaludFormScreen() {
         </View>
 
         <ScrollView style={styles.form} contentContainerStyle={styles.formContent}>
-          {/* Ave Selection */}
           <Text style={styles.label}>Ave *</Text>
           <TouchableOpacity
             style={styles.selectButton}
@@ -172,30 +250,33 @@ export default function SaludFormScreen() {
 
           {showAveList && (
             <View style={styles.selectList}>
-              {aves.map((ave) => (
-                <TouchableOpacity
-                  key={ave.id}
-                  style={[
-                    styles.selectItem,
-                    formData.ave_id === ave.id && styles.selectItemActive,
-                  ]}
-                  onPress={() => {
-                    setFormData({ ...formData, ave_id: ave.id });
-                    setShowAveList(false);
-                  }}
-                >
-                  <Text style={styles.selectItemText}>
-                    {ave.codigo} {ave.nombre ? `- ${ave.nombre}` : ''}
-                  </Text>
-                  {formData.ave_id === ave.id && (
-                    <Ionicons name="checkmark" size={20} color="#f59e0b" />
-                  )}
-                </TouchableOpacity>
-              ))}
+              {aves.length === 0 ? (
+                <Text style={styles.noAvesText}>No hay aves activas</Text>
+              ) : (
+                aves.map((ave) => (
+                  <TouchableOpacity
+                    key={ave.id}
+                    style={[
+                      styles.selectItem,
+                      formData.ave_id === ave.id && styles.selectItemActive,
+                    ]}
+                    onPress={() => {
+                      setFormData({ ...formData, ave_id: ave.id });
+                      setShowAveList(false);
+                    }}
+                  >
+                    <Text style={styles.selectItemText}>
+                      {ave.codigo} {ave.nombre ? `- ${ave.nombre}` : ''}
+                    </Text>
+                    {formData.ave_id === ave.id && (
+                      <Ionicons name="checkmark" size={20} color="#f59e0b" />
+                    )}
+                  </TouchableOpacity>
+                ))
+              )}
             </View>
           )}
 
-          {/* Tipo */}
           <Text style={styles.label}>Tipo *</Text>
           <View style={styles.tipoGrid}>
             {TIPOS_SALUD.map((tipo) => (
@@ -224,7 +305,6 @@ export default function SaludFormScreen() {
             ))}
           </View>
 
-          {/* Producto */}
           <Text style={styles.label}>Producto *</Text>
           <TextInput
             style={styles.input}
@@ -234,7 +314,6 @@ export default function SaludFormScreen() {
             placeholderTextColor="#555555"
           />
 
-          {/* Dosis */}
           <Text style={styles.label}>Dosis</Text>
           <TextInput
             style={styles.input}
@@ -244,7 +323,6 @@ export default function SaludFormScreen() {
             placeholderTextColor="#555555"
           />
 
-          {/* Fecha */}
           <Text style={styles.label}>Fecha de aplicación *</Text>
           <TextInput
             style={styles.input}
@@ -254,7 +332,6 @@ export default function SaludFormScreen() {
             placeholderTextColor="#555555"
           />
 
-          {/* Próxima fecha */}
           <Text style={styles.label}>Próxima aplicación (recordatorio)</Text>
           <TextInput
             style={styles.input}
@@ -264,7 +341,6 @@ export default function SaludFormScreen() {
             placeholderTextColor="#555555"
           />
 
-          {/* Notas */}
           <Text style={styles.label}>Notas</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
@@ -278,6 +354,38 @@ export default function SaludFormScreen() {
 
           <View style={{ height: 40 }} />
         </ScrollView>
+
+        <Modal
+          visible={showPremiumModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowPremiumModal(false)}
+        >
+          <View style={styles.premiumModalOverlay}>
+            <View style={styles.premiumModal}>
+              <View style={styles.premiumIconWrap}>
+                <Ionicons name="lock-closed" size={30} color="#d4a017" />
+              </View>
+
+              <Text style={styles.premiumTitle}>{premiumModalTitle}</Text>
+              <Text style={styles.premiumMessage}>{premiumModalMessage}</Text>
+
+              <TouchableOpacity
+                style={styles.premiumPrimaryButton}
+                onPress={goToMembershipPlans}
+              >
+                <Text style={styles.premiumPrimaryButtonText}>Ver planes de membresía</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.premiumSecondaryButton}
+                onPress={() => setShowPremiumModal(false)}
+              >
+                <Text style={styles.premiumSecondaryButtonText}>Cerrar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -394,6 +502,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1a1a1a',
   },
+  noAvesText: {
+    fontSize: 14,
+    color: '#555555',
+    textAlign: 'center',
+    padding: 16,
+  },
   tipoGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -422,5 +536,68 @@ const styles = StyleSheet.create({
   tipoTextActive: {
     color: '#000',
     fontWeight: '600',
+  },
+  premiumModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  premiumModal: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    padding: 24,
+    alignItems: 'center',
+  },
+  premiumIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(212, 160, 23, 0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  premiumTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  premiumMessage: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: '#555555',
+    textAlign: 'center',
+    marginBottom: 22,
+  },
+  premiumPrimaryButton: {
+    width: '100%',
+    backgroundColor: '#d4a017',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  premiumPrimaryButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#000',
+  },
+  premiumSecondaryButton: {
+    width: '100%',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  premiumSecondaryButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#555555',
   },
 });

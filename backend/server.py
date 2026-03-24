@@ -6,16 +6,16 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
-import uuid
 from datetime import datetime, timedelta
 import jwt
 import bcrypt
 from bson import ObjectId
+from bson.errors import InvalidId
 
 ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
+load_dotenv(ROOT_DIR / ".env")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -26,14 +26,15 @@ if not mongo_url:
     raise RuntimeError("MONGO_URL is not set in environment variables")
 
 print("Mongo URL loaded:", mongo_url[:25], "...")
-db_name = os.environ.get('DB_NAME', 'castador_pro')
+db_name = os.environ.get("DB_NAME", "castador_pro")
 client = AsyncIOMotorClient(mongo_url)
 db = client[db_name]
 
-JWT_SECRET = os.environ.get('JWT_SECRET')
+JWT_SECRET = os.environ.get("JWT_SECRET")
 if not JWT_SECRET:
-    JWT_SECRET = 'castador-pro-secret-key-2025-dev'
+    JWT_SECRET = "castador-pro-secret-key-2025-dev"
     logger.warning("JWT_SECRET not set, using development default. Set JWT_SECRET in production!")
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
 
@@ -41,49 +42,51 @@ app = FastAPI(title="Castador Pro API")
 api_router = APIRouter(prefix="/api")
 security = HTTPBearer(auto_error=False)
 
+
 # ============== MODELS ==============
 
 class PyObjectId(str):
     @classmethod
     def __get_validators__(cls):
         yield cls.validate
-    
+
     @classmethod
     def validate(cls, v, info=None):
         if isinstance(v, ObjectId):
             return str(v)
         if isinstance(v, str):
             return v
-        raise ValueError('Invalid ObjectId')
+        raise ValueError("Invalid ObjectId")
 
-# User Models
+
 class UserCreate(BaseModel):
     telefono: str
     email: Optional[str] = None
     pin: str
     nombre: Optional[str] = None
 
+
 class UserLogin(BaseModel):
     telefono: str
     pin: str
+
 
 class UserResponse(BaseModel):
     id: str
     telefono: str
     email: Optional[str] = None
     nombre: Optional[str] = None
-    plan: str = "gratis"
-    trial_start_at: Optional[datetime] = None
     created_at: datetime
+
 
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
 
-# Ave Models
+
 class AveBase(BaseModel):
-    tipo: str  # gallo | gallina
+    tipo: str
     codigo: str
     nombre: Optional[str] = None
     color_placa: Optional[str] = None
@@ -101,8 +104,10 @@ class AveBase(BaseModel):
     madre_externo: Optional[str] = None
     marcaje_qr: Optional[str] = None
 
+
 class AveCreate(AveBase):
     pass
+
 
 class AveUpdate(BaseModel):
     tipo: Optional[str] = None
@@ -131,13 +136,14 @@ class AveUpdate(BaseModel):
     abuelo_materno_madre: Optional[str] = None
     abuelo_materno_madre_galleria: Optional[str] = None
 
+
 class AveResponse(AveBase):
     id: str
     user_id: str
     created_at: datetime
     updated_at: datetime
 
-# Cruce Models
+
 class CruceBase(BaseModel):
     padre_id: Optional[str] = None
     madre_id: Optional[str] = None
@@ -159,8 +165,10 @@ class CruceBase(BaseModel):
     marca_color: Optional[str] = None
     sin_marca: Optional[bool] = False
 
+
 class CruceCreate(CruceBase):
     pass
+
 
 class CruceUpdate(BaseModel):
     padre_id: Optional[str] = None
@@ -183,6 +191,7 @@ class CruceUpdate(BaseModel):
     marca_color: Optional[str] = None
     sin_marca: Optional[bool] = None
 
+
 class CruceResponse(CruceBase):
     id: str
     user_id: str
@@ -190,7 +199,7 @@ class CruceResponse(CruceBase):
     created_at: datetime
     updated_at: datetime
 
-# Camada Models
+
 class CamadaBase(BaseModel):
     cruce_id: str
     fecha_puesta_inicio: Optional[str] = None
@@ -201,8 +210,10 @@ class CamadaBase(BaseModel):
     pollitos_nacidos: Optional[int] = None
     notas: Optional[str] = None
 
+
 class CamadaCreate(CamadaBase):
     pass
+
 
 class CamadaUpdate(BaseModel):
     cruce_id: Optional[str] = None
@@ -214,13 +225,14 @@ class CamadaUpdate(BaseModel):
     pollitos_nacidos: Optional[int] = None
     notas: Optional[str] = None
 
+
 class CamadaResponse(CamadaBase):
     id: str
     user_id: str
     created_at: datetime
     updated_at: datetime
 
-# Pelea Models
+
 class PeleaBase(BaseModel):
     ave_id: str
     fecha: str
@@ -229,8 +241,10 @@ class PeleaBase(BaseModel):
     calificacion: str
     notas: Optional[str] = None
 
+
 class PeleaCreate(PeleaBase):
     pass
+
 
 class PeleaUpdate(BaseModel):
     ave_id: Optional[str] = None
@@ -240,13 +254,14 @@ class PeleaUpdate(BaseModel):
     calificacion: Optional[str] = None
     notas: Optional[str] = None
 
+
 class PeleaResponse(PeleaBase):
     id: str
     user_id: str
     created_at: datetime
     updated_at: datetime
 
-# Salud Models
+
 class SaludBase(BaseModel):
     ave_id: str
     tipo: str
@@ -256,8 +271,10 @@ class SaludBase(BaseModel):
     proxima_fecha: Optional[str] = None
     notas: Optional[str] = None
 
+
 class SaludCreate(SaludBase):
     pass
+
 
 class SaludUpdate(BaseModel):
     ave_id: Optional[str] = None
@@ -268,19 +285,21 @@ class SaludUpdate(BaseModel):
     proxima_fecha: Optional[str] = None
     notas: Optional[str] = None
 
+
 class SaludResponse(SaludBase):
     id: str
     user_id: str
     created_at: datetime
     updated_at: datetime
 
-# Cuido Models
+
 class TrabajoItem(BaseModel):
     numero: int
     tiempo_minutos: Optional[int] = None
     completado: bool = False
     fecha_completado: Optional[str] = None
     notas: Optional[str] = None
+
 
 class CuidoBase(BaseModel):
     ave_id: str
@@ -299,10 +318,12 @@ class CuidoBase(BaseModel):
     fecha_fin_descanso: Optional[str] = None
     notas: Optional[str] = None
 
+
 class CuidoCreate(BaseModel):
     ave_id: str
     fecha_inicio: Optional[str] = None
     notas: Optional[str] = None
+
 
 class CuidoUpdate(BaseModel):
     estado: Optional[str] = None
@@ -319,13 +340,14 @@ class CuidoUpdate(BaseModel):
     fecha_fin_descanso: Optional[str] = None
     notas: Optional[str] = None
 
+
 class CuidoResponse(CuidoBase):
     id: str
     user_id: str
     created_at: datetime
     updated_at: datetime
 
-# Sync Models
+
 class SyncData(BaseModel):
     aves: List[Dict[str, Any]] = []
     cruces: List[Dict[str, Any]] = []
@@ -334,35 +356,22 @@ class SyncData(BaseModel):
     salud: List[Dict[str, Any]] = []
     last_sync: Optional[str] = None
 
+
 # ============== HELPERS ==============
 
 def hash_pin(pin: str) -> str:
     return bcrypt.hashpw(pin.encode(), bcrypt.gensalt()).decode()
 
+
 def verify_pin(pin: str, hashed: str) -> bool:
     return bcrypt.checkpw(pin.encode(), hashed.encode())
+
 
 def create_token(user_id: str) -> str:
     expire = datetime.utcnow() + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
     payload = {"sub": user_id, "exp": expire}
     return jwt.encode(payload, JWT_SECRET, algorithm=ALGORITHM)
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    if not credentials:
-        raise HTTPException(status_code=401, detail="No autorizado")
-    try:
-        payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[ALGORITHM])
-        user_id = payload.get("sub")
-        if not user_id:
-            raise HTTPException(status_code=401, detail="Token inválido")
-        user = await db.users.find_one({"_id": ObjectId(user_id)})
-        if not user:
-            raise HTTPException(status_code=401, detail="Usuario no encontrado")
-        return {"id": str(user["_id"]), **{k: v for k, v in user.items() if k != "_id" and k != "pin"}}
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expirado")
-    except Exception:
-        raise HTTPException(status_code=401, detail="Token inválido")
 
 def serialize_doc(doc: dict) -> dict:
     if doc is None:
@@ -376,24 +385,52 @@ def serialize_doc(doc: dict) -> dict:
                 result[k] = v
     return result
 
-def is_free_trial_active(user: dict) -> bool:
-    plan = user.get("plan", "gratis")
 
-    if plan != "gratis":
-        return True
+def clean_optional_id(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        value = value.strip()
+        if value == "":
+            return None
+    return value
 
-    trial_start_at = user.get("trial_start_at")
-    if not trial_start_at:
-        return False
 
-    if isinstance(trial_start_at, str):
-        try:
-            trial_start_at = datetime.fromisoformat(trial_start_at)
-        except Exception:
-            return False
+def to_object_id(value: str, field_name: str = "id") -> ObjectId:
+    value = clean_optional_id(value)
+    if not value:
+        raise HTTPException(status_code=400, detail=f"{field_name} inválido")
+    try:
+        return ObjectId(value)
+    except (InvalidId, TypeError):
+        raise HTTPException(status_code=400, detail=f"{field_name} inválido")
 
-    trial_end_at = trial_start_at + timedelta(days=15)
-    return datetime.utcnow() <= trial_end_at
+
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    if not credentials:
+        raise HTTPException(status_code=401, detail="No autorizado")
+    try:
+        payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[ALGORITHM])
+        user_id = payload.get("sub")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Token inválido")
+
+        user = await db.users.find_one({"_id": to_object_id(user_id, "user_id")})
+        if not user:
+            raise HTTPException(status_code=401, detail="Usuario no encontrado")
+
+        return {
+            "id": str(user["_id"]),
+            **{k: v for k, v in user.items() if k not in ["_id", "pin"]}
+        }
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expirado")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=401, detail="Token inválido")
+
+
 # ============== AUTH ROUTES ==============
 
 @api_router.post("/auth/register", response_model=TokenResponse)
@@ -401,29 +438,25 @@ async def register(user_data: UserCreate):
     existing = await db.users.find_one({"telefono": user_data.telefono})
     if existing:
         raise HTTPException(status_code=400, detail="Este número ya está registrado")
-    
+
     if not user_data.pin.isdigit() or len(user_data.pin) < 4 or len(user_data.pin) > 6:
         raise HTTPException(status_code=400, detail="El PIN debe ser de 4 a 6 dígitos")
-    
+
+    now = datetime.utcnow()
+
     user_doc = {
         "telefono": user_data.telefono,
         "email": user_data.email,
         "nombre": user_data.nombre,
         "pin": hash_pin(user_data.pin),
-        "plan": "gratis",
-        "trial_start_at": datetime.utcnow(),
-        "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow()
+        "created_at": now,
+        "updated_at": now,
     }
 
-    # ✅ GUARDAR EN DB
     result = await db.users.insert_one(user_doc)
     user_id = str(result.inserted_id)
-
-    # ✅ CREAR TOKEN
     token = create_token(user_id)
 
-    # ✅ RESPUESTA
     return {
         "access_token": token,
         "token_type": "bearer",
@@ -432,24 +465,23 @@ async def register(user_data: UserCreate):
             "telefono": user_doc["telefono"],
             "email": user_doc.get("email"),
             "nombre": user_doc.get("nombre"),
-            "plan": user_doc.get("plan", "gratis"),
-            "trial_start_at": user_doc.get("trial_start_at"),
-            "created_at": user_doc["created_at"]
-        }
+            "created_at": user_doc["created_at"],
+        },
     }
+
 
 @api_router.post("/auth/login", response_model=TokenResponse)
 async def login(credentials: UserLogin):
     user = await db.users.find_one({"telefono": credentials.telefono})
     if not user:
         raise HTTPException(status_code=401, detail="Número no registrado")
-    
+
     if not verify_pin(credentials.pin, user["pin"]):
         raise HTTPException(status_code=401, detail="PIN incorrecto")
-    
+
     user_id = str(user["_id"])
     token = create_token(user_id)
-    
+
     return TokenResponse(
         access_token=token,
         user=UserResponse(
@@ -457,41 +489,35 @@ async def login(credentials: UserLogin):
             telefono=user["telefono"],
             email=user.get("email"),
             nombre=user.get("nombre"),
-            plan=user.get("plan", "gratis"),
-            trial_start_at=user.get("trial_start_at"),
-            created_at=user["created_at"]
-        )
+            created_at=user["created_at"],
+        ),
     )
+
 
 @api_router.get("/auth/me", response_model=UserResponse)
 async def get_me(current_user: dict = Depends(get_current_user)):
-    if "plan" not in current_user or not current_user.get("plan"):
-        current_user["plan"] = "gratis"
-    if "trial_start_at" not in current_user:
-        current_user["trial_start_at"] = None
     return UserResponse(**current_user)
+
 
 class ProfileUpdate(BaseModel):
     email: Optional[str] = None
     nombre: Optional[str] = None
 
+
 @api_router.put("/auth/profile")
-async def update_profile(
-    data: ProfileUpdate,
-    current_user: dict = Depends(get_current_user)
-):
+async def update_profile(data: ProfileUpdate, current_user: dict = Depends(get_current_user)):
     update_data = {"updated_at": datetime.utcnow()}
     if data.email is not None:
         update_data["email"] = data.email
     if data.nombre is not None:
         update_data["nombre"] = data.nombre
-    
+
     await db.users.update_one(
-        {"_id": ObjectId(current_user["id"])},
-        {"$set": update_data}
+        {"_id": to_object_id(current_user["id"], "user_id")},
+        {"$set": update_data},
     )
-    
-    updated_user = await db.users.find_one({"_id": ObjectId(current_user["id"])})
+
+    updated_user = await db.users.find_one({"_id": to_object_id(current_user["id"], "user_id")})
     return {
         "message": "Perfil actualizado",
         "user": {
@@ -499,42 +525,40 @@ async def update_profile(
             "telefono": updated_user["telefono"],
             "email": updated_user.get("email"),
             "nombre": updated_user.get("nombre"),
-            "plan": updated_user.get("plan", "gratis"),
-            "created_at": updated_user["created_at"]
-        }
+            "created_at": updated_user["created_at"],
+        },
     }
+
 
 class ChangePinRequest(BaseModel):
     current_pin: str
     new_pin: str
 
+
 @api_router.put("/auth/change-pin")
-async def change_pin(
-    data: ChangePinRequest,
-    current_user: dict = Depends(get_current_user)
-):
-    user = await db.users.find_one({"_id": ObjectId(current_user["id"])})
+async def change_pin(data: ChangePinRequest, current_user: dict = Depends(get_current_user)):
+    user = await db.users.find_one({"_id": to_object_id(current_user["id"], "user_id")})
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    
+
     if not verify_pin(data.current_pin, user["pin"]):
         raise HTTPException(status_code=400, detail="PIN actual incorrecto")
-    
+
     if not data.new_pin.isdigit() or len(data.new_pin) < 4 or len(data.new_pin) > 6:
         raise HTTPException(status_code=400, detail="El nuevo PIN debe ser de 4 a 6 dígitos")
-    
+
     await db.users.update_one(
-        {"_id": ObjectId(current_user["id"])},
-        {"$set": {"pin": hash_pin(data.new_pin), "updated_at": datetime.utcnow()}}
+        {"_id": to_object_id(current_user["id"], "user_id")},
+        {"$set": {"pin": hash_pin(data.new_pin), "updated_at": datetime.utcnow()}},
     )
-    
+
     return {"message": "PIN actualizado correctamente"}
+
 
 @api_router.delete("/auth/delete-account")
 async def delete_account(current_user: dict = Depends(get_current_user)):
     user_id = current_user["id"]
 
-    # Eliminar todos los datos asociados al usuario
     await db.aves.delete_many({"user_id": user_id})
     await db.cruces.delete_many({"user_id": user_id})
     await db.camadas.delete_many({"user_id": user_id})
@@ -542,49 +566,65 @@ async def delete_account(current_user: dict = Depends(get_current_user)):
     await db.salud.delete_many({"user_id": user_id})
     await db.cuido.delete_many({"user_id": user_id})
 
-    # Eliminar usuario
-    result = await db.users.delete_one({"_id": ObjectId(user_id)})
+    result = await db.users.delete_one({"_id": to_object_id(user_id, "user_id")})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
     return {"message": "Cuenta eliminada correctamente"}
 
+
 @api_router.get("/export/data")
 async def export_data(current_user: dict = Depends(get_current_user)):
     user_id = current_user["id"]
-    
+
     aves_count = await db.aves.count_documents({"user_id": user_id})
     cruces_count = await db.cruces.count_documents({"user_id": user_id})
     camadas_count = await db.camadas.count_documents({"user_id": user_id})
     peleas_count = await db.peleas.count_documents({"user_id": user_id})
-    
+
     return {
         "aves": aves_count,
         "cruces": cruces_count,
         "camadas": camadas_count,
-        "peleas": peleas_count
+        "peleas": peleas_count,
     }
+
 
 # ============== AVES ROUTES ==============
 
 @api_router.post("/aves", response_model=AveResponse)
 async def create_ave(ave: AveCreate, current_user: dict = Depends(get_current_user)):
-    # 🔓 VALIDACIÓN PREMIUM DESACTIVADA TEMPORALMENTE
+    padre_id = clean_optional_id(ave.padre_id)
+    madre_id = clean_optional_id(ave.madre_id)
 
-    if ave.padre_id:
-        padre = await db.aves.find_one({"_id": ObjectId(ave.padre_id)})
-        if padre and padre.get("tipo") != "gallo":
+    if padre_id:
+        padre = await db.aves.find_one({
+            "_id": to_object_id(padre_id, "padre_id"),
+            "user_id": current_user["id"],
+        })
+        if not padre:
+            raise HTTPException(status_code=404, detail="Padre no encontrado")
+        if padre.get("tipo") != "gallo":
             raise HTTPException(status_code=400, detail="El padre debe ser un gallo")
 
-    if ave.madre_id:
-        madre = await db.aves.find_one({"_id": ObjectId(ave.madre_id)})
-        if madre and madre.get("tipo") != "gallina":
+    if madre_id:
+        madre = await db.aves.find_one({
+            "_id": to_object_id(madre_id, "madre_id"),
+            "user_id": current_user["id"],
+        })
+        if not madre:
+            raise HTTPException(status_code=404, detail="Madre no encontrada")
+        if madre.get("tipo") != "gallina":
             raise HTTPException(status_code=400, detail="La madre debe ser una gallina")
 
+    now = datetime.utcnow()
     ave_doc = {
         **ave.dict(),
+        "padre_id": padre_id,
+        "madre_id": madre_id,
         "user_id": current_user["id"],
-        "created_at": datetime.utcnow(),
+        "created_at": now,
+        "updated_at": now,
     }
 
     result = await db.aves.insert_one(ave_doc)
@@ -592,13 +632,14 @@ async def create_ave(ave: AveCreate, current_user: dict = Depends(get_current_us
 
     return serialize_doc(ave_doc)
 
+
 @api_router.get("/aves", response_model=List[AveResponse])
 async def get_aves(
     tipo: Optional[str] = None,
     estado: Optional[str] = None,
     color: Optional[str] = None,
     linea: Optional[str] = None,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     query = {"user_id": current_user["id"]}
     if tipo:
@@ -609,64 +650,96 @@ async def get_aves(
         query["color"] = {"$regex": color, "$options": "i"}
     if linea:
         query["linea"] = {"$regex": linea, "$options": "i"}
-    
+
     aves = await db.aves.find(query).sort("created_at", -1).to_list(1000)
     return [AveResponse(**serialize_doc(ave)) for ave in aves]
 
+
 @api_router.get("/aves/{ave_id}", response_model=AveResponse)
 async def get_ave(ave_id: str, current_user: dict = Depends(get_current_user)):
-    ave = await db.aves.find_one({"_id": ObjectId(ave_id), "user_id": current_user["id"]})
+    ave = await db.aves.find_one({
+        "_id": to_object_id(ave_id, "ave_id"),
+        "user_id": current_user["id"],
+    })
     if not ave:
         raise HTTPException(status_code=404, detail="Ave no encontrada")
     return AveResponse(**serialize_doc(ave))
 
+
 @api_router.put("/aves/{ave_id}", response_model=AveResponse)
 async def update_ave(ave_id: str, ave_update: AveUpdate, current_user: dict = Depends(get_current_user)):
-    existing = await db.aves.find_one({"_id": ObjectId(ave_id), "user_id": current_user["id"]})
+    existing = await db.aves.find_one({
+        "_id": to_object_id(ave_id, "ave_id"),
+        "user_id": current_user["id"],
+    })
     if not existing:
         raise HTTPException(status_code=404, detail="Ave no encontrada")
-    
+
     update_data = {k: v for k, v in ave_update.dict().items() if v is not None}
+
+    if "padre_id" in update_data:
+        update_data["padre_id"] = clean_optional_id(update_data["padre_id"])
+        if update_data["padre_id"]:
+            padre = await db.aves.find_one({
+                "_id": to_object_id(update_data["padre_id"], "padre_id"),
+                "user_id": current_user["id"],
+            })
+            if not padre:
+                raise HTTPException(status_code=404, detail="Padre no encontrado")
+            if padre.get("tipo") != "gallo":
+                raise HTTPException(status_code=400, detail="El padre debe ser un gallo")
+
+    if "madre_id" in update_data:
+        update_data["madre_id"] = clean_optional_id(update_data["madre_id"])
+        if update_data["madre_id"]:
+            madre = await db.aves.find_one({
+                "_id": to_object_id(update_data["madre_id"], "madre_id"),
+                "user_id": current_user["id"],
+            })
+            if not madre:
+                raise HTTPException(status_code=404, detail="Madre no encontrada")
+            if madre.get("tipo") != "gallina":
+                raise HTTPException(status_code=400, detail="La madre debe ser una gallina")
+
     update_data["updated_at"] = datetime.utcnow()
-    
-    if "padre_id" in update_data and update_data["padre_id"]:
-        padre = await db.aves.find_one({"_id": ObjectId(update_data["padre_id"]), "user_id": current_user["id"]})
-        if padre and padre.get("tipo") != "gallo":
-            raise HTTPException(status_code=400, detail="El padre debe ser un gallo")
-    
-    if "madre_id" in update_data and update_data["madre_id"]:
-        madre = await db.aves.find_one({"_id": ObjectId(update_data["madre_id"]), "user_id": current_user["id"]})
-        if madre and madre.get("tipo") != "gallina":
-            raise HTTPException(status_code=400, detail="La madre debe ser una gallina")
-    
-    await db.aves.update_one({"_id": ObjectId(ave_id)}, {"$set": update_data})
-    
-    updated = await db.aves.find_one({"_id": ObjectId(ave_id)})
+
+    await db.aves.update_one(
+        {"_id": to_object_id(ave_id, "ave_id")},
+        {"$set": update_data},
+    )
+
+    updated = await db.aves.find_one({"_id": to_object_id(ave_id, "ave_id")})
     return AveResponse(**serialize_doc(updated))
+
 
 @api_router.delete("/aves/{ave_id}")
 async def delete_ave(ave_id: str, current_user: dict = Depends(get_current_user)):
     children = await db.aves.count_documents({
         "user_id": current_user["id"],
-        "$or": [{"padre_id": ave_id}, {"madre_id": ave_id}]
+        "$or": [{"padre_id": ave_id}, {"madre_id": ave_id}],
     })
-    
+
     cruces = await db.cruces.count_documents({
         "user_id": current_user["id"],
-        "$or": [{"padre_id": ave_id}, {"madre_id": ave_id}]
+        "$or": [{"padre_id": ave_id}, {"madre_id": ave_id}],
     })
-    
-    result = await db.aves.delete_one({"_id": ObjectId(ave_id), "user_id": current_user["id"]})
+
+    result = await db.aves.delete_one({
+        "_id": to_object_id(ave_id, "ave_id"),
+        "user_id": current_user["id"],
+    })
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Ave no encontrada")
-    
+
     await db.peleas.delete_many({"ave_id": ave_id, "user_id": current_user["id"]})
     await db.salud.delete_many({"ave_id": ave_id, "user_id": current_user["id"]})
-    
+
     return {
         "message": "Ave eliminada",
-        "warning": f"Esta ave era padre/madre de {children} aves y estaba en {cruces} cruces" if children > 0 or cruces > 0 else None
+        "warning": f"Esta ave era padre/madre de {children} aves y estaba en {cruces} cruces"
+        if children > 0 or cruces > 0 else None,
     }
+
 
 # ============== PEDIGRI ROUTES ==============
 
@@ -675,7 +748,7 @@ async def get_pedigri(ave_id: str, generations: int = 5, current_user: dict = De
     async def get_ancestors(bird_id: str, gen: int, externo_info: dict = None) -> dict:
         if gen > generations:
             return None
-        
+
         if externo_info:
             return {
                 "id": None,
@@ -684,16 +757,19 @@ async def get_pedigri(ave_id: str, generations: int = 5, current_user: dict = De
                 "tipo": externo_info.get("tipo", "gallo"),
                 "galleria": externo_info.get("galleria"),
                 "externo": True,
-                "generation": gen
+                "generation": gen,
             }
-        
+
         if not bird_id:
             return None
-        
-        bird = await db.aves.find_one({"_id": ObjectId(bird_id), "user_id": current_user["id"]})
+
+        bird = await db.aves.find_one({
+            "_id": to_object_id(bird_id, "bird_id"),
+            "user_id": current_user["id"],
+        })
         if not bird:
             return {"id": bird_id, "unknown": True}
-        
+
         result = {
             "id": str(bird["_id"]),
             "codigo": bird.get("codigo"),
@@ -703,9 +779,9 @@ async def get_pedigri(ave_id: str, generations: int = 5, current_user: dict = De
             "linea": bird.get("linea"),
             "galleria": bird.get("galleria"),
             "foto_principal": bird.get("foto_principal"),
-            "generation": gen
+            "generation": gen,
         }
-        
+
         if gen < generations:
             if bird.get("padre_id"):
                 result["padre"] = await get_ancestors(bird.get("padre_id"), gen + 1)
@@ -713,7 +789,7 @@ async def get_pedigri(ave_id: str, generations: int = 5, current_user: dict = De
                 padre_ext = await get_ancestors(None, gen + 1, {
                     "codigo": bird.get("padre_externo"),
                     "tipo": "gallo",
-                    "galleria": bird.get("padre_galleria")
+                    "galleria": bird.get("padre_galleria"),
                 })
                 if gen + 1 < generations:
                     if bird.get("abuelo_paterno_padre"):
@@ -722,7 +798,7 @@ async def get_pedigri(ave_id: str, generations: int = 5, current_user: dict = De
                             "galleria": bird.get("abuelo_paterno_padre_galleria"),
                             "tipo": "gallo",
                             "externo": True,
-                            "generation": gen + 2
+                            "generation": gen + 2,
                         }
                     if bird.get("abuelo_paterno_madre"):
                         padre_ext["madre"] = {
@@ -730,17 +806,17 @@ async def get_pedigri(ave_id: str, generations: int = 5, current_user: dict = De
                             "galleria": bird.get("abuelo_paterno_madre_galleria"),
                             "tipo": "gallina",
                             "externo": True,
-                            "generation": gen + 2
+                            "generation": gen + 2,
                         }
                 result["padre"] = padre_ext
-            
+
             if bird.get("madre_id"):
                 result["madre"] = await get_ancestors(bird.get("madre_id"), gen + 1)
             elif bird.get("madre_externo"):
                 madre_ext = await get_ancestors(None, gen + 1, {
                     "codigo": bird.get("madre_externo"),
                     "tipo": "gallina",
-                    "galleria": bird.get("madre_galleria")
+                    "galleria": bird.get("madre_galleria"),
                 })
                 if gen + 1 < generations:
                     if bird.get("abuelo_materno_padre"):
@@ -749,7 +825,7 @@ async def get_pedigri(ave_id: str, generations: int = 5, current_user: dict = De
                             "galleria": bird.get("abuelo_materno_padre_galleria"),
                             "tipo": "gallo",
                             "externo": True,
-                            "generation": gen + 2
+                            "generation": gen + 2,
                         }
                     if bird.get("abuelo_materno_madre"):
                         madre_ext["madre"] = {
@@ -757,33 +833,40 @@ async def get_pedigri(ave_id: str, generations: int = 5, current_user: dict = De
                             "galleria": bird.get("abuelo_materno_madre_galleria"),
                             "tipo": "gallina",
                             "externo": True,
-                            "generation": gen + 2
+                            "generation": gen + 2,
                         }
                 result["madre"] = madre_ext
-        
+
         return result
-    
-    ave = await db.aves.find_one({"_id": ObjectId(ave_id), "user_id": current_user["id"]})
+
+    ave = await db.aves.find_one({
+        "_id": to_object_id(ave_id, "ave_id"),
+        "user_id": current_user["id"],
+    })
     if not ave:
         raise HTTPException(status_code=404, detail="Ave no encontrada")
-    
-    pedigri = await get_ancestors(ave_id, 1)
-    return pedigri
+
+    return await get_ancestors(ave_id, 1)
+
 
 @api_router.get("/aves/{ave_id}/hijos", response_model=List[AveResponse])
 async def get_hijos(ave_id: str, current_user: dict = Depends(get_current_user)):
-    ave = await db.aves.find_one({"_id": ObjectId(ave_id), "user_id": current_user["id"]})
+    ave = await db.aves.find_one({
+        "_id": to_object_id(ave_id, "ave_id"),
+        "user_id": current_user["id"],
+    })
     if not ave:
         raise HTTPException(status_code=404, detail="Ave no encontrada")
-    
+
     query = {"user_id": current_user["id"]}
     if ave.get("tipo") == "gallo":
         query["padre_id"] = ave_id
     else:
         query["madre_id"] = ave_id
-    
+
     hijos = await db.aves.find(query).to_list(1000)
     return [AveResponse(**serialize_doc(h)) for h in hijos]
+
 
 # ============== CONSANGUINIDAD ==============
 
@@ -791,33 +874,36 @@ async def get_hijos(ave_id: str, current_user: dict = Depends(get_current_user))
 async def calculate_consanguinidad(
     padre_id: str,
     madre_id: str,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     async def get_all_ancestors(bird_id: str, gen: int, max_gen: int = 5) -> List[tuple]:
         if gen > max_gen or not bird_id:
             return []
-        
+
         ancestors = [(bird_id, gen)]
-        bird = await db.aves.find_one({"_id": ObjectId(bird_id), "user_id": current_user["id"]})
+        bird = await db.aves.find_one({
+            "_id": to_object_id(bird_id, "bird_id"),
+            "user_id": current_user["id"],
+        })
         if bird:
             if bird.get("padre_id"):
                 ancestors.extend(await get_all_ancestors(bird.get("padre_id"), gen + 1, max_gen))
             if bird.get("madre_id"):
                 ancestors.extend(await get_all_ancestors(bird.get("madre_id"), gen + 1, max_gen))
-        
+
         return ancestors
-    
+
     padre_ancestors = await get_all_ancestors(padre_id, 1)
     madre_ancestors = await get_all_ancestors(madre_id, 1)
-    
+
     padre_ids = {a[0]: a[1] for a in padre_ancestors}
     madre_ids = {a[0]: a[1] for a in madre_ancestors}
-    
+
     common = []
     for aid, gen in padre_ids.items():
         if aid in madre_ids:
             min_gen = min(gen, madre_ids[aid])
-            ave = await db.aves.find_one({"_id": ObjectId(aid)})
+            ave = await db.aves.find_one({"_id": to_object_id(aid, "ancestor_id")})
             if ave:
                 common.append({
                     "id": aid,
@@ -825,9 +911,9 @@ async def calculate_consanguinidad(
                     "nombre": ave.get("nombre"),
                     "generation_padre": gen,
                     "generation_madre": madre_ids[aid],
-                    "closest_generation": min_gen
+                    "closest_generation": min_gen,
                 })
-    
+
     if not common:
         percentage = 0
         level = "bajo"
@@ -848,13 +934,14 @@ async def calculate_consanguinidad(
         else:
             percentage = 3.125
             level = "bajo"
-    
+
     return {
         "porcentaje_estimado": percentage,
         "nivel": level,
         "ancestros_comunes": common,
-        "total_comunes": len(common)
+        "total_comunes": len(common),
     }
+
 
 # ============== CRIADORES / CASTADORES ROUTES ==============
 
@@ -865,13 +952,13 @@ async def get_criadores(current_user: dict = Depends(get_current_user)):
     if current_user.get("nombre"):
         results.append({
             "id": current_user["id"],
-            "nombre": current_user["nombre"]
+            "nombre": current_user["nombre"],
         })
 
     aves = await db.aves.find(
         {
             "user_id": current_user["id"],
-            "castado_por": {"$exists": True, "$ne": None, "$ne": ""}
+            "castado_por": {"$exists": True, "$nin": [None, ""]},
         }
     ).to_list(1000)
 
@@ -885,181 +972,246 @@ async def get_criadores(current_user: dict = Depends(get_current_user)):
         if nombre and nombre.lower() not in seen_names:
             results.append({
                 "id": f"castador_{nombre.lower().replace(' ', '_')}",
-                "nombre": nombre
+                "nombre": nombre,
             })
             seen_names.add(nombre.lower())
 
     return results
 
+
 @api_router.get("/castadores")
 async def get_castadores(current_user: dict = Depends(get_current_user)):
     return await get_criadores(current_user)
+
 
 # ============== CRUCES ROUTES ==============
 
 @api_router.post("/cruces", response_model=CruceResponse)
 async def create_cruce(cruce: CruceCreate, current_user: dict = Depends(get_current_user)):
-    if cruce.padre_id:
-        padre = await db.aves.find_one({"_id": ObjectId(cruce.padre_id), "user_id": current_user["id"]})
+    padre_id = clean_optional_id(cruce.padre_id)
+    madre_id = clean_optional_id(cruce.madre_id)
+
+    if padre_id:
+        padre = await db.aves.find_one({
+            "_id": to_object_id(padre_id, "padre_id"),
+            "user_id": current_user["id"],
+        })
         if not padre:
             raise HTTPException(status_code=404, detail="Padre no encontrado")
         if padre.get("tipo") != "gallo":
             raise HTTPException(status_code=400, detail="El padre debe ser un gallo")
-    elif not cruce.padre_externo:
+    elif not clean_optional_id(cruce.padre_externo):
         raise HTTPException(status_code=400, detail="Debes seleccionar o agregar un padre")
-    
-    if cruce.madre_id:
-        madre = await db.aves.find_one({"_id": ObjectId(cruce.madre_id), "user_id": current_user["id"]})
+
+    if madre_id:
+        madre = await db.aves.find_one({
+            "_id": to_object_id(madre_id, "madre_id"),
+            "user_id": current_user["id"],
+        })
         if not madre:
             raise HTTPException(status_code=404, detail="Madre no encontrada")
         if madre.get("tipo") != "gallina":
             raise HTTPException(status_code=400, detail="La madre debe ser una gallina")
-    elif not cruce.madre_externo:
+    elif not clean_optional_id(cruce.madre_externo):
         raise HTTPException(status_code=400, detail="Debes seleccionar o agregar una madre")
-    
+
     consanguinidad_estimado = 0.0
-    if cruce.padre_id and cruce.madre_id:
-        consang_result = await calculate_consanguinidad(cruce.padre_id, cruce.madre_id, current_user)
+    if padre_id and madre_id:
+        consang_result = await calculate_consanguinidad(padre_id, madre_id, current_user)
         consanguinidad_estimado = consang_result["porcentaje_estimado"]
-    
+
+    now = datetime.utcnow()
     cruce_doc = {
         **cruce.dict(),
+        "padre_id": padre_id,
+        "madre_id": madre_id,
         "user_id": current_user["id"],
         "consanguinidad_estimado": consanguinidad_estimado,
-        "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow()
+        "created_at": now,
+        "updated_at": now,
     }
-    
+
     result = await db.cruces.insert_one(cruce_doc)
     cruce_doc["_id"] = result.inserted_id
-    
+
     return CruceResponse(**serialize_doc(cruce_doc))
 
+
 @api_router.get("/cruces", response_model=List[CruceResponse])
-async def get_cruces(
-    estado: Optional[str] = None,
-    current_user: dict = Depends(get_current_user)
-):
+async def get_cruces(estado: Optional[str] = None, current_user: dict = Depends(get_current_user)):
     query = {"user_id": current_user["id"]}
     if estado:
         query["estado"] = estado
-    
+
     cruces = await db.cruces.find(query).sort("created_at", -1).to_list(1000)
     return [CruceResponse(**serialize_doc(c)) for c in cruces]
 
+
 @api_router.get("/cruces/{cruce_id}", response_model=CruceResponse)
 async def get_cruce(cruce_id: str, current_user: dict = Depends(get_current_user)):
-    cruce = await db.cruces.find_one({"_id": ObjectId(cruce_id), "user_id": current_user["id"]})
+    cruce = await db.cruces.find_one({
+        "_id": to_object_id(cruce_id, "cruce_id"),
+        "user_id": current_user["id"],
+    })
     if not cruce:
         raise HTTPException(status_code=404, detail="Cruce no encontrado")
     return CruceResponse(**serialize_doc(cruce))
 
+
 @api_router.put("/cruces/{cruce_id}", response_model=CruceResponse)
 async def update_cruce(cruce_id: str, cruce_update: CruceUpdate, current_user: dict = Depends(get_current_user)):
-    existing = await db.cruces.find_one({"_id": ObjectId(cruce_id), "user_id": current_user["id"]})
+    existing = await db.cruces.find_one({
+        "_id": to_object_id(cruce_id, "cruce_id"),
+        "user_id": current_user["id"],
+    })
     if not existing:
         raise HTTPException(status_code=404, detail="Cruce no encontrado")
-    
+
     update_data = {k: v for k, v in cruce_update.dict().items() if v is not None}
     update_data["updated_at"] = datetime.utcnow()
-    
-    padre_id = update_data.get("padre_id", existing.get("padre_id"))
-    madre_id = update_data.get("madre_id", existing.get("madre_id"))
-    
+
+    padre_id = clean_optional_id(update_data.get("padre_id", existing.get("padre_id")))
+    madre_id = clean_optional_id(update_data.get("madre_id", existing.get("madre_id")))
+
+    if "padre_id" in update_data:
+        update_data["padre_id"] = padre_id
+    if "madre_id" in update_data:
+        update_data["madre_id"] = madre_id
+
     if padre_id:
-        padre = await db.aves.find_one({"_id": ObjectId(padre_id), "user_id": current_user["id"]})
+        padre = await db.aves.find_one({
+            "_id": to_object_id(padre_id, "padre_id"),
+            "user_id": current_user["id"],
+        })
         if not padre:
             raise HTTPException(status_code=404, detail="Padre no encontrado")
         if padre.get("tipo") != "gallo":
             raise HTTPException(status_code=400, detail="El padre debe ser un gallo")
-    
+
     if madre_id:
-        madre = await db.aves.find_one({"_id": ObjectId(madre_id), "user_id": current_user["id"]})
+        madre = await db.aves.find_one({
+            "_id": to_object_id(madre_id, "madre_id"),
+            "user_id": current_user["id"],
+        })
         if not madre:
             raise HTTPException(status_code=404, detail="Madre no encontrada")
         if madre.get("tipo") != "gallina":
             raise HTTPException(status_code=400, detail="La madre debe ser una gallina")
-    
+
     if padre_id and madre_id:
         consang_result = await calculate_consanguinidad(padre_id, madre_id, current_user)
         update_data["consanguinidad_estimado"] = consang_result["porcentaje_estimado"]
-    
-    await db.cruces.update_one({"_id": ObjectId(cruce_id)}, {"$set": update_data})
-    
-    updated = await db.cruces.find_one({"_id": ObjectId(cruce_id)})
+
+    await db.cruces.update_one(
+        {"_id": to_object_id(cruce_id, "cruce_id")},
+        {"$set": update_data},
+    )
+
+    updated = await db.cruces.find_one({"_id": to_object_id(cruce_id, "cruce_id")})
     return CruceResponse(**serialize_doc(updated))
+
 
 @api_router.delete("/cruces/{cruce_id}")
 async def delete_cruce(cruce_id: str, current_user: dict = Depends(get_current_user)):
-    result = await db.cruces.delete_one({"_id": ObjectId(cruce_id), "user_id": current_user["id"]})
+    result = await db.cruces.delete_one({
+        "_id": to_object_id(cruce_id, "cruce_id"),
+        "user_id": current_user["id"],
+    })
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Cruce no encontrado")
     return {"message": "Cruce eliminado"}
+
 
 # ============== CAMADAS ROUTES ==============
 
 @api_router.post("/camadas", response_model=CamadaResponse)
 async def create_camada(camada: CamadaCreate, current_user: dict = Depends(get_current_user)):
-    cruce = await db.cruces.find_one({"_id": ObjectId(camada.cruce_id), "user_id": current_user["id"]})
+    cruce = await db.cruces.find_one({
+        "_id": to_object_id(camada.cruce_id, "cruce_id"),
+        "user_id": current_user["id"],
+    })
     if not cruce:
         raise HTTPException(status_code=404, detail="Cruce no encontrado")
-    
+
+    now = datetime.utcnow()
     camada_doc = {
         **camada.dict(),
         "user_id": current_user["id"],
-        "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow()
+        "created_at": now,
+        "updated_at": now,
     }
-    
+
     result = await db.camadas.insert_one(camada_doc)
     camada_doc["_id"] = result.inserted_id
-    
-    await db.cruces.update_one({"_id": ObjectId(camada.cruce_id)}, {"$set": {"estado": "hecho"}})
-    
+
+    await db.cruces.update_one(
+        {"_id": to_object_id(camada.cruce_id, "cruce_id")},
+        {"$set": {"estado": "hecho"}},
+    )
+
     return CamadaResponse(**serialize_doc(camada_doc))
+
 
 @api_router.get("/camadas", response_model=List[CamadaResponse])
 async def get_camadas(current_user: dict = Depends(get_current_user)):
     camadas = await db.camadas.find({"user_id": current_user["id"]}).sort("created_at", -1).to_list(1000)
     return [CamadaResponse(**serialize_doc(c)) for c in camadas]
 
+
 @api_router.get("/camadas/{camada_id}", response_model=CamadaResponse)
 async def get_camada(camada_id: str, current_user: dict = Depends(get_current_user)):
-    camada = await db.camadas.find_one({"_id": ObjectId(camada_id), "user_id": current_user["id"]})
+    camada = await db.camadas.find_one({
+        "_id": to_object_id(camada_id, "camada_id"),
+        "user_id": current_user["id"],
+    })
     if not camada:
         raise HTTPException(status_code=404, detail="Camada no encontrada")
     return CamadaResponse(**serialize_doc(camada))
 
+
 @api_router.put("/camadas/{camada_id}", response_model=CamadaResponse)
 async def update_camada(camada_id: str, camada_update: CamadaUpdate, current_user: dict = Depends(get_current_user)):
-    existing = await db.camadas.find_one({"_id": ObjectId(camada_id), "user_id": current_user["id"]})
+    existing = await db.camadas.find_one({
+        "_id": to_object_id(camada_id, "camada_id"),
+        "user_id": current_user["id"],
+    })
     if not existing:
         raise HTTPException(status_code=404, detail="Camada no encontrada")
-    
+
     update_data = {k: v for k, v in camada_update.dict().items() if v is not None}
     update_data["updated_at"] = datetime.utcnow()
-    
-    await db.camadas.update_one({"_id": ObjectId(camada_id)}, {"$set": update_data})
-    
-    updated = await db.camadas.find_one({"_id": ObjectId(camada_id)})
+
+    await db.camadas.update_one(
+        {"_id": to_object_id(camada_id, "camada_id")},
+        {"$set": update_data},
+    )
+
+    updated = await db.camadas.find_one({"_id": to_object_id(camada_id, "camada_id")})
     return CamadaResponse(**serialize_doc(updated))
 
+
 @api_router.post("/camadas/{camada_id}/crear-pollitos")
-async def crear_pollitos(
-    camada_id: str,
-    cantidad: int,
-    current_user: dict = Depends(get_current_user)
-):
-    camada = await db.camadas.find_one({"_id": ObjectId(camada_id), "user_id": current_user["id"]})
+async def crear_pollitos(camada_id: str, cantidad: int, current_user: dict = Depends(get_current_user)):
+    if cantidad < 1:
+        raise HTTPException(status_code=400, detail="La cantidad debe ser mayor que 0")
+
+    camada = await db.camadas.find_one({
+        "_id": to_object_id(camada_id, "camada_id"),
+        "user_id": current_user["id"],
+    })
     if not camada:
         raise HTTPException(status_code=404, detail="Camada no encontrada")
-    
-    cruce = await db.cruces.find_one({"_id": ObjectId(camada["cruce_id"]), "user_id": current_user["id"]})
+
+    cruce = await db.cruces.find_one({
+        "_id": to_object_id(camada["cruce_id"], "cruce_id"),
+        "user_id": current_user["id"],
+    })
     if not cruce:
         raise HTTPException(status_code=404, detail="Cruce no encontrado")
-    
+
     created_aves = []
     for i in range(cantidad):
+        now = datetime.utcnow()
         ave_doc = {
             "tipo": "gallo",
             "codigo": f"P-{camada_id[-4:]}-{i+1}",
@@ -1072,102 +1224,115 @@ async def crear_pollitos(
             "notas": f"Nacido de camada {camada_id}",
             "padre_id": cruce.get("padre_id"),
             "madre_id": cruce.get("madre_id"),
+            "padre_externo": cruce.get("padre_externo"),
+            "madre_externo": cruce.get("madre_externo"),
             "marcaje_qr": None,
             "user_id": current_user["id"],
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow()
+            "created_at": now,
+            "updated_at": now,
         }
         result = await db.aves.insert_one(ave_doc)
         ave_doc["_id"] = result.inserted_id
         created_aves.append(serialize_doc(ave_doc))
-    
+
     await db.camadas.update_one(
-        {"_id": ObjectId(camada_id)},
-        {"$set": {"pollitos_nacidos": cantidad, "updated_at": datetime.utcnow()}}
+        {"_id": to_object_id(camada_id, "camada_id")},
+        {"$set": {"pollitos_nacidos": cantidad, "updated_at": datetime.utcnow()}},
     )
-    
+
     return {
         "message": f"{cantidad} pollitos creados",
-        "aves": created_aves
+        "aves": created_aves,
     }
+
 
 @api_router.delete("/camadas/{camada_id}")
 async def delete_camada(camada_id: str, current_user: dict = Depends(get_current_user)):
-    result = await db.camadas.delete_one({"_id": ObjectId(camada_id), "user_id": current_user["id"]})
+    result = await db.camadas.delete_one({
+        "_id": to_object_id(camada_id, "camada_id"),
+        "user_id": current_user["id"],
+    })
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Camada no encontrada")
     return {"message": "Camada eliminada"}
+
 
 # ============== PELEAS ROUTES ==============
 
 @api_router.post("/peleas", response_model=PeleaResponse)
 async def create_pelea(pelea: PeleaCreate, current_user: dict = Depends(get_current_user)):
-    ave = await db.aves.find_one({"_id": ObjectId(pelea.ave_id), "user_id": current_user["id"]})
+    ave = await db.aves.find_one({
+        "_id": to_object_id(pelea.ave_id, "ave_id"),
+        "user_id": current_user["id"],
+    })
     if not ave:
         raise HTTPException(status_code=404, detail="Ave no encontrada")
-    
+
+    now = datetime.utcnow()
     pelea_doc = {
         **pelea.dict(),
         "user_id": current_user["id"],
-        "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow()
+        "created_at": now,
+        "updated_at": now,
     }
-    
+
     result = await db.peleas.insert_one(pelea_doc)
     pelea_doc["_id"] = result.inserted_id
-    
+
     return PeleaResponse(**serialize_doc(pelea_doc))
+
 
 @api_router.get("/peleas", response_model=List[PeleaResponse])
 async def get_peleas(
     ave_id: Optional[str] = None,
     resultado: Optional[str] = None,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     query = {"user_id": current_user["id"]}
     if ave_id:
         query["ave_id"] = ave_id
     if resultado:
         query["resultado"] = resultado
-    
+
     peleas = await db.peleas.find(query).sort("fecha", -1).to_list(1000)
     return [PeleaResponse(**serialize_doc(p)) for p in peleas]
+
 
 @api_router.get("/peleas/estadisticas")
 async def get_estadisticas_peleas(
     ave_id: Optional[str] = None,
     linea: Optional[str] = None,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     query = {"user_id": current_user["id"]}
     if ave_id:
         query["ave_id"] = ave_id
-    
+
     peleas = await db.peleas.find(query).to_list(1000)
-    
+
     if linea:
         aves_linea = await db.aves.find({
             "user_id": current_user["id"],
-            "linea": {"$regex": linea, "$options": "i"}
+            "linea": {"$regex": linea, "$options": "i"},
         }).to_list(1000)
         ave_ids = [str(a["_id"]) for a in aves_linea]
         peleas = [p for p in peleas if p.get("ave_id") in ave_ids]
-    
+
     total = len(peleas)
     ganadas = len([p for p in peleas if p.get("resultado") == "GANO"])
     perdidas = len([p for p in peleas if p.get("resultado") == "PERDIO"])
-    
+
     calificaciones = {
         "EXTRAORDINARIA": 0,
         "BUENA": 0,
         "REGULAR": 0,
-        "MALA": 0
+        "MALA": 0,
     }
     for p in peleas:
         cal = p.get("calificacion")
         if cal in calificaciones:
             calificaciones[cal] += 1
-    
+
     sorted_peleas = sorted(peleas, key=lambda x: x.get("fecha", ""), reverse=True)
     racha_actual = 0
     racha_tipo = None
@@ -1178,7 +1343,7 @@ async def get_estadisticas_peleas(
                 racha_actual += 1
             else:
                 break
-    
+
     return {
         "total": total,
         "ganadas": ganadas,
@@ -1186,32 +1351,33 @@ async def get_estadisticas_peleas(
         "porcentaje_victorias": round((ganadas / total * 100) if total > 0 else 0, 1),
         "calificaciones": calificaciones,
         "racha_actual": racha_actual,
-        "racha_tipo": racha_tipo
+        "racha_tipo": racha_tipo,
     }
+
 
 @api_router.get("/peleas/estadisticas-padres")
 async def get_estadisticas_padres(current_user: dict = Depends(get_current_user)):
     user_id = current_user["id"]
-    
+
     peleas = await db.peleas.find({"user_id": user_id}).to_list(10000)
     if not peleas:
         return {"padres": [], "madres": []}
-    
+
     aves = await db.aves.find({"user_id": user_id}).to_list(10000)
     aves_map = {str(a["_id"]): a for a in aves}
-    
+
     padre_stats = {}
     madre_stats = {}
-    
+
     for pelea in peleas:
         ave_id = pelea.get("ave_id")
         ave = aves_map.get(ave_id)
         if not ave:
             continue
-        
+
         resultado = pelea.get("resultado")
         gano = 1 if resultado == "GANO" else 0
-        
+
         padre_id = ave.get("padre_id")
         if padre_id and padre_id in aves_map:
             padre = aves_map[padre_id]
@@ -1222,12 +1388,12 @@ async def get_estadisticas_padres(current_user: dict = Depends(get_current_user)
                     "nombre": padre.get("nombre"),
                     "ganadas": 0,
                     "total": 0,
-                    "hijos_ids": set()
+                    "hijos_ids": set(),
                 }
             padre_stats[padre_id]["ganadas"] += gano
             padre_stats[padre_id]["total"] += 1
             padre_stats[padre_id]["hijos_ids"].add(ave_id)
-        
+
         madre_id = ave.get("madre_id")
         if madre_id and madre_id in aves_map:
             madre = aves_map[madre_id]
@@ -1238,12 +1404,12 @@ async def get_estadisticas_padres(current_user: dict = Depends(get_current_user)
                     "nombre": madre.get("nombre"),
                     "ganadas": 0,
                     "total": 0,
-                    "hijos_ids": set()
+                    "hijos_ids": set(),
                 }
             madre_stats[madre_id]["ganadas"] += gano
             madre_stats[madre_id]["total"] += 1
             madre_stats[madre_id]["hijos_ids"].add(ave_id)
-    
+
     padres_list = []
     for pid, data in padre_stats.items():
         porcentaje = round((data["ganadas"] / data["total"] * 100) if data["total"] > 0 else 0, 1)
@@ -1254,9 +1420,9 @@ async def get_estadisticas_padres(current_user: dict = Depends(get_current_user)
             "ganadas": data["ganadas"],
             "total": data["total"],
             "porcentaje": porcentaje,
-            "hijos_peleados": len(data["hijos_ids"])
+            "hijos_peleados": len(data["hijos_ids"]),
         })
-    
+
     madres_list = []
     for mid, data in madre_stats.items():
         porcentaje = round((data["ganadas"] / data["total"] * 100) if data["total"] > 0 else 0, 1)
@@ -1267,152 +1433,199 @@ async def get_estadisticas_padres(current_user: dict = Depends(get_current_user)
             "ganadas": data["ganadas"],
             "total": data["total"],
             "porcentaje": porcentaje,
-            "hijos_peleados": len(data["hijos_ids"])
+            "hijos_peleados": len(data["hijos_ids"]),
         })
-    
+
     padres_list.sort(key=lambda x: (-x["porcentaje"], -x["total"]))
     madres_list.sort(key=lambda x: (-x["porcentaje"], -x["total"]))
-    
+
     return {
         "padres": padres_list[:10],
-        "madres": madres_list[:10]
+        "madres": madres_list[:10],
     }
+
 
 @api_router.get("/peleas/{pelea_id}", response_model=PeleaResponse)
 async def get_pelea(pelea_id: str, current_user: dict = Depends(get_current_user)):
-    pelea = await db.peleas.find_one({"_id": ObjectId(pelea_id), "user_id": current_user["id"]})
+    pelea = await db.peleas.find_one({
+        "_id": to_object_id(pelea_id, "pelea_id"),
+        "user_id": current_user["id"],
+    })
     if not pelea:
         raise HTTPException(status_code=404, detail="Pelea no encontrada")
     return PeleaResponse(**serialize_doc(pelea))
 
+
 @api_router.put("/peleas/{pelea_id}", response_model=PeleaResponse)
 async def update_pelea(pelea_id: str, pelea_update: PeleaUpdate, current_user: dict = Depends(get_current_user)):
-    existing = await db.peleas.find_one({"_id": ObjectId(pelea_id), "user_id": current_user["id"]})
+    existing = await db.peleas.find_one({
+        "_id": to_object_id(pelea_id, "pelea_id"),
+        "user_id": current_user["id"],
+    })
     if not existing:
         raise HTTPException(status_code=404, detail="Pelea no encontrada")
-    
+
     update_data = {k: v for k, v in pelea_update.dict().items() if v is not None}
     update_data["updated_at"] = datetime.utcnow()
-    
-    await db.peleas.update_one({"_id": ObjectId(pelea_id)}, {"$set": update_data})
-    
-    updated = await db.peleas.find_one({"_id": ObjectId(pelea_id)})
+
+    await db.peleas.update_one(
+        {"_id": to_object_id(pelea_id, "pelea_id")},
+        {"$set": update_data},
+    )
+
+    updated = await db.peleas.find_one({"_id": to_object_id(pelea_id, "pelea_id")})
     return PeleaResponse(**serialize_doc(updated))
+
 
 @api_router.delete("/peleas/{pelea_id}")
 async def delete_pelea(pelea_id: str, current_user: dict = Depends(get_current_user)):
-    result = await db.peleas.delete_one({"_id": ObjectId(pelea_id), "user_id": current_user["id"]})
+    result = await db.peleas.delete_one({
+        "_id": to_object_id(pelea_id, "pelea_id"),
+        "user_id": current_user["id"],
+    })
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Pelea no encontrada")
     return {"message": "Pelea eliminada"}
+
 
 # ============== SALUD ROUTES ==============
 
 @api_router.post("/salud", response_model=SaludResponse)
 async def create_salud(salud: SaludCreate, current_user: dict = Depends(get_current_user)):
-    ave = await db.aves.find_one({"_id": ObjectId(salud.ave_id), "user_id": current_user["id"]})
+    ave = await db.aves.find_one({
+        "_id": to_object_id(salud.ave_id, "ave_id"),
+        "user_id": current_user["id"],
+    })
     if not ave:
         raise HTTPException(status_code=404, detail="Ave no encontrada")
-    
+
+    now = datetime.utcnow()
     salud_doc = {
         **salud.dict(),
         "user_id": current_user["id"],
-        "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow()
+        "created_at": now,
+        "updated_at": now,
     }
-    
+
     result = await db.salud.insert_one(salud_doc)
     salud_doc["_id"] = result.inserted_id
-    
+
     return SaludResponse(**serialize_doc(salud_doc))
+
 
 @api_router.get("/salud", response_model=List[SaludResponse])
 async def get_salud_records(
     ave_id: Optional[str] = None,
     tipo: Optional[str] = None,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     query = {"user_id": current_user["id"]}
     if ave_id:
         query["ave_id"] = ave_id
     if tipo:
         query["tipo"] = tipo
-    
+
     records = await db.salud.find(query).sort("fecha", -1).to_list(1000)
     return [SaludResponse(**serialize_doc(r)) for r in records]
+
 
 @api_router.get("/salud/recordatorios")
 async def get_recordatorios(current_user: dict = Depends(get_current_user)):
     today = datetime.utcnow().strftime("%Y-%m-%d")
     week_later = (datetime.utcnow() + timedelta(days=7)).strftime("%Y-%m-%d")
-    
+
     records = await db.salud.find({
         "user_id": current_user["id"],
-        "proxima_fecha": {"$gte": today, "$lte": week_later}
+        "proxima_fecha": {"$gte": today, "$lte": week_later},
     }).sort("proxima_fecha", 1).to_list(100)
-    
+
     result = []
     for r in records:
-        ave = await db.aves.find_one({"_id": ObjectId(r["ave_id"])})
         record_data = serialize_doc(r)
-        if ave:
-            record_data["ave_codigo"] = ave.get("codigo")
-            record_data["ave_nombre"] = ave.get("nombre")
+        ave_id = r.get("ave_id")
+        if ave_id:
+            try:
+                ave = await db.aves.find_one({"_id": to_object_id(ave_id, "ave_id")})
+            except HTTPException:
+                ave = None
+            if ave:
+                record_data["ave_codigo"] = ave.get("codigo")
+                record_data["ave_nombre"] = ave.get("nombre")
         result.append(record_data)
-    
+
     return result
+
 
 @api_router.get("/salud/{salud_id}", response_model=SaludResponse)
 async def get_salud_record(salud_id: str, current_user: dict = Depends(get_current_user)):
-    record = await db.salud.find_one({"_id": ObjectId(salud_id), "user_id": current_user["id"]})
+    record = await db.salud.find_one({
+        "_id": to_object_id(salud_id, "salud_id"),
+        "user_id": current_user["id"],
+    })
     if not record:
         raise HTTPException(status_code=404, detail="Registro no encontrado")
     return SaludResponse(**serialize_doc(record))
 
+
 @api_router.put("/salud/{salud_id}", response_model=SaludResponse)
 async def update_salud(salud_id: str, salud_update: SaludUpdate, current_user: dict = Depends(get_current_user)):
-    existing = await db.salud.find_one({"_id": ObjectId(salud_id), "user_id": current_user["id"]})
+    existing = await db.salud.find_one({
+        "_id": to_object_id(salud_id, "salud_id"),
+        "user_id": current_user["id"],
+    })
     if not existing:
         raise HTTPException(status_code=404, detail="Registro no encontrado")
-    
+
     update_data = {k: v for k, v in salud_update.dict().items() if v is not None}
     update_data["updated_at"] = datetime.utcnow()
-    
-    await db.salud.update_one({"_id": ObjectId(salud_id)}, {"$set": update_data})
-    
-    updated = await db.salud.find_one({"_id": ObjectId(salud_id)})
+
+    await db.salud.update_one(
+        {"_id": to_object_id(salud_id, "salud_id")},
+        {"$set": update_data},
+    )
+
+    updated = await db.salud.find_one({"_id": to_object_id(salud_id, "salud_id")})
     return SaludResponse(**serialize_doc(updated))
+
 
 @api_router.delete("/salud/{salud_id}")
 async def delete_salud(salud_id: str, current_user: dict = Depends(get_current_user)):
-    result = await db.salud.delete_one({"_id": ObjectId(salud_id), "user_id": current_user["id"]})
+    result = await db.salud.delete_one({
+        "_id": to_object_id(salud_id, "salud_id"),
+        "user_id": current_user["id"],
+    })
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Registro no encontrado")
     return {"message": "Registro eliminado"}
+
 
 # ============== CUIDO ROUTES ==============
 
 @api_router.post("/cuido")
 async def create_cuido(cuido: CuidoCreate, current_user: dict = Depends(get_current_user)):
-    ave = await db.aves.find_one({"_id": ObjectId(cuido.ave_id), "user_id": current_user["id"]})
+    ave = await db.aves.find_one({
+        "_id": to_object_id(cuido.ave_id, "ave_id"),
+        "user_id": current_user["id"],
+    })
     if not ave:
         raise HTTPException(status_code=404, detail="Ave no encontrada")
     if ave.get("tipo") != "gallo":
         raise HTTPException(status_code=400, detail="Solo se puede crear cuido para gallos")
-    
+
     existing = await db.cuido.find_one({
         "ave_id": cuido.ave_id,
         "user_id": current_user["id"],
-        "estado": {"$in": ["activo", "descanso"]}
+        "estado": {"$in": ["activo", "descanso"]},
     })
     if existing:
         raise HTTPException(status_code=400, detail="Este gallo ya tiene un cuido activo")
-    
+
     trabajos = [
         {"numero": i, "tiempo_minutos": None, "completado": False, "fecha_completado": None, "notas": None}
         for i in range(1, 6)
     ]
-    
+
+    now = datetime.utcnow()
     cuido_doc = {
         "ave_id": cuido.ave_id,
         "fecha_inicio": cuido.fecha_inicio or datetime.utcnow().strftime("%Y-%m-%d"),
@@ -1430,104 +1643,128 @@ async def create_cuido(cuido: CuidoCreate, current_user: dict = Depends(get_curr
         "fecha_fin_descanso": None,
         "notas": cuido.notas,
         "user_id": current_user["id"],
-        "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow()
+        "created_at": now,
+        "updated_at": now,
     }
-    
+
     result = await db.cuido.insert_one(cuido_doc)
     cuido_doc["_id"] = result.inserted_id
-    
+
     return serialize_doc(cuido_doc)
 
+
 @api_router.get("/cuido")
-async def get_cuidos(
-    estado: Optional[str] = None,
-    current_user: dict = Depends(get_current_user)
-):
+async def get_cuidos(estado: Optional[str] = None, current_user: dict = Depends(get_current_user)):
     query = {"user_id": current_user["id"]}
     if estado:
         query["estado"] = estado
-    
+
     cuidos = await db.cuido.find(query).sort("created_at", -1).to_list(1000)
-    
+
     result = []
     for c in cuidos:
-        ave = await db.aves.find_one({"_id": ObjectId(c["ave_id"])})
         cuido_data = serialize_doc(c)
+        ave_id = c.get("ave_id")
+        if ave_id:
+            try:
+                ave = await db.aves.find_one({"_id": to_object_id(ave_id, "ave_id")})
+            except HTTPException:
+                ave = None
+            if ave:
+                cuido_data["ave_codigo"] = ave.get("codigo")
+                cuido_data["ave_nombre"] = ave.get("nombre")
+                cuido_data["ave_foto"] = ave.get("foto_principal")
+                cuido_data["ave_color"] = ave.get("color")
+                cuido_data["ave_linea"] = ave.get("linea")
+        result.append(cuido_data)
+
+    return result
+
+
+@api_router.get("/cuido/{cuido_id}")
+async def get_cuido(cuido_id: str, current_user: dict = Depends(get_current_user)):
+    cuido = await db.cuido.find_one({
+        "_id": to_object_id(cuido_id, "cuido_id"),
+        "user_id": current_user["id"],
+    })
+    if not cuido:
+        raise HTTPException(status_code=404, detail="Cuido no encontrado")
+
+    cuido_data = serialize_doc(cuido)
+    ave_id = cuido.get("ave_id")
+    if ave_id:
+        try:
+            ave = await db.aves.find_one({"_id": to_object_id(ave_id, "ave_id")})
+        except HTTPException:
+            ave = None
         if ave:
             cuido_data["ave_codigo"] = ave.get("codigo")
             cuido_data["ave_nombre"] = ave.get("nombre")
             cuido_data["ave_foto"] = ave.get("foto_principal")
             cuido_data["ave_color"] = ave.get("color")
             cuido_data["ave_linea"] = ave.get("linea")
-        result.append(cuido_data)
-    
-    return result
 
-@api_router.get("/cuido/{cuido_id}")
-async def get_cuido(cuido_id: str, current_user: dict = Depends(get_current_user)):
-    cuido = await db.cuido.find_one({"_id": ObjectId(cuido_id), "user_id": current_user["id"]})
-    if not cuido:
-        raise HTTPException(status_code=404, detail="Cuido no encontrado")
-    
-    ave = await db.aves.find_one({"_id": ObjectId(cuido["ave_id"])})
-    cuido_data = serialize_doc(cuido)
-    if ave:
-        cuido_data["ave_codigo"] = ave.get("codigo")
-        cuido_data["ave_nombre"] = ave.get("nombre")
-        cuido_data["ave_foto"] = ave.get("foto_principal")
-        cuido_data["ave_color"] = ave.get("color")
-        cuido_data["ave_linea"] = ave.get("linea")
-    
     return cuido_data
+
 
 @api_router.put("/cuido/{cuido_id}")
 async def update_cuido(cuido_id: str, cuido_update: CuidoUpdate, current_user: dict = Depends(get_current_user)):
-    existing = await db.cuido.find_one({"_id": ObjectId(cuido_id), "user_id": current_user["id"]})
+    existing = await db.cuido.find_one({
+        "_id": to_object_id(cuido_id, "cuido_id"),
+        "user_id": current_user["id"],
+    })
     if not existing:
         raise HTTPException(status_code=404, detail="Cuido no encontrado")
-    
+
     update_data = {k: v for k, v in cuido_update.dict().items() if v is not None}
-    
+
     if "trabajos" in update_data:
-        update_data["trabajos"] = [t.dict() if hasattr(t, 'dict') else t for t in update_data["trabajos"]]
-    
+        update_data["trabajos"] = [t.dict() if hasattr(t, "dict") else t for t in update_data["trabajos"]]
+
     update_data["updated_at"] = datetime.utcnow()
-    
-    await db.cuido.update_one({"_id": ObjectId(cuido_id)}, {"$set": update_data})
-    
-    updated = await db.cuido.find_one({"_id": ObjectId(cuido_id)})
+
+    await db.cuido.update_one(
+        {"_id": to_object_id(cuido_id, "cuido_id")},
+        {"$set": update_data},
+    )
+
+    updated = await db.cuido.find_one({"_id": to_object_id(cuido_id, "cuido_id")})
     return serialize_doc(updated)
+
 
 @api_router.post("/cuido/{cuido_id}/tope")
 async def registrar_tope(
     cuido_id: str,
     tope_numero: int,
     notas: Optional[str] = None,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     if tope_numero not in [1, 2]:
         raise HTTPException(status_code=400, detail="Tope debe ser 1 o 2")
-    
-    cuido = await db.cuido.find_one({"_id": ObjectId(cuido_id), "user_id": current_user["id"]})
+
+    cuido = await db.cuido.find_one({
+        "_id": to_object_id(cuido_id, "cuido_id"),
+        "user_id": current_user["id"],
+    })
     if not cuido:
         raise HTTPException(status_code=404, detail="Cuido no encontrado")
-    
+
     field_completado = f"tope{tope_numero}_completado"
     field_fecha = f"tope{tope_numero}_fecha"
     field_notas = f"tope{tope_numero}_notas"
-    
+
     await db.cuido.update_one(
-        {"_id": ObjectId(cuido_id)},
+        {"_id": to_object_id(cuido_id, "cuido_id")},
         {"$set": {
             field_completado: True,
             field_fecha: datetime.utcnow().strftime("%Y-%m-%d"),
             field_notas: notas,
-            "updated_at": datetime.utcnow()
-        }}
+            "updated_at": datetime.utcnow(),
+        }},
     )
-    
+
     return {"message": f"Tope {tope_numero} registrado"}
+
 
 @api_router.post("/cuido/{cuido_id}/trabajo")
 async def registrar_trabajo(
@@ -1535,15 +1772,18 @@ async def registrar_trabajo(
     trabajo_numero: int,
     tiempo_minutos: int,
     notas: Optional[str] = None,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     if trabajo_numero < 1 or trabajo_numero > 5:
         raise HTTPException(status_code=400, detail="Trabajo debe ser entre 1 y 5")
-    
-    cuido = await db.cuido.find_one({"_id": ObjectId(cuido_id), "user_id": current_user["id"]})
+
+    cuido = await db.cuido.find_one({
+        "_id": to_object_id(cuido_id, "cuido_id"),
+        "user_id": current_user["id"],
+    })
     if not cuido:
         raise HTTPException(status_code=404, detail="Cuido no encontrado")
-    
+
     trabajos = cuido.get("trabajos", [])
     for t in trabajos:
         if t["numero"] == trabajo_numero:
@@ -1552,136 +1792,156 @@ async def registrar_trabajo(
             t["fecha_completado"] = datetime.utcnow().strftime("%Y-%m-%d")
             t["notas"] = notas
             break
-    
+
     await db.cuido.update_one(
-        {"_id": ObjectId(cuido_id)},
-        {"$set": {"trabajos": trabajos, "updated_at": datetime.utcnow()}}
+        {"_id": to_object_id(cuido_id, "cuido_id")},
+        {"$set": {"trabajos": trabajos, "updated_at": datetime.utcnow()}},
     )
-    
+
     return {"message": f"Trabajo {trabajo_numero} registrado con {tiempo_minutos} minutos"}
 
+
 @api_router.post("/cuido/{cuido_id}/descanso")
-async def iniciar_descanso(
-    cuido_id: str,
-    dias: int,
-    current_user: dict = Depends(get_current_user)
-):
+async def iniciar_descanso(cuido_id: str, dias: int, current_user: dict = Depends(get_current_user)):
     if dias < 1 or dias > 20:
         raise HTTPException(status_code=400, detail="Días de descanso debe ser entre 1 y 20")
-    
-    cuido = await db.cuido.find_one({"_id": ObjectId(cuido_id), "user_id": current_user["id"]})
+
+    cuido = await db.cuido.find_one({
+        "_id": to_object_id(cuido_id, "cuido_id"),
+        "user_id": current_user["id"],
+    })
     if not cuido:
         raise HTTPException(status_code=404, detail="Cuido no encontrado")
-    
+
     fecha_inicio = datetime.utcnow()
     fecha_fin = fecha_inicio + timedelta(days=dias)
-    
+
     await db.cuido.update_one(
-        {"_id": ObjectId(cuido_id)},
+        {"_id": to_object_id(cuido_id, "cuido_id")},
         {"$set": {
             "en_descanso": True,
             "dias_descanso": dias,
             "fecha_inicio_descanso": fecha_inicio.strftime("%Y-%m-%d"),
             "fecha_fin_descanso": fecha_fin.strftime("%Y-%m-%d"),
             "estado": "descanso",
-            "updated_at": datetime.utcnow()
-        }}
+            "updated_at": datetime.utcnow(),
+        }},
     )
-    
+
     return {
         "message": f"Descanso de {dias} días iniciado",
-        "fecha_fin": fecha_fin.strftime("%Y-%m-%d")
+        "fecha_fin": fecha_fin.strftime("%Y-%m-%d"),
     }
+
 
 @api_router.post("/cuido/{cuido_id}/finalizar-descanso")
 async def finalizar_descanso(cuido_id: str, current_user: dict = Depends(get_current_user)):
-    cuido = await db.cuido.find_one({"_id": ObjectId(cuido_id), "user_id": current_user["id"]})
+    cuido = await db.cuido.find_one({
+        "_id": to_object_id(cuido_id, "cuido_id"),
+        "user_id": current_user["id"],
+    })
     if not cuido:
         raise HTTPException(status_code=404, detail="Cuido no encontrado")
-    
+
     await db.cuido.update_one(
-        {"_id": ObjectId(cuido_id)},
+        {"_id": to_object_id(cuido_id, "cuido_id")},
         {"$set": {
             "en_descanso": False,
             "estado": "activo",
-            "updated_at": datetime.utcnow()
-        }}
+            "updated_at": datetime.utcnow(),
+        }},
     )
-    
+
     return {"message": "Descanso finalizado, gallo vuelve a cuido activo"}
+
 
 @api_router.post("/cuido/{cuido_id}/finalizar")
 async def finalizar_cuido(cuido_id: str, current_user: dict = Depends(get_current_user)):
-    cuido = await db.cuido.find_one({"_id": ObjectId(cuido_id), "user_id": current_user["id"]})
+    cuido = await db.cuido.find_one({
+        "_id": to_object_id(cuido_id, "cuido_id"),
+        "user_id": current_user["id"],
+    })
     if not cuido:
         raise HTTPException(status_code=404, detail="Cuido no encontrado")
-    
+
     await db.cuido.update_one(
-        {"_id": ObjectId(cuido_id)},
+        {"_id": to_object_id(cuido_id, "cuido_id")},
         {"$set": {
             "estado": "finalizado",
             "en_descanso": False,
-            "updated_at": datetime.utcnow()
-        }}
+            "updated_at": datetime.utcnow(),
+        }},
     )
-    
+
     return {"message": "Cuido finalizado"}
+
 
 @api_router.delete("/cuido/{cuido_id}")
 async def delete_cuido(cuido_id: str, current_user: dict = Depends(get_current_user)):
-    result = await db.cuido.delete_one({"_id": ObjectId(cuido_id), "user_id": current_user["id"]})
+    result = await db.cuido.delete_one({
+        "_id": to_object_id(cuido_id, "cuido_id"),
+        "user_id": current_user["id"],
+    })
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Cuido no encontrado")
     return {"message": "Cuido eliminado"}
+
 
 # ============== DASHBOARD ==============
 
 @api_router.get("/dashboard")
 async def get_dashboard(current_user: dict = Depends(get_current_user)):
     user_id = current_user["id"]
-    
+
     aves_activas = await db.aves.count_documents({"user_id": user_id, "estado": "activo"})
     gallos = await db.aves.count_documents({"user_id": user_id, "estado": "activo", "tipo": "gallo"})
     gallinas = await db.aves.count_documents({"user_id": user_id, "estado": "activo", "tipo": "gallina"})
-    
+
     cruces_total = await db.cruces.count_documents({"user_id": user_id})
     cruces_planeados = await db.cruces.count_documents({"user_id": user_id, "estado": "planeado"})
-    
+
     camadas_total = await db.camadas.count_documents({"user_id": user_id})
     camadas_activas = await db.camadas.count_documents({
         "user_id": user_id,
         "fecha_incubacion_inicio": {"$ne": None},
-        "fecha_nacimiento": None
+        "fecha_nacimiento": None,
     })
-    
+
     recent_peleas = await db.peleas.find({"user_id": user_id}).sort("fecha", -1).limit(5).to_list(5)
     peleas_data = []
     for p in recent_peleas:
-        ave = await db.aves.find_one({"_id": ObjectId(p["ave_id"])})
+        ave = None
+        ave_id = p.get("ave_id")
+        if ave_id:
+            try:
+                ave = await db.aves.find_one({"_id": to_object_id(ave_id, "ave_id")})
+            except HTTPException:
+                ave = None
+
         peleas_data.append({
             "id": str(p["_id"]),
             "fecha": p.get("fecha"),
             "resultado": p.get("resultado"),
             "calificacion": p.get("calificacion"),
             "ave_codigo": ave.get("codigo") if ave else None,
-            "ave_nombre": ave.get("nombre") if ave else None
+            "ave_nombre": ave.get("nombre") if ave else None,
         })
-    
+
     total_peleas = await db.peleas.count_documents({"user_id": user_id})
     peleas_ganadas = await db.peleas.count_documents({"user_id": user_id, "resultado": "GANO"})
-    
+
     today = datetime.utcnow().strftime("%Y-%m-%d")
     week_later = (datetime.utcnow() + timedelta(days=7)).strftime("%Y-%m-%d")
     recordatorios = await db.salud.count_documents({
         "user_id": user_id,
-        "proxima_fecha": {"$gte": today, "$lte": week_later}
+        "proxima_fecha": {"$gte": today, "$lte": week_later},
     })
-    
+
     return {
         "aves": {
             "total_activas": aves_activas,
             "gallos": gallos,
-            "gallinas": gallinas
+            "gallinas": gallinas,
         },
         "cruces_planeados": cruces_planeados,
         "cruces_total": cruces_total,
@@ -1692,10 +1952,11 @@ async def get_dashboard(current_user: dict = Depends(get_current_user)):
             "ganadas": peleas_ganadas,
             "perdidas": total_peleas - peleas_ganadas,
             "porcentaje_victorias": round((peleas_ganadas / total_peleas * 100) if total_peleas > 0 else 0, 1),
-            "recientes": peleas_data
+            "recientes": peleas_data,
         },
-        "recordatorios_salud": recordatorios
+        "recordatorios_salud": recordatorios,
     }
+
 
 # ============== SYNC ==============
 
@@ -1703,77 +1964,83 @@ async def get_dashboard(current_user: dict = Depends(get_current_user)):
 async def sync_upload(data: SyncData, current_user: dict = Depends(get_current_user)):
     user_id = current_user["id"]
     results = {"aves": 0, "cruces": 0, "camadas": 0, "peleas": 0, "salud": 0}
-    
+
     for ave in data.aves:
         ave["user_id"] = user_id
         ave["updated_at"] = datetime.utcnow()
         if "id" in ave and ave["id"]:
             try:
                 await db.aves.update_one(
-                    {"_id": ObjectId(ave["id"]), "user_id": user_id},
+                    {"_id": to_object_id(ave["id"], "ave_id"), "user_id": user_id},
                     {"$set": {k: v for k, v in ave.items() if k != "id"}},
-                    upsert=True
+                    upsert=True,
                 )
-            except:
+            except Exception:
                 ave.pop("id", None)
                 await db.aves.insert_one(ave)
         else:
             ave.pop("id", None)
             await db.aves.insert_one(ave)
         results["aves"] += 1
-    
+
     for cruce in data.cruces:
         cruce["user_id"] = user_id
         cruce["updated_at"] = datetime.utcnow()
         if "id" in cruce and cruce["id"]:
             try:
                 await db.cruces.update_one(
-                    {"_id": ObjectId(cruce["id"]), "user_id": user_id},
+                    {"_id": to_object_id(cruce["id"], "cruce_id"), "user_id": user_id},
                     {"$set": {k: v for k, v in cruce.items() if k != "id"}},
-                    upsert=True
+                    upsert=True,
                 )
-            except:
+            except Exception:
                 cruce.pop("id", None)
                 await db.cruces.insert_one(cruce)
         else:
             cruce.pop("id", None)
             await db.cruces.insert_one(cruce)
         results["cruces"] += 1
-    
+
     return {"message": "Sincronización completada", "results": results}
+
 
 @api_router.get("/sync/download")
 async def sync_download(since: Optional[str] = None, current_user: dict = Depends(get_current_user)):
     user_id = current_user["id"]
     query = {"user_id": user_id}
-    
+
     if since:
         try:
             since_date = datetime.fromisoformat(since)
             query["updated_at"] = {"$gte": since_date}
-        except:
+        except Exception:
             pass
-    
+
     aves = await db.aves.find(query).to_list(10000)
     cruces = await db.cruces.find(query).to_list(10000)
     camadas = await db.camadas.find(query).to_list(10000)
     peleas = await db.peleas.find(query).to_list(10000)
     salud = await db.salud.find(query).to_list(10000)
-    
+
     return {
         "aves": [serialize_doc(a) for a in aves],
         "cruces": [serialize_doc(c) for c in cruces],
         "camadas": [serialize_doc(c) for c in camadas],
         "peleas": [serialize_doc(p) for p in peleas],
         "salud": [serialize_doc(s) for s in salud],
-        "sync_time": datetime.utcnow().isoformat()
+        "sync_time": datetime.utcnow().isoformat(),
     }
+
 
 # ============== HEALTH CHECK ==============
 
 @api_router.get("/health")
 async def health_check():
-    return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
+    return {
+        "status": "healthy",
+        "timestamp": datetime.utcnow().isoformat(),
+    }
+
 
 app.include_router(api_router)
 
@@ -1784,6 +2051,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

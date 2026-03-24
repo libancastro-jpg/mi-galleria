@@ -77,6 +77,7 @@ export default function CuidoDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const isNew = id === 'new';
+  const MEMBERSHIP_PLANS_ROUTE = '/planes';
 
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
@@ -98,12 +99,79 @@ export default function CuidoDetailScreen() {
   const [selectedActividad, setSelectedActividad] = useState<Actividad | null>(null);
   const [showDetalleModal, setShowDetalleModal] = useState(false);
 
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [premiumModalTitle, setPremiumModalTitle] = useState('Límite alcanzado');
+  const [premiumModalMessage, setPremiumModalMessage] = useState(
+    'Has alcanzado el límite de tu plan. Ve a Planes de membresía para continuar.'
+  );
+
   useEffect(() => {
     if (!isNew) {
       fetchCuido();
     }
     fetchGallos();
   }, [id]);
+
+  const extractErrorMessage = (error: any) => {
+    return (
+      error?.response?.data?.detail?.message ||
+      error?.response?.data?.detail ||
+      error?.response?.data?.message ||
+      error?.message ||
+      'Ocurrió un error'
+    );
+  };
+
+  const isPremiumLimitError = (error: any) => {
+    const code =
+      error?.response?.data?.detail?.code ||
+      error?.response?.data?.code ||
+      error?.code;
+
+    const message = String(
+      error?.response?.data?.detail?.message ||
+        error?.response?.data?.detail ||
+        error?.response?.data?.message ||
+        error?.message ||
+        ''
+    ).toLowerCase();
+
+    return (
+      code === 'PREMIUM_REQUIRED' ||
+      code === 'FREE_PLAN_LIMIT_REACHED' ||
+      code === 'TRIAL_EXPIRED' ||
+      code === 'PLAN_REQUIRED' ||
+      message.includes('premium') ||
+      message.includes('membres') ||
+      message.includes('trial') ||
+      message.includes('prueba gratis') ||
+      message.includes('límite') ||
+      message.includes('limite') ||
+      message.includes('plan requerido')
+    );
+  };
+
+  const openPremiumModalFromError = (error: any) => {
+    const title =
+      error?.response?.data?.detail?.title ||
+      error?.response?.data?.title ||
+      'Límite alcanzado';
+
+    const message =
+      error?.response?.data?.detail?.message ||
+      error?.response?.data?.detail ||
+      error?.response?.data?.message ||
+      'Has alcanzado el límite de tu plan. Ve a Planes de membresía para continuar.';
+
+    setPremiumModalTitle(title);
+    setPremiumModalMessage(message);
+    setShowPremiumModal(true);
+  };
+
+  const goToMembershipPlans = () => {
+    setShowPremiumModal(false);
+    router.push(MEMBERSHIP_PLANS_ROUTE as any);
+  };
 
   const fetchCuido = async () => {
     try {
@@ -146,7 +214,7 @@ export default function CuidoDetailScreen() {
 
       setCuido({ ...data, actividades });
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      Alert.alert('Error', extractErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -155,9 +223,15 @@ export default function CuidoDetailScreen() {
   const fetchGallos = async () => {
     try {
       const data = await api.get('/aves', { tipo: 'gallo', estado: 'activo' });
-      setGallos(data);
+      const gallosData = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.data)
+          ? data.data
+          : [];
+      setGallos(gallosData);
     } catch (error) {
       console.error('Error fetching gallos:', error);
+      setGallos([]);
     }
   };
 
@@ -173,7 +247,11 @@ export default function CuidoDetailScreen() {
       Alert.alert('Éxito', 'Cuido creado correctamente');
       router.back();
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      if (isPremiumLimitError(error)) {
+        openPremiumModalFromError(error);
+      } else {
+        Alert.alert('Error', extractErrorMessage(error));
+      }
     } finally {
       setSaving(false);
     }
@@ -197,7 +275,7 @@ export default function CuidoDetailScreen() {
               Alert.alert('Éxito', 'Cuido eliminado correctamente');
               router.back();
             } catch (error: any) {
-              Alert.alert('Error', error.message || 'No se pudo eliminar el cuido');
+              Alert.alert('Error', extractErrorMessage(error));
             } finally {
               setDeleting(false);
             }
@@ -252,7 +330,12 @@ export default function CuidoDetailScreen() {
       resetAddModal();
       Alert.alert('Éxito', `${actividadTipo === 'tope' ? 'Tope' : 'Trabajo'} ${numero} registrado`);
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      if (isPremiumLimitError(error)) {
+        resetAddModal();
+        openPremiumModalFromError(error);
+      } else {
+        Alert.alert('Error', extractErrorMessage(error));
+      }
     }
   };
 
@@ -282,7 +365,14 @@ export default function CuidoDetailScreen() {
       fetchCuido();
       Alert.alert('Éxito', `Descanso de ${dias} días iniciado`);
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      if (isPremiumLimitError(error)) {
+        Keyboard.dismiss();
+        setShowDescansoModal(false);
+        setDiasDescanso('');
+        openPremiumModalFromError(error);
+      } else {
+        Alert.alert('Error', extractErrorMessage(error));
+      }
     }
   };
 
@@ -294,7 +384,7 @@ export default function CuidoDetailScreen() {
       fetchCuido();
       Alert.alert('Éxito', 'Descanso finalizado');
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      Alert.alert('Error', extractErrorMessage(error));
     }
   };
 
@@ -312,7 +402,7 @@ export default function CuidoDetailScreen() {
               Alert.alert('Éxito', 'Cuido finalizado');
               router.back();
             } catch (error: any) {
-              Alert.alert('Error', error.message);
+              Alert.alert('Error', extractErrorMessage(error));
             }
           },
         },
@@ -423,6 +513,38 @@ export default function CuidoDetailScreen() {
             </Text>
           </View>
         </ScrollView>
+
+        <Modal
+          visible={showPremiumModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowPremiumModal(false)}
+        >
+          <View style={styles.premiumModalOverlay}>
+            <View style={styles.premiumModal}>
+              <View style={styles.premiumIconWrap}>
+                <Ionicons name="lock-closed" size={30} color={COLORS.gold} />
+              </View>
+
+              <Text style={styles.premiumTitle}>{premiumModalTitle}</Text>
+              <Text style={styles.premiumMessage}>{premiumModalMessage}</Text>
+
+              <TouchableOpacity
+                style={styles.premiumPrimaryButton}
+                onPress={goToMembershipPlans}
+              >
+                <Text style={styles.premiumPrimaryButtonText}>Ver planes de membresía</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.premiumSecondaryButton}
+                onPress={() => setShowPremiumModal(false)}
+              >
+                <Text style={styles.premiumSecondaryButtonText}>Cerrar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     );
   }
@@ -882,6 +1004,38 @@ export default function CuidoDetailScreen() {
                 </TouchableOpacity>
               </>
             )}
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showPremiumModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPremiumModal(false)}
+      >
+        <View style={styles.premiumModalOverlay}>
+          <View style={styles.premiumModal}>
+            <View style={styles.premiumIconWrap}>
+              <Ionicons name="lock-closed" size={30} color={COLORS.gold} />
+            </View>
+
+            <Text style={styles.premiumTitle}>{premiumModalTitle}</Text>
+            <Text style={styles.premiumMessage}>{premiumModalMessage}</Text>
+
+            <TouchableOpacity
+              style={styles.premiumPrimaryButton}
+              onPress={goToMembershipPlans}
+            >
+              <Text style={styles.premiumPrimaryButtonText}>Ver planes de membresía</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.premiumSecondaryButton}
+              onPress={() => setShowPremiumModal(false)}
+            >
+              <Text style={styles.premiumSecondaryButtonText}>Cerrar</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -1474,5 +1628,68 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1a1a1a',
     fontWeight: '600',
+  },
+  premiumModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  premiumModal: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    padding: 24,
+    alignItems: 'center',
+  },
+  premiumIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(212, 160, 23, 0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  premiumTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  premiumMessage: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: '#555555',
+    textAlign: 'center',
+    marginBottom: 22,
+  },
+  premiumPrimaryButton: {
+    width: '100%',
+    backgroundColor: COLORS.gold,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  premiumPrimaryButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#000',
+  },
+  premiumSecondaryButton: {
+    width: '100%',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  premiumSecondaryButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#555555',
   },
 });

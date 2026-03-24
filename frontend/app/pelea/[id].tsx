@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -26,12 +27,19 @@ interface Ave {
 export default function PeleaFormScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const isEdit = id && id !== 'new';
+  const isEdit = !!id && id !== 'new';
+  const MEMBERSHIP_PLANS_ROUTE = '/planes';
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [gallos, setGallos] = useState<Ave[]>([]);
   const [showAveList, setShowAveList] = useState(false);
+
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [premiumModalTitle, setPremiumModalTitle] = useState('Límite alcanzado');
+  const [premiumModalMessage, setPremiumModalMessage] = useState(
+    'Has alcanzado el límite de tu plan. Ve a Planes de membresía para continuar.'
+  );
 
   const [formData, setFormData] = useState({
     ave_id: '',
@@ -49,12 +57,79 @@ export default function PeleaFormScreen() {
     }
   }, [id]);
 
+  const extractErrorMessage = (error: any) => {
+    return (
+      error?.response?.data?.detail?.message ||
+      error?.response?.data?.detail ||
+      error?.response?.data?.message ||
+      error?.message ||
+      'Ocurrió un error'
+    );
+  };
+
+  const isPremiumLimitError = (error: any) => {
+    const code =
+      error?.response?.data?.detail?.code ||
+      error?.response?.data?.code ||
+      error?.code;
+
+    const message = String(
+      error?.response?.data?.detail?.message ||
+        error?.response?.data?.detail ||
+        error?.response?.data?.message ||
+        error?.message ||
+        ''
+    ).toLowerCase();
+
+    return (
+      code === 'PREMIUM_REQUIRED' ||
+      code === 'FREE_PLAN_LIMIT_REACHED' ||
+      code === 'TRIAL_EXPIRED' ||
+      code === 'PLAN_REQUIRED' ||
+      message.includes('premium') ||
+      message.includes('membres') ||
+      message.includes('trial') ||
+      message.includes('prueba gratis') ||
+      message.includes('límite') ||
+      message.includes('limite') ||
+      message.includes('plan requerido')
+    );
+  };
+
+  const openPremiumModalFromError = (error: any) => {
+    const title =
+      error?.response?.data?.detail?.title ||
+      error?.response?.data?.title ||
+      'Límite alcanzado';
+
+    const message =
+      error?.response?.data?.detail?.message ||
+      error?.response?.data?.detail ||
+      error?.response?.data?.message ||
+      'Has alcanzado el límite de tu plan. Ve a Planes de membresía para continuar.';
+
+    setPremiumModalTitle(title);
+    setPremiumModalMessage(message);
+    setShowPremiumModal(true);
+  };
+
+  const goToMembershipPlans = () => {
+    setShowPremiumModal(false);
+    router.push(MEMBERSHIP_PLANS_ROUTE as any);
+  };
+
   const fetchGallos = async () => {
     try {
       const aves = await api.get('/aves', { tipo: 'gallo', estado: 'activo' });
-      setGallos(aves);
+      const gallosData = Array.isArray(aves)
+        ? aves
+        : Array.isArray(aves?.data)
+          ? aves.data
+          : [];
+      setGallos(gallosData);
     } catch (error) {
       console.error('Error fetching gallos:', error);
+      setGallos([]);
     }
   };
 
@@ -71,7 +146,7 @@ export default function PeleaFormScreen() {
         notas: pelea.notas || '',
       });
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      Alert.alert('Error', extractErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -102,7 +177,11 @@ export default function PeleaFormScreen() {
       }
       router.back();
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      if (isPremiumLimitError(error)) {
+        openPremiumModalFromError(error);
+      } else {
+        Alert.alert('Error', extractErrorMessage(error));
+      }
     } finally {
       setSaving(false);
     }
@@ -143,7 +222,6 @@ export default function PeleaFormScreen() {
         </View>
 
         <ScrollView style={styles.form} contentContainerStyle={styles.formContent}>
-          {/* Gallo Selection */}
           <Text style={styles.label}>Gallo *</Text>
           <TouchableOpacity
             style={styles.selectButton}
@@ -193,7 +271,6 @@ export default function PeleaFormScreen() {
             </View>
           )}
 
-          {/* Fecha */}
           <Text style={styles.label}>Fecha *</Text>
           <TextInput
             style={styles.input}
@@ -203,7 +280,6 @@ export default function PeleaFormScreen() {
             placeholderTextColor="#555555"
           />
 
-          {/* Lugar */}
           <Text style={styles.label}>Lugar (opcional)</Text>
           <TextInput
             style={styles.input}
@@ -213,7 +289,6 @@ export default function PeleaFormScreen() {
             placeholderTextColor="#555555"
           />
 
-          {/* Resultado */}
           <Text style={styles.label}>Resultado *</Text>
           <View style={styles.resultadoContainer}>
             <TouchableOpacity
@@ -261,7 +336,6 @@ export default function PeleaFormScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Calificación */}
           <Text style={styles.label}>Calificación *</Text>
           <View style={styles.calificacionContainer}>
             {[
@@ -300,7 +374,6 @@ export default function PeleaFormScreen() {
             ))}
           </View>
 
-          {/* Notas */}
           <Text style={styles.label}>Notas</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
@@ -314,6 +387,38 @@ export default function PeleaFormScreen() {
 
           <View style={{ height: 40 }} />
         </ScrollView>
+
+        <Modal
+          visible={showPremiumModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowPremiumModal(false)}
+        >
+          <View style={styles.premiumModalOverlay}>
+            <View style={styles.premiumModal}>
+              <View style={styles.premiumIconWrap}>
+                <Ionicons name="lock-closed" size={30} color="#d4a017" />
+              </View>
+
+              <Text style={styles.premiumTitle}>{premiumModalTitle}</Text>
+              <Text style={styles.premiumMessage}>{premiumModalMessage}</Text>
+
+              <TouchableOpacity
+                style={styles.premiumPrimaryButton}
+                onPress={goToMembershipPlans}
+              >
+                <Text style={styles.premiumPrimaryButtonText}>Ver planes de membresía</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.premiumSecondaryButton}
+                onPress={() => setShowPremiumModal(false)}
+              >
+                <Text style={styles.premiumSecondaryButtonText}>Cerrar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -493,5 +598,68 @@ const styles = StyleSheet.create({
   calificacionTextActive: {
     color: '#000',
     fontWeight: '600',
+  },
+  premiumModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  premiumModal: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    padding: 24,
+    alignItems: 'center',
+  },
+  premiumIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(212, 160, 23, 0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  premiumTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  premiumMessage: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: '#555555',
+    textAlign: 'center',
+    marginBottom: 22,
+  },
+  premiumPrimaryButton: {
+    width: '100%',
+    backgroundColor: '#d4a017',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  premiumPrimaryButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#000',
+  },
+  premiumSecondaryButton: {
+    width: '100%',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  premiumSecondaryButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#555555',
   },
 });
