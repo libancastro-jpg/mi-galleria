@@ -569,34 +569,28 @@ async def export_data(current_user: dict = Depends(get_current_user)):
 
 @api_router.post("/aves", response_model=AveResponse)
 async def create_ave(ave: AveCreate, current_user: dict = Depends(get_current_user)):
-    # 🔒 Validar plan gratis
-    if not is_free_trial_active(current_user):
-        raise HTTPException(
-            status_code=403,
-            detail="Tu periodo gratis ha expirado. Actualiza a premium para seguir agregando aves."
-        )
+    # 🔓 VALIDACIÓN PREMIUM DESACTIVADA TEMPORALMENTE
 
     if ave.padre_id:
-        padre = await db.aves.find_one({"_id": ObjectId(ave.padre_id), "user_id": current_user["id"]})
+        padre = await db.aves.find_one({"_id": ObjectId(ave.padre_id)})
         if padre and padre.get("tipo") != "gallo":
             raise HTTPException(status_code=400, detail="El padre debe ser un gallo")
-    
+
     if ave.madre_id:
-        madre = await db.aves.find_one({"_id": ObjectId(ave.madre_id), "user_id": current_user["id"]})
+        madre = await db.aves.find_one({"_id": ObjectId(ave.madre_id)})
         if madre and madre.get("tipo") != "gallina":
             raise HTTPException(status_code=400, detail="La madre debe ser una gallina")
-    
+
     ave_doc = {
         **ave.dict(),
         "user_id": current_user["id"],
         "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow()
     }
-    
+
     result = await db.aves.insert_one(ave_doc)
     ave_doc["_id"] = result.inserted_id
-    
-    return AveResponse(**serialize_doc(ave_doc))
+
+    return serialize_doc(ave_doc)
 
 @api_router.get("/aves", response_model=List[AveResponse])
 async def get_aves(
