@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -17,20 +17,10 @@ import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../src/context/AuthContext';
 import { api } from '../src/services/api';
-import {
-  initializeIAP,
-  startPurchaseListeners,
-  disconnectIAP,
-  buyPremiumSubscription,
-} from '../src/services/iap';
 
 const COLORS = {
   gold: '#F5A623',
   goldLight: 'rgba(245, 166, 35, 0.15)',
-  greenDark: '#16a34a',
-  greenLight: 'rgba(22, 163, 74, 0.12)',
-  eliteDark: '#d4a017',
-  eliteLight: 'rgba(212, 160, 23, 0.12)',
   redDeep: '#ef4444',
   redLight: 'rgba(239, 68, 68, 0.15)',
   grayDark: '#f5f5f5',
@@ -45,8 +35,6 @@ const PRIVACY_URL = 'https://sites.google.com/view/migalleria-privacidad';
 const TERMS_URL = 'https://sites.google.com/view/migalleria-terminos';
 const SUPPORT_URL = 'https://sites.google.com/view/migalleria-soporte';
 
-type BillingCycle = 'monthly' | 'yearly';
-
 export default function PerfilScreen() {
   const router = useRouter();
   const { user, logout, refreshUser } = useAuth();
@@ -54,7 +42,6 @@ export default function PerfilScreen() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [showPlansModal, setShowPlansModal] = useState(false);
   const [editingGalleria, setEditingGalleria] = useState(user?.nombre || '');
   const [currentPin, setCurrentPin] = useState('');
   const [newPin, setNewPin] = useState('');
@@ -64,44 +51,6 @@ export default function PerfilScreen() {
   const [exporting, setExporting] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
-  const [selectedBilling, setSelectedBilling] = useState<BillingCycle>('monthly');
-  const [purchasingPlan, setPurchasingPlan] = useState(false);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const setupIAP = async () => {
-      const connected = await initializeIAP();
-
-      if (connected && isMounted) {
-        startPurchaseListeners(
-          async (purchase) => {
-            console.log('Compra exitosa:', purchase);
-            setPurchasingPlan(false);
-            Alert.alert(
-              'Compra exitosa',
-              'Tu suscripción premium fue procesada correctamente.'
-            );
-          },
-          (error) => {
-            console.log('Error en compra:', error);
-            setPurchasingPlan(false);
-            Alert.alert(
-              'Error en la compra',
-              error?.message || 'No se pudo completar la suscripción.'
-            );
-          }
-        );
-      }
-    };
-
-    setupIAP();
-
-    return () => {
-      isMounted = false;
-      disconnectIAP();
-    };
-  }, []);
 
   const openUrl = async (url: string) => {
     try {
@@ -113,23 +62,6 @@ export default function PerfilScreen() {
       await Linking.openURL(url);
     } catch {
       Alert.alert('Error', 'Ocurrió un error al abrir el enlace.');
-    }
-  };
-
-  const handleSelectPlan = async (billing: BillingCycle) => {
-    try {
-      setPurchasingPlan(true);
-      setShowPlansModal(false);
-
-      if (billing === 'monthly') {
-        await buyPremiumSubscription('com.migalleria.criadorolite.mensual');
-        return;
-      }
-
-      await buyPremiumSubscription('com.migalleria.criadorolite.anual');
-    } catch (error: any) {
-      setPurchasingPlan(false);
-      Alert.alert('Error', error?.message || 'No se pudo iniciar la compra');
     }
   };
 
@@ -200,9 +132,9 @@ export default function PerfilScreen() {
       }
     } catch (error: any) {
       if (Platform.OS === 'web') {
-        console.error('Error:', error.message);
+        console.error('Error:', error?.message);
       } else {
-        Alert.alert('Error', error.message || 'No se pudo actualizar');
+        Alert.alert('Error', error?.message || 'No se pudo actualizar');
       }
     } finally {
       setSaving(false);
@@ -237,7 +169,7 @@ export default function PerfilScreen() {
       setConfirmPin('');
       Alert.alert('Éxito', 'PIN actualizado correctamente');
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'No se pudo cambiar el PIN');
+      Alert.alert('Error', error?.message || 'No se pudo cambiar el PIN');
     } finally {
       setSaving(false);
     }
@@ -251,7 +183,7 @@ export default function PerfilScreen() {
       }
       Alert.alert('Éxito', 'Datos sincronizados correctamente');
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'No se pudo sincronizar');
+      Alert.alert('Error', error?.message || 'No se pudo sincronizar');
     } finally {
       setSyncing(false);
     }
@@ -261,13 +193,15 @@ export default function PerfilScreen() {
     setExporting(true);
     try {
       const response = await api.get('/export/data');
+      const data = response?.data || response || {};
+
       Alert.alert(
         'Exportar Datos',
         'Esta función generará un archivo PDF/CSV con todos tus datos.\n\n' +
-          `Total de aves: ${response.aves || 0}\n` +
-          `Total de cruces: ${response.cruces || 0}\n` +
-          `Total de camadas: ${response.camadas || 0}\n` +
-          `Total de peleas: ${response.peleas || 0}`,
+          `Total de aves: ${data.aves || 0}\n` +
+          `Total de cruces: ${data.cruces || 0}\n` +
+          `Total de camadas: ${data.camadas || 0}\n` +
+          `Total de peleas: ${data.peleas || 0}`,
         [
           { text: 'Cancelar', style: 'cancel' },
           {
@@ -279,7 +213,7 @@ export default function PerfilScreen() {
         ]
       );
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'No se pudo exportar los datos');
+      Alert.alert('Error', error?.message || 'No se pudo exportar los datos');
     } finally {
       setExporting(false);
     }
@@ -289,14 +223,6 @@ export default function PerfilScreen() {
     if (!phone) return 'No registrado';
     return phone;
   };
-
-  const elitePriceText =
-    selectedBilling === 'monthly' ? 'USD 7.95/mes' : 'USD 66.78/año';
-
-  const eliteButtonText =
-    selectedBilling === 'monthly'
-      ? 'Activar Criador Elite por USD 7.95/mes'
-      : 'Activar Criador Elite por USD 66.78/año';
 
   return (
     <>
@@ -322,50 +248,6 @@ export default function PerfilScreen() {
             </View>
             <Text style={styles.userName}>{user?.nombre || 'Mi Galleria'}</Text>
             <Text style={styles.userRole}>Criador de Gallos de Pelea</Text>
-          </View>
-
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Premium</Text>
-
-            <View style={styles.premiumCard}>
-              <View style={styles.premiumHeader}>
-                <View style={styles.premiumIconBox}>
-                  <Ionicons name="diamond" size={24} color={COLORS.gold} />
-                </View>
-                <View style={styles.premiumTextBox}>
-                  <Text style={styles.premiumTitle}>Mi Galleria Premium</Text>
-                  <Text style={styles.premiumSubtitle}>
-                    Desbloquea funciones premium y amplía el uso de tu app.
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.premiumFeatures}>
-                <View style={styles.premiumFeatureRow}>
-                  <Ionicons name="checkmark-circle" size={18} color={COLORS.greenDark} />
-                  <Text style={styles.premiumFeatureText}>Más capacidad de registros</Text>
-                </View>
-
-                <View style={styles.premiumFeatureRow}>
-                  <Ionicons name="checkmark-circle" size={18} color={COLORS.greenDark} />
-                  <Text style={styles.premiumFeatureText}>Acceso a funciones avanzadas</Text>
-                </View>
-
-                <View style={styles.premiumFeatureRow}>
-                  <Ionicons name="checkmark-circle" size={18} color={COLORS.greenDark} />
-                  <Text style={styles.premiumFeatureText}>Planes premium desde la app</Text>
-                </View>
-              </View>
-
-              <TouchableOpacity
-                style={styles.premiumButton}
-                onPress={() => setShowPlansModal(true)}
-                activeOpacity={0.85}
-              >
-                <Ionicons name="diamond-outline" size={20} color={COLORS.white} />
-                <Text style={styles.premiumButtonText}>Hazte Premium</Text>
-              </TouchableOpacity>
-            </View>
           </View>
 
           <View style={styles.section}>
@@ -545,146 +427,6 @@ export default function PerfilScreen() {
       </SafeAreaView>
 
       <Modal
-        visible={showPlansModal}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setShowPlansModal(false)}
-      >
-        <View style={styles.plansOverlay}>
-          <View style={styles.plansModalContainer}>
-            <View style={styles.plansHeader}>
-              <Text style={styles.plansModalTitle}>Membresías</Text>
-              <TouchableOpacity onPress={() => setShowPlansModal(false)}>
-                <Ionicons name="close" size={28} color={COLORS.textDark} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.plansScrollContent}
-            >
-              <View style={styles.clubCard}>
-                <Text style={styles.clubTitle}>GALLERO</Text>
-                <View style={styles.clubFeatureRow}>
-                  <Ionicons name="checkmark" size={24} color={COLORS.textDark} />
-                  <Text style={styles.clubFeatureText}>Hasta 20 registros en total</Text>
-                </View>
-                <View style={styles.clubFeatureRow}>
-                  <Ionicons name="checkmark" size={24} color={COLORS.textDark} />
-                  <Text style={styles.clubFeatureText}>
-                    Acceso a todas las funciones principales
-                  </Text>
-                </View>
-                <View style={styles.clubFooter}>
-                  <Text style={styles.clubFooterText}>ERES UN GALLERO ACTIVO GRATIS</Text>
-                </View>
-              </View>
-
-              <Text style={styles.upgradeText}>
-                Actualiza para disfrutar de todos los beneficios:
-              </Text>
-
-              <View style={styles.billingToggleWrap}>
-                <TouchableOpacity
-                  style={[
-                    styles.billingToggleOption,
-                    selectedBilling === 'monthly' && styles.billingToggleOptionActive,
-                  ]}
-                  onPress={() => setSelectedBilling('monthly')}
-                  activeOpacity={0.85}
-                >
-                  <Ionicons
-                    name={selectedBilling === 'monthly' ? 'checkmark-circle' : 'ellipse-outline'}
-                    size={22}
-                    color={selectedBilling === 'monthly' ? COLORS.greenDark : '#c4c4c4'}
-                  />
-                  <Text
-                    style={[
-                      styles.billingToggleText,
-                      selectedBilling === 'monthly' && styles.billingToggleTextActive,
-                    ]}
-                  >
-                    Mensual
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.billingToggleOption,
-                    styles.billingToggleOptionDivider,
-                    selectedBilling === 'yearly' && styles.billingToggleOptionActive,
-                  ]}
-                  onPress={() => setSelectedBilling('yearly')}
-                  activeOpacity={0.85}
-                >
-                  <Ionicons
-                    name={selectedBilling === 'yearly' ? 'checkmark-circle' : 'ellipse-outline'}
-                    size={22}
-                    color={selectedBilling === 'yearly' ? COLORS.greenDark : '#c4c4c4'}
-                  />
-                  <Text
-                    style={[
-                      styles.billingToggleText,
-                      selectedBilling === 'yearly' && styles.billingToggleTextActive,
-                    ]}
-                  >
-                    Anual (Ahorra 30%)
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.planCardElite}>
-                <Text style={styles.planTitleElite}>CRIADOR ELITE</Text>
-                <Text style={styles.planPrice}>{elitePriceText}</Text>
-
-                <View style={styles.planFeatureRow}>
-                  <Ionicons name="checkmark" size={24} color={COLORS.eliteDark} />
-                  <Text style={styles.planFeatureLabel}>Registros ilimitados</Text>
-                </View>
-
-                <View style={styles.planFeatureRow}>
-                  <Ionicons name="checkmark" size={24} color={COLORS.eliteDark} />
-                  <Text style={styles.planFeatureLabel}>Dispositivos ilimitados</Text>
-                </View>
-
-                <View style={styles.planFeatureRow}>
-                  <Ionicons name="checkmark" size={24} color={COLORS.eliteDark} />
-                  <Text style={styles.planFeatureLabel}>Fotos ilimitadas</Text>
-                </View>
-
-                <View style={styles.planFeatureRow}>
-                  <Ionicons name="checkmark" size={24} color={COLORS.eliteDark} />
-                  <Text style={styles.planFeatureLabel}>
-                    <Text style={styles.boldText}>Copia de seguridad</Text> diaria de datos
-                  </Text>
-                </View>
-
-                <View style={styles.planFeatureRow}>
-                  <Ionicons name="checkmark" size={24} color={COLORS.eliteDark} />
-                  <Text style={styles.planFeatureLabel}>
-                    Soporte <Text style={styles.boldText}>prioritario</Text>
-                  </Text>
-                </View>
-
-                <TouchableOpacity
-                  style={[styles.planButtonElite, purchasingPlan && styles.planButtonDisabled]}
-                  onPress={() => handleSelectPlan(selectedBilling)}
-                  activeOpacity={0.85}
-                  disabled={purchasingPlan}
-                >
-                  {purchasingPlan ? (
-                    <ActivityIndicator size="small" color={COLORS.white} />
-                  ) : (
-                    <Text style={styles.planButtonLabelWhite}>{eliteButtonText}</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal
         visible={showEditModal}
         transparent
         animationType="fade"
@@ -752,7 +494,9 @@ export default function PerfilScreen() {
                 style={[styles.modalConfirmButton, { backgroundColor: COLORS.redDeep }]}
                 onPress={confirmLogout}
               >
-                <Text style={styles.modalConfirmText}>Cerrar Sesión</Text>
+                <Text style={[styles.modalConfirmText, { color: COLORS.white }]}>
+                  Cerrar Sesión
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -889,68 +633,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 12,
   },
-  premiumCard: {
-    backgroundColor: '#fff7e6',
-    borderRadius: 18,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#f5d08a',
-  },
-  premiumHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 14,
-  },
-  premiumIconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: COLORS.goldLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  premiumTextBox: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  premiumTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.textDark,
-  },
-  premiumSubtitle: {
-    fontSize: 14,
-    color: COLORS.grayLight,
-    marginTop: 4,
-    lineHeight: 20,
-  },
-  premiumFeatures: {
-    marginBottom: 16,
-    gap: 10,
-  },
-  premiumFeatureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  premiumFeatureText: {
-    fontSize: 14,
-    color: COLORS.textDark,
-    marginLeft: 8,
-  },
-  premiumButton: {
-    height: 50,
-    borderRadius: 14,
-    backgroundColor: COLORS.greenDark,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 8,
-  },
-  premiumButtonText: {
-    fontSize: 16,
-    color: COLORS.white,
-    fontWeight: '700',
-  },
   configHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1060,168 +742,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.grayLight,
     marginTop: 4,
-  },
-  plansOverlay: {
-    flex: 1,
-    backgroundColor: COLORS.white,
-  },
-  plansModalContainer: {
-    flex: 1,
-    paddingTop: 56,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-  },
-  plansHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 22,
-  },
-  plansModalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: COLORS.textDark,
-  },
-  plansScrollContent: {
-    paddingBottom: 40,
-  },
-  clubCard: {
-    borderWidth: 1.5,
-    borderColor: '#222',
-    borderRadius: 22,
-    backgroundColor: COLORS.white,
-    overflow: 'hidden',
-    marginBottom: 20,
-  },
-  clubTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: COLORS.textDark,
-    paddingHorizontal: 18,
-    paddingTop: 18,
-    paddingBottom: 8,
-  },
-  clubFeatureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 18,
-    marginBottom: 10,
-  },
-  clubFeatureText: {
-    fontSize: 16,
-    color: COLORS.textDark,
-    marginLeft: 10,
-    fontWeight: '500',
-  },
-  clubFooter: {
-    borderTopWidth: 1,
-    borderTopColor: '#222',
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    marginTop: 10,
-  },
-  clubFooterText: {
-    textAlign: 'center',
-    fontSize: 14,
-    fontWeight: '800',
-    color: COLORS.textDark,
-  },
-  upgradeText: {
-    fontSize: 16,
-    color: COLORS.textDark,
-    marginBottom: 18,
-  },
-  billingToggleWrap: {
-    flexDirection: 'row',
-    borderWidth: 1,
-    borderColor: '#d9d9d9',
-    borderRadius: 18,
-    overflow: 'hidden',
-    backgroundColor: COLORS.white,
-    marginBottom: 18,
-  },
-  billingToggleOption: {
-    flex: 1,
-    minHeight: 66,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    paddingHorizontal: 12,
-    backgroundColor: COLORS.white,
-  },
-  billingToggleOptionDivider: {
-    borderLeftWidth: 1,
-    borderLeftColor: '#d9d9d9',
-  },
-  billingToggleOptionActive: {
-    backgroundColor: '#fafafa',
-  },
-  billingToggleText: {
-    fontSize: 15,
-    color: '#9ca3af',
-    fontWeight: '600',
-  },
-  billingToggleTextActive: {
-    color: COLORS.greenDark,
-  },
-  planCardElite: {
-    borderWidth: 2,
-    borderColor: COLORS.eliteDark,
-    borderRadius: 24,
-    backgroundColor: COLORS.white,
-    padding: 18,
-    marginBottom: 22,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
-  },
-  planTitleElite: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: COLORS.eliteDark,
-    marginBottom: 6,
-  },
-  planPrice: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.textDark,
-    marginBottom: 18,
-  },
-  planFeatureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  planFeatureLabel: {
-    fontSize: 17,
-    color: COLORS.textDark,
-    marginLeft: 12,
-    flex: 1,
-    lineHeight: 24,
-  },
-  boldText: {
-    fontWeight: '800',
-  },
-  planButtonElite: {
-    backgroundColor: COLORS.greenDark,
-    borderRadius: 999,
-    height: 58,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 18,
-  },
-  planButtonDisabled: {
-    opacity: 0.7,
-  },
-  planButtonLabelWhite: {
-    color: COLORS.white,
-    fontWeight: '800',
-    fontSize: 17,
-    textAlign: 'center',
-    paddingHorizontal: 14,
   },
   modalOverlay: {
     flex: 1,
