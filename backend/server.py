@@ -652,7 +652,20 @@ async def get_aves(
         query["linea"] = {"$regex": linea, "$options": "i"}
 
     aves = await db.aves.find(query).sort("created_at", -1).to_list(1000)
-    return [AveResponse(**serialize_doc(ave)) for ave in aves]
+
+    result = []
+    for ave in aves:
+        data = serialize_doc(ave)
+
+        if not data.get("created_at"):
+            data["created_at"] = datetime.utcnow()
+
+        if not data.get("updated_at"):
+            data["updated_at"] = data["created_at"]
+
+        result.append(AveResponse(**data))
+
+    return result
 
 
 @api_router.get("/aves/{ave_id}", response_model=AveResponse)
