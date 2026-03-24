@@ -674,9 +674,19 @@ async def get_ave(ave_id: str, current_user: dict = Depends(get_current_user)):
         "_id": to_object_id(ave_id, "ave_id"),
         "user_id": current_user["id"],
     })
+
     if not ave:
         raise HTTPException(status_code=404, detail="Ave no encontrada")
-    return AveResponse(**serialize_doc(ave))
+
+    data = serialize_doc(ave)
+
+    if not data.get("created_at"):
+        data["created_at"] = datetime.utcnow()
+
+    if not data.get("updated_at"):
+        data["updated_at"] = data["created_at"]
+
+    return AveResponse(**data)
 
 
 @api_router.put("/aves/{ave_id}", response_model=AveResponse)
