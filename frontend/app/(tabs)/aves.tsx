@@ -76,10 +76,10 @@ export default function AvesScreen() {
 
         const result = await api.get('/aves', params);
 
-        const avesData: Ave[] = Array.isArray(result)
-          ? result
-          : Array.isArray(result?.data)
-            ? result.data
+        const avesData: Ave[] = Array.isArray(result?.data)
+          ? result.data
+          : Array.isArray(result)
+            ? result
             : [];
 
         setAves(avesData);
