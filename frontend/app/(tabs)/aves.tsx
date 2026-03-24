@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   TextInput,
   Image,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -35,12 +36,16 @@ const gallinaDefaultImg = require('../../assets/images/gallina.png');
 
 export default function AvesScreen() {
   const router = useRouter();
+
   const [aves, setAves] = useState<Ave[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterTipo, setFilterTipo] = useState<string | null>(null);
   const [filterEstado, setFilterEstado] = useState<string | null>('activo');
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const isFetchingRef = useRef(false);
 
   const getAveImageSource = (ave: Ave) => {
     if (ave.foto_principal) return { uri: ave.foto_principal };
@@ -50,56 +55,84 @@ export default function AvesScreen() {
     return ave.tipo === 'gallo' ? galloDefaultImg : gallinaDefaultImg;
   };
 
-  const fetchAves = async () => {
-    try {
-      const params: Record<string, string> = {};
-      if (filterTipo) params.tipo = filterTipo;
-      if (filterEstado) params.estado = filterEstado;
+  const fetchAves = useCallback(
+    async (isManualRefresh = false) => {
+      if (isFetchingRef.current) return;
 
-      const result = await api.get('/aves', params);
+      isFetchingRef.current = true;
 
-      const avesData: Ave[] = Array.isArray(result)
-        ? result
-        : Array.isArray(result?.data)
-          ? result.data
-          : [];
+      try {
+        if (isManualRefresh) {
+          setRefreshing(true);
+        } else {
+          setLoading(true);
+        }
 
-      setAves(avesData);
-    } catch (error) {
-      console.error('Error fetching aves:', error);
-      setAves([]);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
+        setErrorMessage('');
+
+        const params: Record<string, string> = {};
+        if (filterTipo) params.tipo = filterTipo;
+        if (filterEstado) params.estado = filterEstado;
+
+        const result = await api.get('/aves', params);
+
+        const avesData: Ave[] = Array.isArray(result)
+          ? result
+          : Array.isArray(result?.data)
+            ? result.data
+            : [];
+
+        setAves(avesData);
+      } catch (error) {
+        console.error('Error fetching aves:', error);
+        setErrorMessage('No se pudieron cargar las aves. Intenta nuevamente.');
+
+        if (isManualRefresh) {
+          Alert.alert('Error', 'No se pudieron actualizar las aves.');
+        }
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+        isFetchingRef.current = false;
+      }
+    },
+    [filterTipo, filterEstado]
+  );
 
   useFocusEffect(
     useCallback(() => {
-      fetchAves();
-    }, [filterTipo, filterEstado])
+      fetchAves(false);
+    }, [fetchAves])
   );
 
   const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    fetchAves();
-  }, [filterTipo, filterEstado]);
+    fetchAves(true);
+  }, [fetchAves]);
 
-  const filteredAves = aves.filter((ave) => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
+  const filteredAves = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
 
-    return (
-      ave.codigo?.toLowerCase().includes(query) ||
-      ave.nombre?.toLowerCase().includes(query) ||
-      ave.color?.toLowerCase().includes(query) ||
-      ave.linea?.toLowerCase().includes(query)
-    );
-  });
+    if (!query) return aves;
+
+    return aves.filter((ave) => {
+      const codigo = ave.codigo?.toLowerCase() || '';
+      const nombre = ave.nombre?.toLowerCase() || '';
+      const color = ave.color?.toLowerCase() || '';
+      const linea = ave.linea?.toLowerCase() || '';
+
+      return (
+        codigo.includes(query) ||
+        nombre.includes(query) ||
+        color.includes(query) ||
+        linea.includes(query)
+      );
+    });
+  }, [aves, searchQuery]);
 
   const renderAve = ({ item }: { item: Ave }) => (
     <TouchableOpacity
       style={styles.aveCard}
+      activeOpacity={0.85}
       onPress={() => router.push(`/ave/detail/${item.id}`)}
     >
       <View style={styles.aveImageContainer}>
@@ -223,6 +256,7 @@ export default function AvesScreen() {
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#f59e0b" />
+          <Text style={styles.loadingText}>Cargando aves...</Text>
         </View>
       ) : (
         <FlatList
@@ -230,6 +264,7 @@ export default function AvesScreen() {
           renderItem={renderAve}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
+          keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -237,13 +272,20 @@ export default function AvesScreen() {
               tintColor="#f59e0b"
             />
           }
+          ListHeaderComponent={
+            errorMessage ? (
+              <View style={styles.errorBox}>
+                <Ionicons name="alert-circle-outline" size={18} color="#b91c1c" />
+                <Text style={styles.errorText}>{errorMessage}</Text>
+              </View>
+            ) : null
+          }
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <Ionicons name="fitness-outline" size={64} color="#4b5563" />
               <Text style={styles.emptyTitle}>Sin aves</Text>
               <Text style={styles.emptyText}>
-                Agrega tu primer ave para comenzar y
-                llevar el control de tu galleria a otro nivel.
+                Agrega tu primera ave para comenzar a llevar el control de tu galleria.
               </Text>
               <TouchableOpacity
                 style={styles.emptyButton}
@@ -357,10 +399,34 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 15,
+    color: '#555555',
   },
   listContent: {
     padding: 16,
     paddingTop: 8,
+    flexGrow: 1,
+  },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#fee2e2',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 12,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#b91c1c',
   },
   aveCard: {
     flexDirection: 'row',
@@ -408,7 +474,7 @@ const styles = StyleSheet.create({
   },
   aveNombre: {
     fontSize: 14,
-    color: '#9ca3af',
+    color: '#6b7280',
     marginTop: 2,
   },
   aveDetails: {
@@ -425,11 +491,14 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: 12,
-    color: '#9ca3af',
+    color: '#6b7280',
   },
   emptyState: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 48,
+    paddingHorizontal: 24,
   },
   emptyTitle: {
     fontSize: 20,
@@ -441,6 +510,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#555555',
     marginTop: 8,
+    textAlign: 'center',
+    lineHeight: 20,
   },
   emptyButton: {
     flexDirection: 'row',
