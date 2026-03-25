@@ -1,4 +1,11 @@
-import React, { useState, useCallback, useMemo, useRef } from 'react';
+import React, {
+  useState,
+  useCallback,
+  useMemo,
+  useRef,
+  memo,
+  useEffect,
+} from 'react';
 import {
   View,
   Text,
@@ -34,112 +41,35 @@ interface Ave {
 const galloDefaultImg = require('../../assets/images/gallo.png');
 const gallinaDefaultImg = require('../../assets/images/gallina.png');
 
-export default function AvesScreen() {
-  const router = useRouter();
+const getAveImageSource = (ave: Ave) => {
+  if (ave.foto_principal) return { uri: ave.foto_principal };
+  if (ave.foto) return { uri: ave.foto };
+  if (ave.imagen) return { uri: ave.imagen };
+  if (ave.image_url) return { uri: ave.image_url };
+  return ave.tipo === 'gallo' ? galloDefaultImg : gallinaDefaultImg;
+};
 
-  const [aves, setAves] = useState<Ave[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterTipo, setFilterTipo] = useState<string | null>(null);
-  const [filterEstado, setFilterEstado] = useState<string | null>('activo');
-  const [errorMessage, setErrorMessage] = useState('');
+const AveCard = memo(function AveCard({
+  item,
+  onPress,
+}: {
+  item: Ave;
+  onPress: (id: string) => void;
+}) {
+  const imageSource = useMemo(() => getAveImageSource(item), [item]);
 
-  const isFetchingRef = useRef(false);
+  const handlePress = useCallback(() => {
+    onPress(item.id);
+  }, [item.id, onPress]);
 
-  const getAveImageSource = (ave: Ave) => {
-    if (ave.foto_principal) return { uri: ave.foto_principal };
-    if (ave.foto) return { uri: ave.foto };
-    if (ave.imagen) return { uri: ave.imagen };
-    if (ave.image_url) return { uri: ave.image_url };
-    return ave.tipo === 'gallo' ? galloDefaultImg : gallinaDefaultImg;
-  };
-
-  const fetchAves = useCallback(
-    async (isManualRefresh = false) => {
-      if (isFetchingRef.current) return;
-
-      isFetchingRef.current = true;
-
-      try {
-        if (isManualRefresh) {
-          setRefreshing(true);
-        } else {
-          setLoading(true);
-        }
-
-        setErrorMessage('');
-
-        const params: Record<string, string> = {};
-        if (filterTipo) params.tipo = filterTipo;
-        if (filterEstado) params.estado = filterEstado;
-
-        const result = await api.get('/aves', params);
-
-        const avesData: Ave[] = Array.isArray(result?.data)
-          ? result.data
-          : Array.isArray(result)
-            ? result
-            : [];
-
-        setAves(avesData);
-      } catch (error) {
-        console.error('Error fetching aves:', error);
-        setErrorMessage('No se pudieron cargar las aves. Intenta nuevamente.');
-
-        if (isManualRefresh) {
-          Alert.alert('Error', 'No se pudieron actualizar las aves.');
-        }
-      } finally {
-        setLoading(false);
-        setRefreshing(false);
-        isFetchingRef.current = false;
-      }
-    },
-    [filterTipo, filterEstado]
-  );
-
-  useFocusEffect(
-    useCallback(() => {
-      fetchAves(false);
-    }, [fetchAves])
-  );
-
-  const onRefresh = useCallback(() => {
-    fetchAves(true);
-  }, [fetchAves]);
-
-  const filteredAves = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-
-    if (!query) return aves;
-
-    return aves.filter((ave) => {
-      const codigo = ave.codigo?.toLowerCase() || '';
-      const nombre = ave.nombre?.toLowerCase() || '';
-      const color = ave.color?.toLowerCase() || '';
-      const linea = ave.linea?.toLowerCase() || '';
-
-      return (
-        codigo.includes(query) ||
-        nombre.includes(query) ||
-        color.includes(query) ||
-        linea.includes(query)
-      );
-    });
-  }, [aves, searchQuery]);
-
-  const renderAve = ({ item }: { item: Ave }) => (
-    <TouchableOpacity
-      style={styles.aveCard}
-      activeOpacity={0.85}
-      onPress={() => router.push(`/ave/detail/${item.id}`)}
-    >
+  return (
+    <TouchableOpacity style={styles.aveCard} activeOpacity={0.85} onPress={handlePress}>
       <View style={styles.aveImageContainer}>
         <Image
-          source={getAveImageSource(item)}
+          source={imageSource}
           style={styles.aveImage}
           resizeMode="cover"
+          fadeDuration={0}
         />
         <View
           style={[
@@ -171,15 +101,195 @@ export default function AvesScreen() {
       <Ionicons name="chevron-forward" size={20} color="#555555" />
     </TouchableOpacity>
   );
+});
+
+export default function AvesScreen() {
+  const router = useRouter();
+
+  const [aves, setAves] = useState<Ave[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [filterTipo, setFilterTipo] = useState<string | null>(null);
+  const [filterEstado, setFilterEstado] = useState<string | null>('activo');
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const isFetchingRef = useRef(false);
+  const firstLoadDoneRef = useRef(false);
+  const mountedRef = useRef(true);
+  const lastRequestIdRef = useRef(0);
+  const cacheRef = useRef<Record<string, Ave[]>>({});
+  const lastFetchAtRef = useRef<Record<string, number>>({});
+
+  const cacheKey = useMemo(
+    () => `${filterTipo ?? 'todos'}__${filterEstado ?? 'todos'}`,
+    [filterTipo, filterEstado]
+  );
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 250);
+
+    return () => clearTimeout(timeout);
+  }, [searchQuery]);
+
+  const fetchAves = useCallback(
+    async (isManualRefresh = false, silent = false) => {
+      if (isFetchingRef.current) return;
+
+      const now = Date.now();
+      const cachedData = cacheRef.current[cacheKey];
+      const lastFetchAt = lastFetchAtRef.current[cacheKey] || 0;
+      const cacheIsFresh = now - lastFetchAt < 15000;
+
+      if (!isManualRefresh && cachedData && cacheIsFresh) {
+        setAves(cachedData);
+        setErrorMessage('');
+        setLoading(false);
+        firstLoadDoneRef.current = true;
+        return;
+      }
+
+      isFetchingRef.current = true;
+      const requestId = ++lastRequestIdRef.current;
+
+      try {
+        if (isManualRefresh) {
+          setRefreshing(true);
+        } else if (!silent && !firstLoadDoneRef.current) {
+          setLoading(true);
+        }
+
+        setErrorMessage('');
+
+        const params: Record<string, string> = {};
+        if (filterTipo) params.tipo = filterTipo;
+        if (filterEstado) params.estado = filterEstado;
+
+        const result = await api.get('/aves', params);
+
+        const avesData: Ave[] = Array.isArray(result?.data)
+          ? result.data
+          : Array.isArray(result)
+            ? result
+            : [];
+
+        if (!mountedRef.current || requestId !== lastRequestIdRef.current) return;
+
+        cacheRef.current[cacheKey] = avesData;
+        lastFetchAtRef.current[cacheKey] = Date.now();
+        setAves(avesData);
+        firstLoadDoneRef.current = true;
+      } catch (error) {
+        if (!mountedRef.current || requestId !== lastRequestIdRef.current) return;
+
+        console.error('Error fetching aves:', error);
+        setErrorMessage('No se pudieron cargar las aves. Intenta nuevamente.');
+
+        if (isManualRefresh) {
+          Alert.alert('Error', 'No se pudieron actualizar las aves.');
+        }
+      } finally {
+        if (mountedRef.current && requestId === lastRequestIdRef.current) {
+          setLoading(false);
+          setRefreshing(false);
+        }
+        isFetchingRef.current = false;
+      }
+    },
+    [cacheKey, filterTipo, filterEstado]
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchAves(false, firstLoadDoneRef.current);
+    }, [fetchAves])
+  );
+
+  const onRefresh = useCallback(() => {
+    lastFetchAtRef.current[cacheKey] = 0;
+    fetchAves(true, false);
+  }, [cacheKey, fetchAves]);
+
+  const filteredAves = useMemo(() => {
+    const query = debouncedSearchQuery.trim().toLowerCase();
+
+    if (!query) return aves;
+
+    return aves.filter((ave) => {
+      const codigo = ave.codigo?.toLowerCase() || '';
+      const nombre = ave.nombre?.toLowerCase() || '';
+      const color = ave.color?.toLowerCase() || '';
+      const linea = ave.linea?.toLowerCase() || '';
+
+      return (
+        codigo.includes(query) ||
+        nombre.includes(query) ||
+        color.includes(query) ||
+        linea.includes(query)
+      );
+    });
+  }, [aves, debouncedSearchQuery]);
+
+  const handleOpenAve = useCallback(
+    (id: string) => {
+      router.push(`/ave/detail/${id}`);
+    },
+    [router]
+  );
+
+  const renderAve = useCallback(
+    ({ item }: { item: Ave }) => <AveCard item={item} onPress={handleOpenAve} />,
+    [handleOpenAve]
+  );
+
+  const keyExtractor = useCallback((item: Ave) => item.id, []);
+
+  const listHeader = useMemo(() => {
+    if (!errorMessage) return null;
+
+    return (
+      <View style={styles.errorBox}>
+        <Ionicons name="alert-circle-outline" size={18} color="#b91c1c" />
+        <Text style={styles.errorText}>{errorMessage}</Text>
+      </View>
+    );
+  }, [errorMessage]);
+
+  const listEmpty = useMemo(
+    () => (
+      <View style={styles.emptyState}>
+        <Ionicons name="fitness-outline" size={64} color="#4b5563" />
+        <Text style={styles.emptyTitle}>Sin aves</Text>
+        <Text style={styles.emptyText}>
+          Agrega tu primera ave para comenzar a llevar el control de tu galleria.
+        </Text>
+        <TouchableOpacity
+          style={styles.emptyButton}
+          onPress={() => router.push('/ave/new')}
+        >
+          <Ionicons name="add" size={20} color="#000" />
+          <Text style={styles.emptyButtonText}>Agregar Ave</Text>
+        </TouchableOpacity>
+      </View>
+    ),
+    [router]
+  );
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Mis Aves</Text>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => router.push('/ave/new')}
-        >
+        <TouchableOpacity style={styles.addButton} onPress={() => router.push('/ave/new')}>
           <Ionicons name="add" size={24} color="#000" />
         </TouchableOpacity>
       </View>
@@ -253,7 +363,7 @@ export default function AvesScreen() {
         ))}
       </View>
 
-      {loading ? (
+      {loading && aves.length === 0 ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#f59e0b" />
           <Text style={styles.loadingText}>Cargando aves...</Text>
@@ -262,7 +372,7 @@ export default function AvesScreen() {
         <FlatList
           data={filteredAves}
           renderItem={renderAve}
-          keyExtractor={(item) => item.id}
+          keyExtractor={keyExtractor}
           contentContainerStyle={styles.listContent}
           keyboardShouldPersistTaps="handled"
           refreshControl={
@@ -272,30 +382,13 @@ export default function AvesScreen() {
               tintColor="#f59e0b"
             />
           }
-          ListHeaderComponent={
-            errorMessage ? (
-              <View style={styles.errorBox}>
-                <Ionicons name="alert-circle-outline" size={18} color="#b91c1c" />
-                <Text style={styles.errorText}>{errorMessage}</Text>
-              </View>
-            ) : null
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Ionicons name="fitness-outline" size={64} color="#4b5563" />
-              <Text style={styles.emptyTitle}>Sin aves</Text>
-              <Text style={styles.emptyText}>
-                Agrega tu primera ave para comenzar a llevar el control de tu galleria.
-              </Text>
-              <TouchableOpacity
-                style={styles.emptyButton}
-                onPress={() => router.push('/ave/new')}
-              >
-                <Ionicons name="add" size={20} color="#000" />
-                <Text style={styles.emptyButtonText}>Agregar Ave</Text>
-              </TouchableOpacity>
-            </View>
-          }
+          initialNumToRender={8}
+          maxToRenderPerBatch={8}
+          windowSize={5}
+          updateCellsBatchingPeriod={60}
+          removeClippedSubviews={false}
+          ListHeaderComponent={listHeader}
+          ListEmptyComponent={listEmpty}
         />
       )}
     </SafeAreaView>
@@ -437,6 +530,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1,
     borderColor: '#e0e0e0',
+    minHeight: 88,
   },
   aveImageContainer: {
     position: 'relative',

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -47,9 +47,341 @@ interface Salud {
   proxima_fecha?: string;
 }
 
+const PedigriNodeCard = React.memo(function PedigriNodeCard({
+  node,
+  label,
+  nodeKey,
+  isParent = false,
+  isExpanded,
+  isDuplicate,
+  isCurrentAve,
+  onToggle,
+  onOpen,
+}: {
+  node: any;
+  label: string;
+  nodeKey: string;
+  isParent?: boolean;
+  isExpanded: boolean;
+  isDuplicate: boolean;
+  isCurrentAve: boolean;
+  onToggle: (key: string) => void;
+  onOpen: (nodeId: string) => void;
+}) {
+  const isExternal = node?.externo || (!node?.id && node?.codigo);
+
+  if (!node) {
+    return (
+      <View style={[styles.treeNodeContainer, isParent && styles.treeNodeContainerParent]}>
+        <Text style={[styles.treeLabel, isParent && styles.treeLabelParent]}>{label}</Text>
+        <View style={[styles.treeNode, styles.treeNodeUnknown, isParent && styles.treeNodeParent]}>
+          <Text style={styles.treeNodeUnknownText}>?</Text>
+          <Text style={styles.treeNodeUnknownSubtext}>Desconocido</Text>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={[styles.treeNodeContainer, isParent && styles.treeNodeContainerParent]}>
+      <Text style={[styles.treeLabel, isParent && styles.treeLabelParent]}>{label}</Text>
+
+      <TouchableOpacity
+        style={[
+          styles.treeNode,
+          isParent && styles.treeNodeParent,
+          isDuplicate && styles.treeNodeDuplicate,
+          isExpanded && styles.treeNodeExpanded,
+        ]}
+        onPress={() => onToggle(nodeKey)}
+        activeOpacity={0.9}
+      >
+        {isDuplicate ? (
+          <View style={styles.duplicateBadge}>
+            <Ionicons name="git-merge" size={10} color="#fff" />
+          </View>
+        ) : null}
+
+        {node.foto_principal ? (
+          <Image
+            source={{ uri: node.foto_principal }}
+            style={[styles.treePhoto, isParent && styles.treePhotoParent]}
+          />
+        ) : (
+          <View
+            style={[
+              styles.treePhotoPlaceholder,
+              isParent && styles.treePhotoPlaceholderParent,
+              isDuplicate && styles.treePhotoPlaceholderDuplicate,
+            ]}
+          >
+            <Ionicons
+              name={node.tipo === 'gallo' ? 'male' : 'female'}
+              size={isParent ? 24 : 18}
+              color={isDuplicate ? '#f59e0b' : node.tipo === 'gallo' ? '#3b82f6' : '#ec4899'}
+            />
+          </View>
+        )}
+
+        <Text
+          style={[
+            styles.treeCode,
+            isParent && styles.treeCodeParent,
+            isDuplicate && styles.treeCodeDuplicate,
+          ]}
+          numberOfLines={1}
+        >
+          PL: {node.codigo}
+        </Text>
+
+        <Ionicons
+          name={isExpanded ? 'chevron-up' : 'chevron-down'}
+          size={14}
+          color="#9ca3af"
+          style={{ marginTop: 4 }}
+        />
+      </TouchableOpacity>
+
+      {isExpanded ? (
+        <View style={styles.expandedPanel}>
+          {node.nombre ? (
+            <View style={styles.expandedRow}>
+              <Text style={styles.expandedLabel}>Nombre:</Text>
+              <Text style={styles.expandedValue}>{node.nombre}</Text>
+            </View>
+          ) : null}
+
+          <View style={styles.expandedRow}>
+            <Text style={styles.expandedLabel}>Placa:</Text>
+            <Text style={styles.expandedValue}>{node.codigo}</Text>
+          </View>
+
+          {node.galleria ? (
+            <View style={styles.expandedRow}>
+              <Text style={styles.expandedLabel}>Gallería:</Text>
+              <Text style={styles.expandedValue}>{node.galleria}</Text>
+            </View>
+          ) : null}
+
+          {node.color ? (
+            <View style={styles.expandedRow}>
+              <Text style={styles.expandedLabel}>Color:</Text>
+              <Text style={styles.expandedValue}>{node.color}</Text>
+            </View>
+          ) : null}
+
+          {node.linea ? (
+            <View style={styles.expandedRow}>
+              <Text style={styles.expandedLabel}>Línea:</Text>
+              <Text style={styles.expandedValue}>{node.linea}</Text>
+            </View>
+          ) : null}
+
+          {isExternal ? (
+            <View style={styles.expandedExternalBadge}>
+              <Ionicons name="globe-outline" size={12} color="#f59e0b" />
+              <Text style={styles.expandedExternalText}>Ave Externa</Text>
+            </View>
+          ) : null}
+
+          {!isExternal && node.id && !isCurrentAve ? (
+            <TouchableOpacity
+              style={styles.expandedViewBtn}
+              onPress={() => onOpen(node.id)}
+            >
+              <Text style={styles.expandedViewBtnText}>Ver Perfil Completo</Text>
+              <Ionicons name="arrow-forward" size={14} color="#f59e0b" />
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      ) : null}
+    </View>
+  );
+});
+
+const AbueloNodeCard = React.memo(function AbueloNodeCard({
+  node,
+  label,
+  nodeKey,
+  parentKey,
+  isExpanded,
+  isDuplicate,
+  isEditing,
+  abueloForm,
+  onToggle,
+  onStartEdit,
+  onCancelEdit,
+  onSave,
+  onChangeForm,
+  onOpen,
+  currentId,
+}: {
+  node: any;
+  label: string;
+  nodeKey: string;
+  parentKey: string;
+  isExpanded: boolean;
+  isDuplicate: boolean;
+  isEditing: boolean;
+  abueloForm: {
+    codigo: string;
+    galleria: string;
+    nombre: string;
+    color: string;
+    linea: string;
+  };
+  onToggle: (key: string) => void;
+  onStartEdit: (key: string) => void;
+  onCancelEdit: () => void;
+  onSave: (nodeKey: string, parentKey: string, tipo: string) => void;
+  onChangeForm: (patch: Partial<{
+    codigo: string;
+    galleria: string;
+    nombre: string;
+    color: string;
+    linea: string;
+  }>) => void;
+  onOpen: (nodeId: string) => void;
+  currentId: string;
+}) {
+  const tipo = label.includes('Abuelo') ? 'gallo' : 'gallina';
+  const isExternal = node?.externo || (!node?.id && node?.codigo);
+
+  if (!node) {
+    return (
+      <View style={styles.abueloNodeContainer}>
+        <Text style={styles.abueloLabel}>{label}</Text>
+
+        {isEditing ? (
+          <View style={styles.abueloEditForm}>
+            <TextInput
+              style={styles.abueloInput}
+              placeholder="Placa *"
+              placeholderTextColor="#666"
+              value={abueloForm.codigo}
+              onChangeText={(text) => onChangeForm({ codigo: text })}
+            />
+            <TextInput
+              style={styles.abueloInput}
+              placeholder="Gallería"
+              placeholderTextColor="#666"
+              value={abueloForm.galleria}
+              onChangeText={(text) => onChangeForm({ galleria: text })}
+            />
+            <TextInput
+              style={styles.abueloInput}
+              placeholder="Nombre"
+              placeholderTextColor="#666"
+              value={abueloForm.nombre}
+              onChangeText={(text) => onChangeForm({ nombre: text })}
+            />
+            <TextInput
+              style={styles.abueloInput}
+              placeholder="Color"
+              placeholderTextColor="#666"
+              value={abueloForm.color}
+              onChangeText={(text) => onChangeForm({ color: text })}
+            />
+            <TextInput
+              style={styles.abueloInput}
+              placeholder="Línea"
+              placeholderTextColor="#666"
+              value={abueloForm.linea}
+              onChangeText={(text) => onChangeForm({ linea: text })}
+            />
+            <View style={styles.abueloFormButtons}>
+              <TouchableOpacity style={styles.abueloCancelBtn} onPress={onCancelEdit}>
+                <Text style={styles.abueloCancelBtnText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.abueloSaveBtn,
+                  !abueloForm.codigo.trim() && styles.abueloSaveBtnDisabled,
+                ]}
+                disabled={!abueloForm.codigo.trim()}
+                onPress={() => onSave(nodeKey, parentKey, tipo)}
+              >
+                <Text style={styles.abueloSaveBtnText}>Guardar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={styles.abueloAddBtn}
+            onPress={() => onStartEdit(nodeKey)}
+          >
+            <Ionicons name="add" size={18} color="#9ca3af" />
+            <Text style={styles.abueloAddText}>Agregar</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.abueloNodeContainer}>
+      <Text style={styles.abueloLabel}>{label}</Text>
+
+      <TouchableOpacity
+        style={[styles.abueloNode, isDuplicate && styles.abueloNodeDuplicate]}
+        onPress={() => onToggle(nodeKey)}
+        activeOpacity={0.9}
+      >
+        <View
+          style={[
+            styles.abueloIcon,
+            {
+              backgroundColor:
+                node.tipo === 'gallo'
+                  ? 'rgba(59, 130, 246, 0.15)'
+                  : 'rgba(236, 72, 153, 0.15)',
+            },
+          ]}
+        >
+          <Ionicons
+            name={node.tipo === 'gallo' ? 'male' : 'female'}
+            size={14}
+            color={isDuplicate ? '#f59e0b' : node.tipo === 'gallo' ? '#3b82f6' : '#ec4899'}
+          />
+        </View>
+
+        <Text style={[styles.abueloCode, isDuplicate && { color: '#f59e0b' }]} numberOfLines={1}>
+          {node.codigo}
+        </Text>
+
+        <Ionicons
+          name={isExpanded ? 'chevron-up' : 'chevron-down'}
+          size={12}
+          color="#9ca3af"
+        />
+      </TouchableOpacity>
+
+      {isExpanded ? (
+        <View style={styles.abueloExpandedPanel}>
+          {node.nombre ? <Text style={styles.abueloExpandedText}>📛 {node.nombre}</Text> : null}
+          <Text style={styles.abueloExpandedText}>🏷️ PL: {node.codigo}</Text>
+          {node.galleria ? <Text style={styles.abueloExpandedText}>🏢 {node.galleria}</Text> : null}
+          {node.color ? <Text style={styles.abueloExpandedText}>🎨 {node.color}</Text> : null}
+          {node.linea ? <Text style={styles.abueloExpandedText}>🧬 {node.linea}</Text> : null}
+          {isExternal ? <Text style={styles.abueloExpandedExternal}>🌐 Externo</Text> : null}
+          {!isExternal && node.id && node.id !== currentId ? (
+            <TouchableOpacity
+              style={styles.abueloViewBtn}
+              onPress={() => onOpen(node.id)}
+            >
+              <Text style={styles.abueloViewBtnText}>Ver Perfil</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      ) : null}
+    </View>
+  );
+});
+
 export default function AveDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+
   const [ave, setAve] = useState<Ave | null>(null);
   const [peleas, setPeleas] = useState<Pelea[]>([]);
   const [salud, setSalud] = useState<Salud[]>([]);
@@ -58,8 +390,6 @@ export default function AveDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('pedigri');
-  const [padre, setPadre] = useState<Ave | null>(null);
-  const [madre, setMadre] = useState<Ave | null>(null);
   const [expandedNode, setExpandedNode] = useState<string | null>(null);
   const [showAbuelos, setShowAbuelos] = useState(false);
 
@@ -72,66 +402,66 @@ export default function AveDetailScreen() {
     linea: '',
   });
 
-  const tabs = [
-    { key: 'pedigri', label: 'Pedigrí', icon: 'git-branch' },
-    { key: 'peleas', label: 'Peleas', icon: 'trophy' },
-    { key: 'salud', label: 'Salud', icon: 'medical' },
-    { key: 'hijos', label: 'Hijos', icon: 'people' },
-  ];
+  const isFetchingRef = useRef(false);
 
-  const fetchData = async () => {
-    try {
-      const [aveData, peleasData, saludData, hijosData, pedigriData] = await Promise.all([
-        api.get(`/aves/${id}`),
-        api.get('/peleas', { ave_id: id }),
-        api.get('/salud', { ave_id: id }),
-        api.get(`/aves/${id}/hijos`),
-        api.get(`/aves/${id}/pedigri`),
-      ]);
+  const tabs = useMemo(
+    () => [
+      { key: 'pedigri', label: 'Pedigrí', icon: 'git-branch' },
+      { key: 'peleas', label: 'Peleas', icon: 'trophy' },
+      { key: 'salud', label: 'Salud', icon: 'medical' },
+      { key: 'hijos', label: 'Hijos', icon: 'people' },
+    ],
+    []
+  );
 
-      setAve(aveData);
-      setPeleas(peleasData);
-      setSalud(saludData);
-      setHijos(hijosData);
-      setPedigri(pedigriData);
+  const fetchData = useCallback(
+    async (manualRefresh = false) => {
+      if (!id || isFetchingRef.current) return;
 
-      if (aveData.padre_id) {
-        try {
-          const padreData = await api.get(`/aves/${aveData.padre_id}`);
-          setPadre(padreData);
-        } catch (e) {}
-      } else {
-        setPadre(null);
+      isFetchingRef.current = true;
+
+      try {
+        if (manualRefresh) {
+          setRefreshing(true);
+        } else if (!ave) {
+          setLoading(true);
+        }
+
+        const [aveData, peleasData, saludData, hijosData, pedigriData] = await Promise.all([
+          api.get(`/aves/${id}`),
+          api.get('/peleas', { ave_id: id }),
+          api.get('/salud', { ave_id: id }),
+          api.get(`/aves/${id}/hijos`),
+          api.get(`/aves/${id}/pedigri`, { generations: '3' }),
+        ]);
+
+        setAve(aveData);
+        setPeleas(Array.isArray(peleasData) ? peleasData : []);
+        setSalud(Array.isArray(saludData) ? saludData : []);
+        setHijos(Array.isArray(hijosData) ? hijosData : []);
+        setPedigri(pedigriData ?? null);
+      } catch (error: any) {
+        Alert.alert('Error', error?.message || 'No se pudo cargar el detalle');
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+        isFetchingRef.current = false;
       }
-
-      if (aveData.madre_id) {
-        try {
-          const madreData = await api.get(`/aves/${aveData.madre_id}`);
-          setMadre(madreData);
-        } catch (e) {}
-      } else {
-        setMadre(null);
-      }
-    } catch (error: any) {
-      Alert.alert('Error', error.message);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
+    },
+    [id, ave]
+  );
 
   useFocusEffect(
     useCallback(() => {
-      fetchData();
-    }, [id])
+      fetchData(false);
+    }, [fetchData])
   );
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchData();
-  };
+  const onRefresh = useCallback(() => {
+    fetchData(true);
+  }, [fetchData]);
 
-  const handleDelete = () => {
+  const handleDelete = useCallback(() => {
     Alert.alert(
       'Eliminar Ave',
       '¿Estás seguro? Esta acción afectará el pedigrí y cruces relacionados.',
@@ -145,15 +475,15 @@ export default function AveDetailScreen() {
               await api.delete(`/aves/${id}`);
               router.back();
             } catch (error: any) {
-              Alert.alert('Error', error.message);
+              Alert.alert('Error', error?.message || 'No se pudo eliminar');
             }
           },
         },
       ]
     );
-  };
+  }, [id, router]);
 
-  const getEstadoColor = (estado: string) => {
+  const getEstadoColor = useCallback((estado: string) => {
     switch (estado) {
       case 'activo':
         return '#22c55e';
@@ -166,20 +496,157 @@ export default function AveDetailScreen() {
       default:
         return '#a0a0a0';
     }
-  };
+  }, []);
 
-  const getBaseGeneticaItems = () => {
+  const getBaseGeneticaItems = useCallback(() => {
     const linea = ave?.linea?.trim();
     if (!linea) return [];
     return linea
       .split(/[\/,+-]/)
       .map((item) => item.trim())
       .filter(Boolean);
-  };
+  }, [ave?.linea]);
 
-  const renderBaseGenetica = () => {
-    const lineas = getBaseGeneticaItems();
+  const lineasBase = useMemo(() => getBaseGeneticaItems(), [getBaseGeneticaItems]);
 
+  const duplicateIds = useMemo(() => {
+    if (!pedigri) return new Set<string>();
+
+    const ids = new Map<string, number>();
+
+    const collectIds = (node: any) => {
+      if (!node || node.unknown) return;
+      const identifier = node.id || (node.externo && node.codigo ? `ext_${node.codigo}` : null);
+      if (identifier) {
+        ids.set(identifier, (ids.get(identifier) || 0) + 1);
+      }
+      if (node.padre) collectIds(node.padre);
+      if (node.madre) collectIds(node.madre);
+    };
+
+    collectIds(pedigri);
+
+    const duplicates = new Set<string>();
+    ids.forEach((count, identifier) => {
+      if (count > 1) duplicates.add(identifier);
+    });
+
+    return duplicates;
+  }, [pedigri]);
+
+  const hasConsanguinidad = duplicateIds.size > 0;
+
+  const toggleExpandedNode = useCallback((key: string) => {
+    setExpandedNode((prev) => (prev === key ? null : key));
+  }, []);
+
+  const handleOpenNode = useCallback(
+    (nodeId: string) => {
+      if (!nodeId || nodeId === id) return;
+      router.push(`/ave/detail/${nodeId}`);
+    },
+    [id, router]
+  );
+
+  const handleStartEditAbuelo = useCallback((nodeKey: string) => {
+    setAbueloForm({
+      codigo: '',
+      galleria: '',
+      nombre: '',
+      color: '',
+      linea: '',
+    });
+    setEditingAbuelo(nodeKey);
+  }, []);
+
+  const handleCancelEditAbuelo = useCallback(() => {
+    setEditingAbuelo(null);
+    setAbueloForm({
+      codigo: '',
+      galleria: '',
+      nombre: '',
+      color: '',
+      linea: '',
+    });
+  }, []);
+
+  const updateAbueloForm = useCallback(
+    (patch: Partial<typeof abueloForm>) => {
+      setAbueloForm((prev) => ({ ...prev, ...patch }));
+    },
+    []
+  );
+
+  const handleSaveAbuelo = useCallback(
+    async (nodeKey: string, parentKey: string, tipo: string) => {
+      const codigo = abueloForm.codigo.trim();
+      if (!codigo) return;
+
+      try {
+        const updateData: any = {};
+
+        if (parentKey === 'padre') {
+          if (nodeKey === 'abuelo_p') {
+            updateData.abuelo_paterno_padre = codigo;
+            updateData.abuelo_paterno_padre_galleria = abueloForm.galleria.trim();
+          } else {
+            updateData.abuelo_paterno_madre = codigo;
+            updateData.abuelo_paterno_madre_galleria = abueloForm.galleria.trim();
+          }
+        } else {
+          if (nodeKey === 'abuelo_m') {
+            updateData.abuelo_materno_padre = codigo;
+            updateData.abuelo_materno_padre_galleria = abueloForm.galleria.trim();
+          } else {
+            updateData.abuelo_materno_madre = codigo;
+            updateData.abuelo_materno_madre_galleria = abueloForm.galleria.trim();
+          }
+        }
+
+        await api.put(`/aves/${id}`, updateData);
+
+        const newAbuelo = {
+          codigo,
+          galleria: abueloForm.galleria.trim(),
+          nombre: abueloForm.nombre.trim(),
+          color: abueloForm.color.trim(),
+          linea: abueloForm.linea.trim(),
+          tipo,
+          externo: true,
+        };
+
+        setPedigri((prev: any) => {
+          const next = JSON.parse(JSON.stringify(prev || {}));
+
+          if (parentKey === 'padre') {
+            if (!next.padre) next.padre = {};
+            if (nodeKey === 'abuelo_p') {
+              next.padre.padre = newAbuelo;
+            } else {
+              next.padre.madre = newAbuelo;
+            }
+          } else {
+            if (!next.madre) next.madre = {};
+            if (nodeKey === 'abuelo_m') {
+              next.madre.padre = newAbuelo;
+            } else {
+              next.madre.madre = newAbuelo;
+            }
+          }
+
+          return next;
+        });
+
+        handleCancelEditAbuelo();
+        Alert.alert('Éxito', 'Abuelo agregado correctamente');
+      } catch (error: any) {
+        Alert.alert('Error', error?.message || 'No se pudo guardar');
+      }
+    },
+    [abueloForm, handleCancelEditAbuelo, id]
+  );
+
+  const renderBaseGenetica = useCallback(() => {
     return (
       <View style={styles.geneticaCard}>
         <View style={styles.geneticaHeader}>
@@ -189,19 +656,19 @@ export default function AveDetailScreen() {
           </View>
         </View>
 
-        {lineas.length > 0 ? (
+        {lineasBase.length > 0 ? (
           <>
-            {lineas.map((linea, index) => (
+            {lineasBase.map((linea, index) => (
               <View
                 key={`${linea}-${index}`}
                 style={[
                   styles.geneticaRow,
-                  index === lineas.length - 1 && styles.geneticaRowLast,
+                  index === lineasBase.length - 1 && styles.geneticaRowLast,
                 ]}
               >
                 <Text style={styles.geneticaLine}>{linea}</Text>
                 <Text style={styles.geneticaPercent}>
-                  {lineas.length === 1 ? '100%' : `${Math.round(100 / lineas.length)}% base`}
+                  {lineasBase.length === 1 ? '100%' : `${Math.round(100 / lineasBase.length)}% base`}
                 </Text>
               </View>
             ))}
@@ -216,434 +683,68 @@ export default function AveDetailScreen() {
         )}
       </View>
     );
-  };
+  }, [lineasBase]);
 
-  const renderPedigriNode = (node: any, level: number = 0) => {
-    if (!node || level > 4) return null;
-
-    return (
-      <View style={[styles.pedigriNode, { marginLeft: level * 8 }]}>
-        <TouchableOpacity
-          style={[
-            styles.pedigriCard,
-            node.unknown && styles.pedigriCardUnknown,
-            level === 0 && styles.pedigriCardMain,
-          ]}
-          onPress={() => !node.unknown && node.id !== id && router.push(`/ave/detail/${node.id}`)}
-          disabled={node.unknown || node.id === id}
-        >
-          {node.foto_principal ? (
-            <Image source={{ uri: node.foto_principal }} style={styles.pedigriPhoto} />
-          ) : (
-            <View style={styles.pedigriPhotoPlaceholder}>
-              <Ionicons
-                name={node.tipo === 'gallo' ? 'fitness' : 'egg'}
-                size={16}
-                color={node.unknown ? '#4b5563' : '#f59e0b'}
-              />
-            </View>
-          )}
-          <View style={styles.pedigriInfo}>
-            <Text style={styles.pedigriCode} numberOfLines={1}>
-              {node.unknown ? '?' : node.codigo}
-            </Text>
-            {node.color && <Text style={styles.pedigriDetail}>{node.color}</Text>}
-            {node.linea && <Text style={styles.pedigriDetail}>{node.linea}</Text>}
-          </View>
-        </TouchableOpacity>
-
-        {(node.padre || node.madre) && (
-          <View style={styles.pedigriChildren}>
-            {node.padre && renderPedigriNode(node.padre, level + 1)}
-            {node.madre && renderPedigriNode(node.madre, level + 1)}
-          </View>
-        )}
-      </View>
-    );
-  };
-
-  const renderConnectedTree = () => {
+  const renderConnectedTree = useCallback(() => {
     if (!pedigri) return null;
-
-    const collectIds = (node: any, ids: Map<string, number> = new Map()): Map<string, number> => {
-      if (!node || node.unknown) return ids;
-      const identifier = node.id || (node.externo && node.codigo ? `ext_${node.codigo}` : null);
-      if (identifier) {
-        const currentCount = ids.get(identifier) || 0;
-        ids.set(identifier, currentCount + 1);
-      }
-      if (node.padre) collectIds(node.padre, ids);
-      if (node.madre) collectIds(node.madre, ids);
-      return ids;
-    };
-
-    const allIds = collectIds(pedigri);
-    const duplicateIds = new Set<string>();
-    allIds.forEach((count, identifier) => {
-      if (count > 1 && identifier) duplicateIds.add(identifier);
-    });
-
-    const hasConsanguinidad = duplicateIds.size > 0;
-
-    const renderExpandableNode = (
-      node: any,
-      label: string,
-      nodeKey: string,
-      isParent: boolean = false
-    ) => {
-      const isExpanded = expandedNode === nodeKey;
-      const nodeIdentifier = node?.id || (node?.externo && node?.codigo ? `ext_${node?.codigo}` : null);
-      const isDuplicate = nodeIdentifier ? duplicateIds.has(nodeIdentifier) : false;
-      const isExternal = node?.externo || (!node?.id && node?.codigo);
-
-      if (!node) {
-        return (
-          <View style={[styles.treeNodeContainer, isParent && styles.treeNodeContainerParent]}>
-            <Text style={[styles.treeLabel, isParent && styles.treeLabelParent]}>{label}</Text>
-            <View style={[styles.treeNode, styles.treeNodeUnknown, isParent && styles.treeNodeParent]}>
-              <Text style={styles.treeNodeUnknownText}>?</Text>
-              <Text style={styles.treeNodeUnknownSubtext}>Desconocido</Text>
-            </View>
-          </View>
-        );
-      }
-
-      return (
-        <View style={[styles.treeNodeContainer, isParent && styles.treeNodeContainerParent]}>
-          <Text style={[styles.treeLabel, isParent && styles.treeLabelParent]}>{label}</Text>
-          <TouchableOpacity
-            style={[
-              styles.treeNode,
-              isParent && styles.treeNodeParent,
-              isDuplicate && styles.treeNodeDuplicate,
-              isExpanded && styles.treeNodeExpanded,
-            ]}
-            onPress={() => setExpandedNode(isExpanded ? null : nodeKey)}
-          >
-            {isDuplicate && (
-              <View style={styles.duplicateBadge}>
-                <Ionicons name="git-merge" size={10} color="#fff" />
-              </View>
-            )}
-            {node.foto_principal ? (
-              <Image source={{ uri: node.foto_principal }} style={[styles.treePhoto, isParent && styles.treePhotoParent]} />
-            ) : (
-              <View
-                style={[
-                  styles.treePhotoPlaceholder,
-                  isParent && styles.treePhotoPlaceholderParent,
-                  isDuplicate && styles.treePhotoPlaceholderDuplicate,
-                ]}
-              >
-                <Ionicons
-                  name={node.tipo === 'gallo' ? 'male' : 'female'}
-                  size={isParent ? 24 : 18}
-                  color={isDuplicate ? '#f59e0b' : node.tipo === 'gallo' ? '#3b82f6' : '#ec4899'}
-                />
-              </View>
-            )}
-            <Text
-              style={[
-                styles.treeCode,
-                isParent && styles.treeCodeParent,
-                isDuplicate && styles.treeCodeDuplicate,
-              ]}
-              numberOfLines={1}
-            >
-              PL: {node.codigo}
-            </Text>
-            <Ionicons
-              name={isExpanded ? 'chevron-up' : 'chevron-down'}
-              size={14}
-              color="#9ca3af"
-              style={{ marginTop: 4 }}
-            />
-          </TouchableOpacity>
-
-          {isExpanded && (
-            <View style={styles.expandedPanel}>
-              {node.nombre && (
-                <View style={styles.expandedRow}>
-                  <Text style={styles.expandedLabel}>Nombre:</Text>
-                  <Text style={styles.expandedValue}>{node.nombre}</Text>
-                </View>
-              )}
-              <View style={styles.expandedRow}>
-                <Text style={styles.expandedLabel}>Placa:</Text>
-                <Text style={styles.expandedValue}>{node.codigo}</Text>
-              </View>
-              {node.galleria && (
-                <View style={styles.expandedRow}>
-                  <Text style={styles.expandedLabel}>Gallería:</Text>
-                  <Text style={styles.expandedValue}>{node.galleria}</Text>
-                </View>
-              )}
-              {node.color && (
-                <View style={styles.expandedRow}>
-                  <Text style={styles.expandedLabel}>Color:</Text>
-                  <Text style={styles.expandedValue}>{node.color}</Text>
-                </View>
-              )}
-              {node.linea && (
-                <View style={styles.expandedRow}>
-                  <Text style={styles.expandedLabel}>Línea:</Text>
-                  <Text style={styles.expandedValue}>{node.linea}</Text>
-                </View>
-              )}
-              {isExternal && (
-                <View style={styles.expandedExternalBadge}>
-                  <Ionicons name="globe-outline" size={12} color="#f59e0b" />
-                  <Text style={styles.expandedExternalText}>Ave Externa</Text>
-                </View>
-              )}
-              {!isExternal && node.id && node.id !== id && (
-                <TouchableOpacity
-                  style={styles.expandedViewBtn}
-                  onPress={() => router.push(`/ave/detail/${node.id}`)}
-                >
-                  <Text style={styles.expandedViewBtnText}>Ver Perfil Completo</Text>
-                  <Ionicons name="arrow-forward" size={14} color="#f59e0b" />
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
-        </View>
-      );
-    };
-
-    const renderAbueloNode = (
-      node: any,
-      label: string,
-      nodeKey: string,
-      parentKey: string,
-      isAbuelo: boolean = true
-    ) => {
-      const isExpanded = expandedNode === nodeKey;
-      const isEditing = editingAbuelo === nodeKey;
-
-      const tipo = label.includes('Abuelo') ? 'gallo' : 'gallina';
-
-      if (!node) {
-        return (
-          <View style={styles.abueloNodeContainer}>
-            <Text style={styles.abueloLabel}>{label}</Text>
-            {isEditing ? (
-              <View style={styles.abueloEditForm}>
-                <TextInput
-                  style={styles.abueloInput}
-                  placeholder="Placa *"
-                  placeholderTextColor="#666"
-                  value={abueloForm.codigo}
-                  onChangeText={(text) => setAbueloForm({ ...abueloForm, codigo: text })}
-                />
-                <TextInput
-                  style={styles.abueloInput}
-                  placeholder="Gallería"
-                  placeholderTextColor="#666"
-                  value={abueloForm.galleria}
-                  onChangeText={(text) => setAbueloForm({ ...abueloForm, galleria: text })}
-                />
-                <TextInput
-                  style={styles.abueloInput}
-                  placeholder="Nombre"
-                  placeholderTextColor="#666"
-                  value={abueloForm.nombre}
-                  onChangeText={(text) => setAbueloForm({ ...abueloForm, nombre: text })}
-                />
-                <TextInput
-                  style={styles.abueloInput}
-                  placeholder="Color"
-                  placeholderTextColor="#666"
-                  value={abueloForm.color}
-                  onChangeText={(text) => setAbueloForm({ ...abueloForm, color: text })}
-                />
-                <TextInput
-                  style={styles.abueloInput}
-                  placeholder="Línea"
-                  placeholderTextColor="#666"
-                  value={abueloForm.linea}
-                  onChangeText={(text) => setAbueloForm({ ...abueloForm, linea: text })}
-                />
-                <View style={styles.abueloFormButtons}>
-                  <TouchableOpacity
-                    style={styles.abueloCancelBtn}
-                    onPress={() => {
-                      setEditingAbuelo(null);
-                      setAbueloForm({ codigo: '', galleria: '', nombre: '', color: '', linea: '' });
-                    }}
-                  >
-                    <Text style={styles.abueloCancelBtnText}>Cancelar</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.abueloSaveBtn, !abueloForm.codigo && styles.abueloSaveBtnDisabled]}
-                    disabled={!abueloForm.codigo}
-                    onPress={async () => {
-                      if (!abueloForm.codigo) return;
-                      try {
-                        const updateData: any = {};
-                        if (parentKey === 'padre') {
-                          if (nodeKey === 'abuelo_p') {
-                            updateData.abuelo_paterno_padre = abueloForm.codigo;
-                            updateData.abuelo_paterno_padre_galleria = abueloForm.galleria;
-                          } else {
-                            updateData.abuelo_paterno_madre = abueloForm.codigo;
-                            updateData.abuelo_paterno_madre_galleria = abueloForm.galleria;
-                          }
-                        } else {
-                          if (nodeKey === 'abuelo_m') {
-                            updateData.abuelo_materno_padre = abueloForm.codigo;
-                            updateData.abuelo_materno_padre_galleria = abueloForm.galleria;
-                          } else {
-                            updateData.abuelo_materno_madre = abueloForm.codigo;
-                            updateData.abuelo_materno_madre_galleria = abueloForm.galleria;
-                          }
-                        }
-
-                        await api.put(`/aves/${id}`, updateData);
-
-                        const newAbuelo = {
-                          codigo: abueloForm.codigo,
-                          galleria: abueloForm.galleria,
-                          nombre: abueloForm.nombre,
-                          color: abueloForm.color,
-                          linea: abueloForm.linea,
-                          tipo: tipo,
-                          externo: true,
-                        };
-
-                        const newPedigri = JSON.parse(JSON.stringify(pedigri || {}));
-
-                        if (parentKey === 'padre') {
-                          if (!newPedigri.padre) {
-                            newPedigri.padre = {};
-                          }
-                          if (nodeKey === 'abuelo_p') {
-                            newPedigri.padre.padre = newAbuelo;
-                          } else {
-                            newPedigri.padre.madre = newAbuelo;
-                          }
-                        } else if (parentKey === 'madre') {
-                          if (!newPedigri.madre) {
-                            newPedigri.madre = {};
-                          }
-                          if (nodeKey === 'abuelo_m') {
-                            newPedigri.madre.padre = newAbuelo;
-                          } else {
-                            newPedigri.madre.madre = newAbuelo;
-                          }
-                        }
-                        setPedigri(newPedigri);
-
-                        setEditingAbuelo(null);
-                        setAbueloForm({ codigo: '', galleria: '', nombre: '', color: '', linea: '' });
-                        Alert.alert('Éxito', 'Abuelo agregado correctamente');
-                      } catch (error: any) {
-                        Alert.alert('Error', error.message || 'No se pudo guardar');
-                      }
-                    }}
-                  >
-                    <Text style={styles.abueloSaveBtnText}>Guardar</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ) : (
-              <TouchableOpacity
-                style={styles.abueloAddBtn}
-                onPress={() => {
-                  setAbueloForm({ codigo: '', galleria: '', nombre: '', color: '', linea: '' });
-                  setEditingAbuelo(nodeKey);
-                }}
-              >
-                <Ionicons name="add" size={18} color="#9ca3af" />
-                <Text style={styles.abueloAddText}>Agregar</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        );
-      }
-
-      const nodeIdentifier = node.id || (node.externo && node.codigo ? `ext_${node.codigo}` : null);
-      const isDuplicate = nodeIdentifier ? duplicateIds.has(nodeIdentifier) : false;
-      const isExternal = node.externo || (!node.id && node.codigo);
-
-      return (
-        <View style={styles.abueloNodeContainer}>
-          <Text style={styles.abueloLabel}>{label}</Text>
-          <TouchableOpacity
-            style={[styles.abueloNode, isDuplicate && styles.abueloNodeDuplicate]}
-            onPress={() => setExpandedNode(isExpanded ? null : nodeKey)}
-          >
-            <View
-              style={[
-                styles.abueloIcon,
-                {
-                  backgroundColor:
-                    node.tipo === 'gallo'
-                      ? 'rgba(59, 130, 246, 0.15)'
-                      : 'rgba(236, 72, 153, 0.15)',
-                },
-              ]}
-            >
-              <Ionicons
-                name={node.tipo === 'gallo' ? 'male' : 'female'}
-                size={14}
-                color={isDuplicate ? '#f59e0b' : node.tipo === 'gallo' ? '#3b82f6' : '#ec4899'}
-              />
-            </View>
-            <Text style={[styles.abueloCode, isDuplicate && { color: '#f59e0b' }]} numberOfLines={1}>
-              {node.codigo}
-            </Text>
-            <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={12} color="#9ca3af" />
-          </TouchableOpacity>
-
-          {isExpanded && (
-            <View style={styles.abueloExpandedPanel}>
-              {node.nombre && <Text style={styles.abueloExpandedText}>📛 {node.nombre}</Text>}
-              <Text style={styles.abueloExpandedText}>🏷️ PL: {node.codigo}</Text>
-              {node.galleria && <Text style={styles.abueloExpandedText}>🏢 {node.galleria}</Text>}
-              {node.color && <Text style={styles.abueloExpandedText}>🎨 {node.color}</Text>}
-              {node.linea && <Text style={styles.abueloExpandedText}>🧬 {node.linea}</Text>}
-              {isExternal && <Text style={styles.abueloExpandedExternal}>🌐 Externo</Text>}
-              {!isExternal && node.id && node.id !== id && (
-                <TouchableOpacity
-                  style={styles.abueloViewBtn}
-                  onPress={() => router.push(`/ave/detail/${node.id}`)}
-                >
-                  <Text style={styles.abueloViewBtnText}>Ver Perfil</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
-        </View>
-      );
-    };
 
     return (
       <View style={styles.treeContainer}>
-        {hasConsanguinidad && (
+        {hasConsanguinidad ? (
           <View style={styles.consanguinidadAlert}>
             <Ionicons name="warning" size={16} color="#f59e0b" />
             <Text style={styles.consanguinidadText}>
               Consanguinidad detectada - Aves repetidas marcadas en dorado
             </Text>
           </View>
-        )}
+        ) : null}
 
         <View style={styles.treeConnectorVerticalLong} />
         <View style={styles.treeConnectorHorizontal} />
 
         <View style={styles.treeLevel}>
           <View style={styles.treeBranch}>
-            {renderExpandableNode(pedigri?.padre, 'Padre', 'padre', true)}
+            <PedigriNodeCard
+              node={pedigri?.padre}
+              label="Padre"
+              nodeKey="padre"
+              isParent
+              isExpanded={expandedNode === 'padre'}
+              isDuplicate={
+                !!(pedigri?.padre?.id || pedigri?.padre?.codigo) &&
+                duplicateIds.has(
+                  pedigri?.padre?.id || `ext_${pedigri?.padre?.codigo}`
+                )
+              }
+              isCurrentAve={false}
+              onToggle={toggleExpandedNode}
+              onOpen={handleOpenNode}
+            />
           </View>
+
           <View style={styles.treeBranch}>
-            {renderExpandableNode(pedigri?.madre, 'Madre', 'madre', true)}
+            <PedigriNodeCard
+              node={pedigri?.madre}
+              label="Madre"
+              nodeKey="madre"
+              isParent
+              isExpanded={expandedNode === 'madre'}
+              isDuplicate={
+                !!(pedigri?.madre?.id || pedigri?.madre?.codigo) &&
+                duplicateIds.has(
+                  pedigri?.madre?.id || `ext_${pedigri?.madre?.codigo}`
+                )
+              }
+              isCurrentAve={false}
+              onToggle={toggleExpandedNode}
+              onOpen={handleOpenNode}
+            />
           </View>
         </View>
 
         <TouchableOpacity
           style={styles.toggleAbuelosBtn}
-          onPress={() => setShowAbuelos(!showAbuelos)}
+          onPress={() => setShowAbuelos((prev) => !prev)}
         >
           <Ionicons
             name={showAbuelos ? 'chevron-up-circle' : 'add-circle'}
@@ -655,7 +756,7 @@ export default function AveDetailScreen() {
           </Text>
         </TouchableOpacity>
 
-        {showAbuelos && (
+        {showAbuelos ? (
           <View style={styles.abuelosContainer}>
             <View style={styles.treeGrandparentConnectors}>
               <View style={styles.treeConnectorVerticalSmall} />
@@ -669,264 +770,384 @@ export default function AveDetailScreen() {
 
             <View style={styles.treeLevelGrandparents}>
               <View style={styles.treeGrandparentPair}>
-                {renderAbueloNode(pedigri?.padre?.padre, 'Abuelo P.', 'abuelo_p', 'padre')}
-                {renderAbueloNode(pedigri?.padre?.madre, 'Abuela P.', 'abuela_p', 'padre')}
+                <AbueloNodeCard
+                  node={pedigri?.padre?.padre}
+                  label="Abuelo P."
+                  nodeKey="abuelo_p"
+                  parentKey="padre"
+                  isExpanded={expandedNode === 'abuelo_p'}
+                  isDuplicate={
+                    !!(pedigri?.padre?.padre?.id || pedigri?.padre?.padre?.codigo) &&
+                    duplicateIds.has(
+                      pedigri?.padre?.padre?.id || `ext_${pedigri?.padre?.padre?.codigo}`
+                    )
+                  }
+                  isEditing={editingAbuelo === 'abuelo_p'}
+                  abueloForm={abueloForm}
+                  onToggle={toggleExpandedNode}
+                  onStartEdit={handleStartEditAbuelo}
+                  onCancelEdit={handleCancelEditAbuelo}
+                  onSave={handleSaveAbuelo}
+                  onChangeForm={updateAbueloForm}
+                  onOpen={handleOpenNode}
+                  currentId={id || ''}
+                />
+                <AbueloNodeCard
+                  node={pedigri?.padre?.madre}
+                  label="Abuela P."
+                  nodeKey="abuela_p"
+                  parentKey="padre"
+                  isExpanded={expandedNode === 'abuela_p'}
+                  isDuplicate={
+                    !!(pedigri?.padre?.madre?.id || pedigri?.padre?.madre?.codigo) &&
+                    duplicateIds.has(
+                      pedigri?.padre?.madre?.id || `ext_${pedigri?.padre?.madre?.codigo}`
+                    )
+                  }
+                  isEditing={editingAbuelo === 'abuela_p'}
+                  abueloForm={abueloForm}
+                  onToggle={toggleExpandedNode}
+                  onStartEdit={handleStartEditAbuelo}
+                  onCancelEdit={handleCancelEditAbuelo}
+                  onSave={handleSaveAbuelo}
+                  onChangeForm={updateAbueloForm}
+                  onOpen={handleOpenNode}
+                  currentId={id || ''}
+                />
               </View>
+
               <View style={styles.treeGrandparentPair}>
-                {renderAbueloNode(pedigri?.madre?.padre, 'Abuelo M.', 'abuelo_m', 'madre')}
-                {renderAbueloNode(pedigri?.madre?.madre, 'Abuela M.', 'abuela_m', 'madre')}
+                <AbueloNodeCard
+                  node={pedigri?.madre?.padre}
+                  label="Abuelo M."
+                  nodeKey="abuelo_m"
+                  parentKey="madre"
+                  isExpanded={expandedNode === 'abuelo_m'}
+                  isDuplicate={
+                    !!(pedigri?.madre?.padre?.id || pedigri?.madre?.padre?.codigo) &&
+                    duplicateIds.has(
+                      pedigri?.madre?.padre?.id || `ext_${pedigri?.madre?.padre?.codigo}`
+                    )
+                  }
+                  isEditing={editingAbuelo === 'abuelo_m'}
+                  abueloForm={abueloForm}
+                  onToggle={toggleExpandedNode}
+                  onStartEdit={handleStartEditAbuelo}
+                  onCancelEdit={handleCancelEditAbuelo}
+                  onSave={handleSaveAbuelo}
+                  onChangeForm={updateAbueloForm}
+                  onOpen={handleOpenNode}
+                  currentId={id || ''}
+                />
+                <AbueloNodeCard
+                  node={pedigri?.madre?.madre}
+                  label="Abuela M."
+                  nodeKey="abuela_m"
+                  parentKey="madre"
+                  isExpanded={expandedNode === 'abuela_m'}
+                  isDuplicate={
+                    !!(pedigri?.madre?.madre?.id || pedigri?.madre?.madre?.codigo) &&
+                    duplicateIds.has(
+                      pedigri?.madre?.madre?.id || `ext_${pedigri?.madre?.madre?.codigo}`
+                    )
+                  }
+                  isEditing={editingAbuelo === 'abuela_m'}
+                  abueloForm={abueloForm}
+                  onToggle={toggleExpandedNode}
+                  onStartEdit={handleStartEditAbuelo}
+                  onCancelEdit={handleCancelEditAbuelo}
+                  onSave={handleSaveAbuelo}
+                  onChangeForm={updateAbueloForm}
+                  onOpen={handleOpenNode}
+                  currentId={id || ''}
+                />
               </View>
             </View>
+          </View>
+        ) : null}
+      </View>
+    );
+  }, [
+    pedigri,
+    hasConsanguinidad,
+    expandedNode,
+    duplicateIds,
+    toggleExpandedNode,
+    handleOpenNode,
+    showAbuelos,
+    editingAbuelo,
+    abueloForm,
+    handleStartEditAbuelo,
+    handleCancelEditAbuelo,
+    handleSaveAbuelo,
+    updateAbueloForm,
+    id,
+  ]);
+
+  const renderPedigriTab = useCallback(() => {
+    return (
+      <View style={styles.tabContent}>
+        <View style={styles.infoCard}>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Tipo</Text>
+            <View style={styles.infoValueRow}>
+              <Ionicons
+                name={ave?.tipo === 'gallo' ? 'fitness' : 'egg'}
+                size={18}
+                color={ave?.tipo === 'gallo' ? '#3b82f6' : '#ec4899'}
+              />
+              <Text style={styles.infoValue}>
+                {ave?.tipo === 'gallo' ? 'Gallo' : 'Gallina'}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Placa</Text>
+            <Text style={styles.infoValue}>{ave?.codigo}</Text>
+          </View>
+
+          {ave?.nombre ? (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Nombre</Text>
+              <Text style={styles.infoValue}>{ave.nombre}</Text>
+            </View>
+          ) : null}
+
+          {ave?.color ? (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Color</Text>
+              <Text style={styles.infoValue}>{ave.color}</Text>
+            </View>
+          ) : null}
+
+          {ave?.linea ? (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Línea</Text>
+              <Text style={styles.infoValue}>{ave.linea}</Text>
+            </View>
+          ) : null}
+
+          {ave?.fecha_nacimiento ? (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Nacimiento</Text>
+              <Text style={styles.infoValue}>{ave.fecha_nacimiento}</Text>
+            </View>
+          ) : null}
+
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Estado</Text>
+            <View
+              style={[
+                styles.estadoBadge,
+                { backgroundColor: getEstadoColor(ave?.estado || '') + '20' },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.estadoText,
+                  { color: getEstadoColor(ave?.estado || '') },
+                ]}
+              >
+                {ave?.estado?.charAt(0).toUpperCase() + (ave?.estado?.slice(1) || '')}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        <Text style={styles.sectionTitle}>Genética</Text>
+        {renderBaseGenetica()}
+
+        {ave?.notas ? (
+          <>
+            <Text style={styles.sectionTitle}>Notas</Text>
+            <View style={styles.notesCard}>
+              <Text style={styles.notesText}>{ave.notas}</Text>
+            </View>
+          </>
+        ) : null}
+
+        <Text style={styles.sectionTitle}>Árbol Genealógico</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pedigriScroll}>
+          <View style={styles.pedigriContainer}>
+            {pedigri ? renderConnectedTree() : (
+              <Text style={styles.emptyText}>Sin información de pedigrí</Text>
+            )}
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }, [ave, getEstadoColor, renderBaseGenetica, pedigri, renderConnectedTree]);
+
+  const renderPeleasTab = useCallback(() => {
+    return (
+      <View style={styles.tabContent}>
+        {peleas.length > 0 ? (
+          <>
+            <View style={styles.statsRow}>
+              <View style={styles.statBox}>
+                <Text style={styles.statNumber}>
+                  {peleas.filter((p) => p.resultado === 'GANO').length}
+                </Text>
+                <Text style={styles.statLabel}>Ganadas</Text>
+              </View>
+              <View style={styles.statBox}>
+                <Text style={styles.statNumber}>
+                  {peleas.filter((p) => p.resultado === 'PERDIO').length}
+                </Text>
+                <Text style={styles.statLabel}>Perdidas</Text>
+              </View>
+              <View style={styles.statBox}>
+                <Text style={[styles.statNumber, { color: '#22c55e' }]}>
+                  {peleas.length > 0
+                    ? Math.round(
+                        (peleas.filter((p) => p.resultado === 'GANO').length / peleas.length) * 100
+                      )
+                    : 0}
+                  %
+                </Text>
+                <Text style={styles.statLabel}>Victoria</Text>
+              </View>
+            </View>
+
+            {peleas.map((pelea) => (
+              <View key={pelea.id} style={styles.peleaItem}>
+                <View
+                  style={[
+                    styles.peleaResult,
+                    pelea.resultado === 'GANO' ? styles.peleaWin : styles.peleaLoss,
+                  ]}
+                >
+                  <Text style={styles.peleaResultText}>
+                    {pelea.resultado === 'GANO' ? 'G' : 'P'}
+                  </Text>
+                </View>
+                <View style={styles.peleaInfo}>
+                  <Text style={styles.peleaDate}>{pelea.fecha}</Text>
+                  {pelea.lugar ? <Text style={styles.peleaPlace}>{pelea.lugar}</Text> : null}
+                </View>
+                <View style={styles.peleaRating}>
+                  <Text style={styles.peleaRatingText}>{pelea.calificacion?.charAt(0)}</Text>
+                </View>
+              </View>
+            ))}
+          </>
+        ) : (
+          <View style={styles.emptyState}>
+            <Ionicons name="trophy-outline" size={48} color="#4b5563" />
+            <Text style={styles.emptyText}>Sin peleas registradas</Text>
+            <TouchableOpacity
+              style={styles.emptyButton}
+              onPress={() => router.push('/pelea/new')}
+            >
+              <Text style={styles.emptyButtonText}>Registrar Pelea</Text>
+            </TouchableOpacity>
           </View>
         )}
       </View>
     );
-  };
+  }, [peleas, router]);
 
-  const renderPedigriTab = () => (
-    <View style={styles.tabContent}>
-      <View style={styles.infoCard}>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Tipo</Text>
-          <View style={styles.infoValueRow}>
-            <Ionicons
-              name={ave?.tipo === 'gallo' ? 'fitness' : 'egg'}
-              size={18}
-              color={ave?.tipo === 'gallo' ? '#3b82f6' : '#ec4899'}
-            />
-            <Text style={styles.infoValue}>
-              {ave?.tipo === 'gallo' ? 'Gallo' : 'Gallina'}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Placa</Text>
-          <Text style={styles.infoValue}>{ave?.codigo}</Text>
-        </View>
-
-        {ave?.nombre && (
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Nombre</Text>
-            <Text style={styles.infoValue}>{ave.nombre}</Text>
-          </View>
-        )}
-
-        {ave?.color && (
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Color</Text>
-            <Text style={styles.infoValue}>{ave.color}</Text>
-          </View>
-        )}
-
-        {ave?.linea && (
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Línea</Text>
-            <Text style={styles.infoValue}>{ave.linea}</Text>
-          </View>
-        )}
-
-        {ave?.fecha_nacimiento && (
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Nacimiento</Text>
-            <Text style={styles.infoValue}>{ave.fecha_nacimiento}</Text>
-          </View>
-        )}
-
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Estado</Text>
-          <View style={[styles.estadoBadge, { backgroundColor: getEstadoColor(ave?.estado || '') + '20' }]}>
-            <Text style={[styles.estadoText, { color: getEstadoColor(ave?.estado || '') }]}>
-              {ave?.estado?.charAt(0).toUpperCase() + (ave?.estado?.slice(1) || '')}
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      <Text style={styles.sectionTitle}>Genética</Text>
-      {renderBaseGenetica()}
-
-      {ave?.notas && (
-        <>
-          <Text style={styles.sectionTitle}>Notas</Text>
-          <View style={styles.notesCard}>
-            <Text style={styles.notesText}>{ave.notas}</Text>
-          </View>
-        </>
-      )}
-
-      <Text style={styles.sectionTitle}>Árbol Genealógico</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pedigriScroll}>
-        <View style={styles.pedigriContainer}>
-          {pedigri ? renderConnectedTree() : (
-            <Text style={styles.emptyText}>Sin información de pedigrí</Text>
-          )}
-        </View>
-      </ScrollView>
-    </View>
-  );
-
-  const renderPeleasTab = () => (
-    <View style={styles.tabContent}>
-      {peleas.length > 0 ? (
-        <>
-          <View style={styles.statsRow}>
-            <View style={styles.statBox}>
-              <Text style={styles.statNumber}>
-                {peleas.filter((p) => p.resultado === 'GANO').length}
-              </Text>
-              <Text style={styles.statLabel}>Ganadas</Text>
-            </View>
-            <View style={styles.statBox}>
-              <Text style={styles.statNumber}>
-                {peleas.filter((p) => p.resultado === 'PERDIO').length}
-              </Text>
-              <Text style={styles.statLabel}>Perdidas</Text>
-            </View>
-            <View style={styles.statBox}>
-              <Text style={[styles.statNumber, { color: '#22c55e' }]}>
-                {peleas.length > 0
-                  ? Math.round((peleas.filter((p) => p.resultado === 'GANO').length / peleas.length) * 100)
-                  : 0}
-                %
-              </Text>
-              <Text style={styles.statLabel}>Victoria</Text>
-            </View>
-          </View>
-
-          {peleas.map((pelea) => (
-            <View key={pelea.id} style={styles.peleaItem}>
-              <View
-                style={[
-                  styles.peleaResult,
-                  pelea.resultado === 'GANO' ? styles.peleaWin : styles.peleaLoss,
-                ]}
-              >
-                <Text style={styles.peleaResultText}>
-                  {pelea.resultado === 'GANO' ? 'G' : 'P'}
-                </Text>
-              </View>
-              <View style={styles.peleaInfo}>
-                <Text style={styles.peleaDate}>{pelea.fecha}</Text>
-                {pelea.lugar && <Text style={styles.peleaPlace}>{pelea.lugar}</Text>}
-              </View>
-              <View style={styles.peleaRating}>
-                <Text style={styles.peleaRatingText}>{pelea.calificacion?.charAt(0)}</Text>
-              </View>
-            </View>
-          ))}
-        </>
-      ) : (
-        <View style={styles.emptyState}>
-          <Ionicons name="trophy-outline" size={48} color="#4b5563" />
-          <Text style={styles.emptyText}>Sin peleas registradas</Text>
-          <TouchableOpacity
-            style={styles.emptyButton}
-            onPress={() => router.push('/pelea/new')}
-          >
-            <Text style={styles.emptyButtonText}>Registrar Pelea</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    </View>
-  );
-
-  const renderSaludTab = () => (
-    <View style={styles.tabContent}>
-      {salud.length > 0 ? (
-        salud.map((record) => (
-          <View key={record.id} style={styles.saludItem}>
-            <View style={styles.saludIcon}>
-              <Ionicons
-                name={record.tipo === 'vacuna' ? 'shield-checkmark' : 'flask'}
-                size={20}
-                color="#f59e0b"
-              />
-            </View>
-            <View style={styles.saludInfo}>
-              <Text style={styles.saludProduct}>{record.producto}</Text>
-              <Text style={styles.saludType}>
-                {record.tipo.charAt(0).toUpperCase() + record.tipo.slice(1)}
-              </Text>
-              <Text style={styles.saludDate}>{record.fecha}</Text>
-            </View>
-            {record.proxima_fecha && (
-              <View style={styles.saludNext}>
-                <Text style={styles.saludNextLabel}>Próxima</Text>
-                <Text style={styles.saludNextDate}>{record.proxima_fecha}</Text>
-              </View>
-            )}
-          </View>
-        ))
-      ) : (
-        <View style={styles.emptyState}>
-          <Ionicons name="medical-outline" size={48} color="#4b5563" />
-          <Text style={styles.emptyText}>Sin registros de salud</Text>
-          <TouchableOpacity
-            style={styles.emptyButton}
-            onPress={() => router.push(`/salud/new?ave_id=${id}`)}
-          >
-            <Text style={styles.emptyButtonText}>Agregar Registro</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    </View>
-  );
-
-  const renderHijosTab = () => (
-    <View style={styles.tabContent}>
-      <TouchableOpacity
-        style={styles.registerChildButton}
-        onPress={() =>
-          router.push(
-            `/ave/new?padre_id=${ave?.tipo === 'gallo' ? id : ''}&madre_id=${
-              ave?.tipo === 'gallina' ? id : ''
-            }`
-          )
-        }
-      >
-        <Ionicons name="add-circle" size={24} color="#f59e0b" />
-        <Text style={styles.registerChildText}>Registrar Nuevo Hijo</Text>
-      </TouchableOpacity>
-
-      {hijos.length > 0 ? (
-        hijos.map((hijo) => (
-          <TouchableOpacity
-            key={hijo.id}
-            style={styles.hijoItem}
-            onPress={() => router.push(`/ave/detail/${hijo.id}`)}
-          >
-            {hijo.foto_principal ? (
-              <Image source={{ uri: hijo.foto_principal }} style={styles.hijoPhoto} />
-            ) : (
-              <View style={styles.hijoPhotoPlaceholder}>
+  const renderSaludTab = useCallback(() => {
+    return (
+      <View style={styles.tabContent}>
+        {salud.length > 0 ? (
+          salud.map((record) => (
+            <View key={record.id} style={styles.saludItem}>
+              <View style={styles.saludIcon}>
                 <Ionicons
-                  name={hijo.tipo === 'gallo' ? 'fitness' : 'egg'}
-                  size={24}
-                  color="#a0a0a0"
+                  name={record.tipo === 'vacuna' ? 'shield-checkmark' : 'flask'}
+                  size={20}
+                  color="#f59e0b"
                 />
               </View>
-            )}
-            <View style={styles.hijoInfo}>
-              <Text style={styles.hijoCodigo}>{hijo.codigo}</Text>
-              {hijo.nombre && <Text style={styles.hijoNombre}>{hijo.nombre}</Text>}
-              <View style={styles.hijoDetails}>
-                {hijo.color && <Text style={styles.hijoDetail}>{hijo.color}</Text>}
-                {hijo.linea && <Text style={styles.hijoDetail}>{hijo.linea}</Text>}
+              <View style={styles.saludInfo}>
+                <Text style={styles.saludProduct}>{record.producto}</Text>
+                <Text style={styles.saludType}>
+                  {record.tipo.charAt(0).toUpperCase() + record.tipo.slice(1)}
+                </Text>
+                <Text style={styles.saludDate}>{record.fecha}</Text>
               </View>
+              {record.proxima_fecha ? (
+                <View style={styles.saludNext}>
+                  <Text style={styles.saludNextLabel}>Próxima</Text>
+                  <Text style={styles.saludNextDate}>{record.proxima_fecha}</Text>
+                </View>
+              ) : null}
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#a0a0a0" />
-          </TouchableOpacity>
-        ))
-      ) : (
-        <View style={styles.emptyState}>
-          <Ionicons name="people-outline" size={48} color="#4b5563" />
-          <Text style={styles.emptyText}>Sin hijos registrados</Text>
-          <Text style={styles.emptySubtext}>Usa el botón de arriba para registrar un hijo</Text>
-        </View>
-      )}
-    </View>
-  );
+          ))
+        ) : (
+          <View style={styles.emptyState}>
+            <Ionicons name="medical-outline" size={48} color="#4b5563" />
+            <Text style={styles.emptyText}>Sin registros de salud</Text>
+            <TouchableOpacity
+              style={styles.emptyButton}
+              onPress={() => router.push(`/salud/new?ave_id=${id}`)}
+            >
+              <Text style={styles.emptyButtonText}>Agregar Registro</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    );
+  }, [salud, router, id]);
+
+  const renderHijosTab = useCallback(() => {
+    return (
+      <View style={styles.tabContent}>
+        <TouchableOpacity
+          style={styles.registerChildButton}
+          onPress={() =>
+            router.push(
+              `/ave/new?padre_id=${ave?.tipo === 'gallo' ? id : ''}&madre_id=${
+                ave?.tipo === 'gallina' ? id : ''
+              }`
+            )
+          }
+        >
+          <Ionicons name="add-circle" size={24} color="#f59e0b" />
+          <Text style={styles.registerChildText}>Registrar Nuevo Hijo</Text>
+        </TouchableOpacity>
+
+        {hijos.length > 0 ? (
+          hijos.map((hijo) => (
+            <TouchableOpacity
+              key={hijo.id}
+              style={styles.hijoItem}
+              onPress={() => router.push(`/ave/detail/${hijo.id}`)}
+            >
+              {hijo.foto_principal ? (
+                <Image source={{ uri: hijo.foto_principal }} style={styles.hijoPhoto} />
+              ) : (
+                <View style={styles.hijoPhotoPlaceholder}>
+                  <Ionicons
+                    name={hijo.tipo === 'gallo' ? 'fitness' : 'egg'}
+                    size={24}
+                    color="#a0a0a0"
+                  />
+                </View>
+              )}
+              <View style={styles.hijoInfo}>
+                <Text style={styles.hijoCodigo}>{hijo.codigo}</Text>
+                {hijo.nombre ? <Text style={styles.hijoNombre}>{hijo.nombre}</Text> : null}
+                <View style={styles.hijoDetails}>
+                  {hijo.color ? <Text style={styles.hijoDetail}>{hijo.color}</Text> : null}
+                  {hijo.linea ? <Text style={styles.hijoDetail}>{hijo.linea}</Text> : null}
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#a0a0a0" />
+            </TouchableOpacity>
+          ))
+        ) : (
+          <View style={styles.emptyState}>
+            <Ionicons name="people-outline" size={48} color="#4b5563" />
+            <Text style={styles.emptyText}>Sin hijos registrados</Text>
+            <Text style={styles.emptySubtext}>Usa el botón de arriba para registrar un hijo</Text>
+          </View>
+        )}
+      </View>
+    );
+  }, [hijos, router, ave?.tipo, id]);
 
   if (loading) {
     return (
@@ -944,7 +1165,9 @@ export default function AveDetailScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#d4a017" />
         </TouchableOpacity>
+
         <Text style={styles.headerTitle}>{ave?.codigo}</Text>
+
         <View style={styles.headerActions}>
           <TouchableOpacity onPress={() => router.push(`/ave/${id}`)} style={styles.headerButton}>
             <Ionicons name="pencil" size={20} color="#f59e0b" />
@@ -973,9 +1196,16 @@ export default function AveDetailScreen() {
               />
             </View>
           )}
+
           <Text style={styles.profileCodigo}>{ave?.codigo}</Text>
-          {ave?.nombre && <Text style={styles.profileNombre}>{ave.nombre}</Text>}
-          <View style={[styles.profileEstado, { backgroundColor: getEstadoColor(ave?.estado || '') }]}>
+          {ave?.nombre ? <Text style={styles.profileNombre}>{ave.nombre}</Text> : null}
+
+          <View
+            style={[
+              styles.profileEstado,
+              { backgroundColor: getEstadoColor(ave?.estado || '') },
+            ]}
+          >
             <Text style={styles.profileEstadoText}>
               {ave?.estado?.charAt(0).toUpperCase() + (ave?.estado?.slice(1) || '')}
             </Text>
@@ -1216,48 +1446,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#9ca3af',
   },
-  parentsRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  parentCard: {
-    flex: 1,
-    backgroundColor: '#242424',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#333333',
-  },
-  parentIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  parentLabel: {
-    fontSize: 12,
-    color: '#a0a0a0',
-    marginBottom: 4,
-  },
-  parentCode: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
-    textAlign: 'center',
-  },
-  parentExternal: {
-    fontSize: 10,
-    color: '#f59e0b',
-    marginTop: 4,
-    fontWeight: '500',
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
   notesCard: {
     backgroundColor: '#242424',
     borderRadius: 12,
@@ -1276,58 +1464,6 @@ const styles = StyleSheet.create({
   pedigriContainer: {
     padding: 16,
     minWidth: '100%',
-  },
-  pedigriNode: {
-    marginBottom: 8,
-  },
-  pedigriCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#242424',
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#333333',
-    marginBottom: 4,
-  },
-  pedigriCardMain: {
-    borderColor: '#f59e0b',
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-  },
-  pedigriCardUnknown: {
-    opacity: 0.5,
-  },
-  pedigriPhoto: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-  },
-  pedigriPhotoPlaceholder: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#333333',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pedigriInfo: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  pedigriCode: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  pedigriDetail: {
-    fontSize: 11,
-    color: '#a0a0a0',
-  },
-  pedigriChildren: {
-    marginLeft: 20,
-    borderLeftWidth: 2,
-    borderLeftColor: '#333333',
-    paddingLeft: 12,
   },
   treeContainer: {
     alignItems: 'center',
@@ -1369,13 +1505,6 @@ const styles = StyleSheet.create({
     borderColor: '#333333',
     minWidth: 75,
     maxWidth: 90,
-  },
-  treeNodeMain: {
-    borderColor: '#f59e0b',
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
-    minWidth: 100,
-    maxWidth: 110,
-    padding: 14,
   },
   treeNodeParent: {
     minWidth: 110,
@@ -1430,60 +1559,9 @@ const styles = StyleSheet.create({
     color: '#fff',
     textAlign: 'center',
   },
-  treeCodeMain: {
-    fontSize: 14,
-  },
   treeCodeParent: {
     fontSize: 14,
     fontWeight: '700',
-  },
-  treeName: {
-    fontSize: 10,
-    color: '#9ca3af',
-    textAlign: 'center',
-    marginTop: 2,
-  },
-  treeNameParent: {
-    fontSize: 11,
-    fontWeight: '500',
-  },
-  treeParentDetail: {
-    fontSize: 10,
-    color: '#6b7280',
-    textAlign: 'center',
-    marginTop: 2,
-  },
-  treeGalleriaContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 4,
-    backgroundColor: 'rgba(156, 163, 175, 0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-  },
-  treeGalleriaText: {
-    fontSize: 10,
-    color: '#9ca3af',
-    fontWeight: '500',
-  },
-  treeExternalBadge: {
-    marginTop: 4,
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  treeExternalText: {
-    fontSize: 9,
-    color: '#f59e0b',
-    fontWeight: '600',
-  },
-  treeConnectorVertical: {
-    width: 2,
-    height: 20,
-    backgroundColor: '#444444',
   },
   treeConnectorVerticalLong: {
     width: 2,

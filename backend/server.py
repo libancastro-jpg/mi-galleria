@@ -85,6 +85,10 @@ class TokenResponse(BaseModel):
     user: UserResponse
 
 
+class UserResponseWithPlan(UserResponse):
+    plan: Optional[str] = "gratis"
+
+
 class AveBase(BaseModel):
     tipo: str
     codigo: str
@@ -135,6 +139,8 @@ class AveUpdate(BaseModel):
     abuelo_materno_padre_galleria: Optional[str] = None
     abuelo_materno_madre: Optional[str] = None
     abuelo_materno_madre_galleria: Optional[str] = None
+    padre_galleria: Optional[str] = None
+    madre_galleria: Optional[str] = None
 
 
 class AveResponse(AveBase):
@@ -386,6 +392,35 @@ def serialize_doc(doc: dict) -> dict:
     return result
 
 
+def serialize_ave_list_doc(doc: dict) -> dict:
+    if doc is None:
+        return None
+
+    return {
+        "id": str(doc["_id"]),
+        "tipo": doc.get("tipo"),
+        "codigo": doc.get("codigo"),
+        "nombre": doc.get("nombre"),
+        "color_placa": doc.get("color_placa"),
+        "foto_principal": doc.get("foto_principal"),
+        "fecha_nacimiento": doc.get("fecha_nacimiento"),
+        "color": doc.get("color"),
+        "cresta": doc.get("cresta"),
+        "linea": doc.get("linea"),
+        "castado_por": doc.get("castado_por"),
+        "estado": doc.get("estado", "activo"),
+        "notas": doc.get("notas"),
+        "padre_id": doc.get("padre_id"),
+        "madre_id": doc.get("madre_id"),
+        "padre_externo": doc.get("padre_externo"),
+        "madre_externo": doc.get("madre_externo"),
+        "marcaje_qr": doc.get("marcaje_qr"),
+        "user_id": doc.get("user_id"),
+        "created_at": doc.get("created_at") or datetime.utcnow(),
+        "updated_at": doc.get("updated_at") or doc.get("created_at") or datetime.utcnow(),
+    }
+
+
 def clean_optional_id(value: Optional[str]) -> Optional[str]:
     if value is None:
         return None
@@ -393,6 +428,15 @@ def clean_optional_id(value: Optional[str]) -> Optional[str]:
         value = value.strip()
         if value == "":
             return None
+    return value
+
+
+def clean_text(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        value = value.strip()
+        return value if value else None
     return value
 
 
@@ -431,6 +475,33 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         raise HTTPException(status_code=401, detail="Token inválido")
 
 
+# ============== STARTUP / INDEXES ==============
+
+@app.on_event("startup")
+async def startup_db_indexes():
+    try:
+        await db.aves.create_index([("user_id", 1), ("created_at", -1)])
+        await db.aves.create_index([("user_id", 1), ("estado", 1), ("created_at", -1)])
+        await db.aves.create_index([("user_id", 1), ("tipo", 1), ("created_at", -1)])
+        await db.aves.create_index([("user_id", 1), ("codigo", 1)])
+        await db.aves.create_index([("padre_id", 1)])
+        await db.aves.create_index([("madre_id", 1)])
+
+        await db.cruces.create_index([("user_id", 1), ("created_at", -1)])
+        await db.cruces.create_index([("user_id", 1), ("padre_id", 1)])
+        await db.cruces.create_index([("user_id", 1), ("madre_id", 1)])
+
+        await db.camadas.create_index([("user_id", 1), ("created_at", -1)])
+        await db.peleas.create_index([("user_id", 1), ("ave_id", 1), ("fecha", -1)])
+        await db.salud.create_index([("user_id", 1), ("ave_id", 1), ("fecha", -1)])
+        await db.salud.create_index([("user_id", 1), ("proxima_fecha", 1)])
+        await db.cuido.create_index([("user_id", 1), ("ave_id", 1), ("created_at", -1)])
+
+        logger.info("Índices de MongoDB creados/verificados correctamente")
+    except Exception as e:
+        logger.exception(f"Error creando índices: {e}")
+
+
 # ============== AUTH ROUTES ==============
 
 @api_router.post("/auth/register", response_model=TokenResponse)
@@ -446,9 +517,10 @@ async def register(user_data: UserCreate):
 
     user_doc = {
         "telefono": user_data.telefono,
-        "email": user_data.email,
-        "nombre": user_data.nombre,
+        "email": clean_text(user_data.email),
+        "nombre": clean_text(user_data.nombre),
         "pin": hash_pin(user_data.pin),
+        "plan": "gratis",
         "created_at": now,
         "updated_at": now,
     }
@@ -494,9 +566,12 @@ async def login(credentials: UserLogin):
     )
 
 
-@api_router.get("/auth/me", response_model=UserResponse)
+@api_router.get("/auth/me", response_model=UserResponseWithPlan)
 async def get_me(current_user: dict = Depends(get_current_user)):
-    return UserResponse(**current_user)
+    user_data = dict(current_user)
+    if not user_data.get("plan"):
+        user_data["plan"] = "gratis"
+    return UserResponseWithPlan(**user_data)
 
 
 class ProfileUpdate(BaseModel):
@@ -508,9 +583,9 @@ class ProfileUpdate(BaseModel):
 async def update_profile(data: ProfileUpdate, current_user: dict = Depends(get_current_user)):
     update_data = {"updated_at": datetime.utcnow()}
     if data.email is not None:
-        update_data["email"] = data.email
+        update_data["email"] = clean_text(data.email)
     if data.nombre is not None:
-        update_data["nombre"] = data.nombre
+        update_data["nombre"] = clean_text(data.nombre)
 
     await db.users.update_one(
         {"_id": to_object_id(current_user["id"], "user_id")},
@@ -597,21 +672,31 @@ async def create_ave(ave: AveCreate, current_user: dict = Depends(get_current_us
     padre_id = clean_optional_id(ave.padre_id)
     madre_id = clean_optional_id(ave.madre_id)
 
+    codigo_limpio = (ave.codigo or "").strip()
+    if not codigo_limpio:
+        raise HTTPException(status_code=400, detail="El número de placa es obligatorio")
+
     if padre_id:
-        padre = await db.aves.find_one({
-            "_id": to_object_id(padre_id, "padre_id"),
-            "user_id": current_user["id"],
-        })
+        padre = await db.aves.find_one(
+            {
+                "_id": to_object_id(padre_id, "padre_id"),
+                "user_id": current_user["id"],
+            },
+            {"tipo": 1}
+        )
         if not padre:
             raise HTTPException(status_code=404, detail="Padre no encontrado")
         if padre.get("tipo") != "gallo":
             raise HTTPException(status_code=400, detail="El padre debe ser un gallo")
 
     if madre_id:
-        madre = await db.aves.find_one({
-            "_id": to_object_id(madre_id, "madre_id"),
-            "user_id": current_user["id"],
-        })
+        madre = await db.aves.find_one(
+            {
+                "_id": to_object_id(madre_id, "madre_id"),
+                "user_id": current_user["id"],
+            },
+            {"tipo": 1}
+        )
         if not madre:
             raise HTTPException(status_code=404, detail="Madre no encontrada")
         if madre.get("tipo") != "gallina":
@@ -620,8 +705,22 @@ async def create_ave(ave: AveCreate, current_user: dict = Depends(get_current_us
     now = datetime.utcnow()
     ave_doc = {
         **ave.dict(),
+        "codigo": codigo_limpio,
+        "nombre": clean_text(ave.nombre),
+        "color_placa": clean_text(ave.color_placa),
+        "foto_principal": ave.foto_principal,
+        "fecha_nacimiento": clean_text(ave.fecha_nacimiento),
+        "color": clean_text(ave.color),
+        "cresta": clean_text(ave.cresta),
+        "linea": clean_text(ave.linea),
+        "castado_por": clean_text(ave.castado_por),
+        "estado": clean_text(ave.estado) or "activo",
+        "notas": clean_text(ave.notas),
         "padre_id": padre_id,
         "madre_id": madre_id,
+        "padre_externo": clean_text(ave.padre_externo),
+        "madre_externo": clean_text(ave.madre_externo),
+        "marcaje_qr": clean_text(ave.marcaje_qr),
         "user_id": current_user["id"],
         "created_at": now,
         "updated_at": now,
@@ -630,7 +729,7 @@ async def create_ave(ave: AveCreate, current_user: dict = Depends(get_current_us
     result = await db.aves.insert_one(ave_doc)
     ave_doc["_id"] = result.inserted_id
 
-    return serialize_doc(ave_doc)
+    return AveResponse(**serialize_doc(ave_doc))
 
 
 @api_router.get("/aves", response_model=List[AveResponse])
@@ -639,9 +738,12 @@ async def get_aves(
     estado: Optional[str] = None,
     color: Optional[str] = None,
     linea: Optional[str] = None,
+    limit: int = 50,
+    skip: int = 0,
     current_user: dict = Depends(get_current_user),
 ):
     query = {"user_id": current_user["id"]}
+
     if tipo:
         query["tipo"] = tipo
     if estado:
@@ -651,21 +753,42 @@ async def get_aves(
     if linea:
         query["linea"] = {"$regex": linea, "$options": "i"}
 
-    aves = await db.aves.find(query).sort("created_at", -1).to_list(100)
+    projection = {
+        "_id": 1,
+        "tipo": 1,
+        "codigo": 1,
+        "nombre": 1,
+        "color_placa": 1,
+        "foto_principal": 1,
+        "fecha_nacimiento": 1,
+        "color": 1,
+        "cresta": 1,
+        "linea": 1,
+        "castado_por": 1,
+        "estado": 1,
+        "notas": 1,
+        "padre_id": 1,
+        "madre_id": 1,
+        "padre_externo": 1,
+        "madre_externo": 1,
+        "marcaje_qr": 1,
+        "user_id": 1,
+        "created_at": 1,
+        "updated_at": 1,
+    }
 
-    result = []
-    for ave in aves:
-        data = serialize_doc(ave)
+    # 🔥 LIMITAR DATA REAL
+    cursor = (
+        db.aves
+        .find(query, projection)
+        .sort("created_at", -1)
+        .skip(skip)
+        .limit(limit)
+    )
 
-        if not data.get("created_at"):
-            data["created_at"] = datetime.utcnow()
+    aves = await cursor.to_list(length=limit)
 
-        if not data.get("updated_at"):
-            data["updated_at"] = data["created_at"]
-
-        result.append(AveResponse(**data))
-
-    return result
+    return [AveResponse(**serialize_ave_list_doc(ave)) for ave in aves]
 
 
 @api_router.get("/aves/{ave_id}", response_model=AveResponse)
@@ -700,13 +823,33 @@ async def update_ave(ave_id: str, ave_update: AveUpdate, current_user: dict = De
 
     update_data = {k: v for k, v in ave_update.dict().items() if v is not None}
 
+    text_fields = [
+        "codigo", "nombre", "color_placa", "fecha_nacimiento", "color", "cresta",
+        "linea", "castado_por", "estado", "notas", "padre_externo", "madre_externo",
+        "marcaje_qr", "abuelo_paterno_padre", "abuelo_paterno_padre_galleria",
+        "abuelo_paterno_madre", "abuelo_paterno_madre_galleria",
+        "abuelo_materno_padre", "abuelo_materno_padre_galleria",
+        "abuelo_materno_madre", "abuelo_materno_madre_galleria",
+        "padre_galleria", "madre_galleria"
+    ]
+
+    for field in text_fields:
+        if field in update_data:
+            if field == "codigo":
+                cleaned = (update_data[field] or "").strip()
+                if not cleaned:
+                    raise HTTPException(status_code=400, detail="El número de placa es obligatorio")
+                update_data[field] = cleaned
+            else:
+                update_data[field] = clean_text(update_data[field])
+
     if "padre_id" in update_data:
         update_data["padre_id"] = clean_optional_id(update_data["padre_id"])
         if update_data["padre_id"]:
             padre = await db.aves.find_one({
                 "_id": to_object_id(update_data["padre_id"], "padre_id"),
                 "user_id": current_user["id"],
-            })
+            }, {"tipo": 1})
             if not padre:
                 raise HTTPException(status_code=404, detail="Padre no encontrado")
             if padre.get("tipo") != "gallo":
@@ -718,7 +861,7 @@ async def update_ave(ave_id: str, ave_update: AveUpdate, current_user: dict = De
             madre = await db.aves.find_one({
                 "_id": to_object_id(update_data["madre_id"], "madre_id"),
                 "user_id": current_user["id"],
-            })
+            }, {"tipo": 1})
             if not madre:
                 raise HTTPException(status_code=404, detail="Madre no encontrada")
             if madre.get("tipo") != "gallina":
@@ -727,11 +870,14 @@ async def update_ave(ave_id: str, ave_update: AveUpdate, current_user: dict = De
     update_data["updated_at"] = datetime.utcnow()
 
     await db.aves.update_one(
-        {"_id": to_object_id(ave_id, "ave_id")},
+        {"_id": to_object_id(ave_id, "ave_id"), "user_id": current_user["id"]},
         {"$set": update_data},
     )
 
-    updated = await db.aves.find_one({"_id": to_object_id(ave_id, "ave_id")})
+    updated = await db.aves.find_one({
+        "_id": to_object_id(ave_id, "ave_id"),
+        "user_id": current_user["id"],
+    })
     return AveResponse(**serialize_doc(updated))
 
 
@@ -756,6 +902,7 @@ async def delete_ave(ave_id: str, current_user: dict = Depends(get_current_user)
 
     await db.peleas.delete_many({"ave_id": ave_id, "user_id": current_user["id"]})
     await db.salud.delete_many({"ave_id": ave_id, "user_id": current_user["id"]})
+    await db.cuido.delete_many({"ave_id": ave_id, "user_id": current_user["id"]})
 
     return {
         "message": "Ave eliminada",
@@ -768,30 +915,64 @@ async def delete_ave(ave_id: str, current_user: dict = Depends(get_current_user)
 
 @api_router.get("/aves/{ave_id}/pedigri")
 async def get_pedigri(ave_id: str, generations: int = 5, current_user: dict = Depends(get_current_user)):
-    async def get_ancestors(bird_id: str, gen: int, externo_info: dict = None) -> dict:
-        if gen > generations:
+    if generations < 1:
+        generations = 1
+    if generations > 5:
+        generations = 5
+
+    all_aves = await db.aves.find(
+        {"user_id": current_user["id"]},
+        {
+            "_id": 1,
+            "codigo": 1,
+            "nombre": 1,
+            "tipo": 1,
+            "color": 1,
+            "linea": 1,
+            "galleria": 1,
+            "foto_principal": 1,
+            "padre_id": 1,
+            "madre_id": 1,
+            "padre_externo": 1,
+            "madre_externo": 1,
+            "padre_galleria": 1,
+            "madre_galleria": 1,
+            "abuelo_paterno_padre": 1,
+            "abuelo_paterno_padre_galleria": 1,
+            "abuelo_paterno_madre": 1,
+            "abuelo_paterno_madre_galleria": 1,
+            "abuelo_materno_padre": 1,
+            "abuelo_materno_padre_galleria": 1,
+            "abuelo_materno_madre": 1,
+            "abuelo_materno_madre_galleria": 1,
+        }
+    ).to_list(length=10000)
+
+    aves_map = {str(a["_id"]): a for a in all_aves}
+
+    if ave_id not in aves_map:
+        raise HTTPException(status_code=404, detail="Ave no encontrada")
+
+    def build_external_node(codigo: Optional[str], tipo: str, galleria: Optional[str], gen: int):
+        if not codigo:
+            return None
+        return {
+            "id": None,
+            "codigo": codigo,
+            "nombre": None,
+            "tipo": tipo,
+            "galleria": galleria,
+            "externo": True,
+            "generation": gen,
+        }
+
+    def build_node(bird_id: Optional[str], gen: int):
+        if not bird_id or gen > generations:
             return None
 
-        if externo_info:
-            return {
-                "id": None,
-                "codigo": externo_info.get("codigo"),
-                "nombre": externo_info.get("nombre"),
-                "tipo": externo_info.get("tipo", "gallo"),
-                "galleria": externo_info.get("galleria"),
-                "externo": True,
-                "generation": gen,
-            }
-
-        if not bird_id:
-            return None
-
-        bird = await db.aves.find_one({
-            "_id": to_object_id(bird_id, "bird_id"),
-            "user_id": current_user["id"],
-        })
+        bird = aves_map.get(bird_id)
         if not bird:
-            return {"id": bird_id, "unknown": True}
+            return {"id": bird_id, "unknown": True, "generation": gen}
 
         result = {
             "id": str(bird["_id"]),
@@ -805,71 +986,64 @@ async def get_pedigri(ave_id: str, generations: int = 5, current_user: dict = De
             "generation": gen,
         }
 
-        if gen < generations:
-            if bird.get("padre_id"):
-                result["padre"] = await get_ancestors(bird.get("padre_id"), gen + 1)
-            elif bird.get("padre_externo"):
-                padre_ext = await get_ancestors(None, gen + 1, {
-                    "codigo": bird.get("padre_externo"),
-                    "tipo": "gallo",
-                    "galleria": bird.get("padre_galleria"),
-                })
-                if gen + 1 < generations:
-                    if bird.get("abuelo_paterno_padre"):
-                        padre_ext["padre"] = {
-                            "codigo": bird.get("abuelo_paterno_padre"),
-                            "galleria": bird.get("abuelo_paterno_padre_galleria"),
-                            "tipo": "gallo",
-                            "externo": True,
-                            "generation": gen + 2,
-                        }
-                    if bird.get("abuelo_paterno_madre"):
-                        padre_ext["madre"] = {
-                            "codigo": bird.get("abuelo_paterno_madre"),
-                            "galleria": bird.get("abuelo_paterno_madre_galleria"),
-                            "tipo": "gallina",
-                            "externo": True,
-                            "generation": gen + 2,
-                        }
-                result["padre"] = padre_ext
+        if gen >= generations:
+            return result
 
-            if bird.get("madre_id"):
-                result["madre"] = await get_ancestors(bird.get("madre_id"), gen + 1)
-            elif bird.get("madre_externo"):
-                madre_ext = await get_ancestors(None, gen + 1, {
-                    "codigo": bird.get("madre_externo"),
-                    "tipo": "gallina",
-                    "galleria": bird.get("madre_galleria"),
-                })
-                if gen + 1 < generations:
-                    if bird.get("abuelo_materno_padre"):
-                        madre_ext["padre"] = {
-                            "codigo": bird.get("abuelo_materno_padre"),
-                            "galleria": bird.get("abuelo_materno_padre_galleria"),
-                            "tipo": "gallo",
-                            "externo": True,
-                            "generation": gen + 2,
-                        }
-                    if bird.get("abuelo_materno_madre"):
-                        madre_ext["madre"] = {
-                            "codigo": bird.get("abuelo_materno_madre"),
-                            "galleria": bird.get("abuelo_materno_madre_galleria"),
-                            "tipo": "gallina",
-                            "externo": True,
-                            "generation": gen + 2,
-                        }
-                result["madre"] = madre_ext
+        if bird.get("padre_id"):
+            result["padre"] = build_node(bird.get("padre_id"), gen + 1)
+        elif bird.get("padre_externo"):
+            padre_ext = build_external_node(
+                bird.get("padre_externo"),
+                "gallo",
+                bird.get("padre_galleria"),
+                gen + 1
+            )
+            if padre_ext and gen + 1 < generations:
+                if bird.get("abuelo_paterno_padre"):
+                    padre_ext["padre"] = build_external_node(
+                        bird.get("abuelo_paterno_padre"),
+                        "gallo",
+                        bird.get("abuelo_paterno_padre_galleria"),
+                        gen + 2
+                    )
+                if bird.get("abuelo_paterno_madre"):
+                    padre_ext["madre"] = build_external_node(
+                        bird.get("abuelo_paterno_madre"),
+                        "gallina",
+                        bird.get("abuelo_paterno_madre_galleria"),
+                        gen + 2
+                    )
+            result["padre"] = padre_ext
+
+        if bird.get("madre_id"):
+            result["madre"] = build_node(bird.get("madre_id"), gen + 1)
+        elif bird.get("madre_externo"):
+            madre_ext = build_external_node(
+                bird.get("madre_externo"),
+                "gallina",
+                bird.get("madre_galleria"),
+                gen + 1
+            )
+            if madre_ext and gen + 1 < generations:
+                if bird.get("abuelo_materno_padre"):
+                    madre_ext["padre"] = build_external_node(
+                        bird.get("abuelo_materno_padre"),
+                        "gallo",
+                        bird.get("abuelo_materno_padre_galleria"),
+                        gen + 2
+                    )
+                if bird.get("abuelo_materno_madre"):
+                    madre_ext["madre"] = build_external_node(
+                        bird.get("abuelo_materno_madre"),
+                        "gallina",
+                        bird.get("abuelo_materno_madre_galleria"),
+                        gen + 2
+                    )
+            result["madre"] = madre_ext
 
         return result
 
-    ave = await db.aves.find_one({
-        "_id": to_object_id(ave_id, "ave_id"),
-        "user_id": current_user["id"],
-    })
-    if not ave:
-        raise HTTPException(status_code=404, detail="Ave no encontrada")
-
-    return await get_ancestors(ave_id, 1)
+    return build_node(ave_id, 1)
 
 
 @api_router.get("/aves/{ave_id}/hijos", response_model=List[AveResponse])
@@ -877,7 +1051,7 @@ async def get_hijos(ave_id: str, current_user: dict = Depends(get_current_user))
     ave = await db.aves.find_one({
         "_id": to_object_id(ave_id, "ave_id"),
         "user_id": current_user["id"],
-    })
+    }, {"tipo": 1})
     if not ave:
         raise HTTPException(status_code=404, detail="Ave no encontrada")
 
@@ -887,7 +1061,7 @@ async def get_hijos(ave_id: str, current_user: dict = Depends(get_current_user))
     else:
         query["madre_id"] = ave_id
 
-    hijos = await db.aves.find(query).to_list(1000)
+    hijos = await db.aves.find(query).sort("created_at", -1).to_list(1000)
     return [AveResponse(**serialize_doc(h)) for h in hijos]
 
 
@@ -907,7 +1081,7 @@ async def calculate_consanguinidad(
         bird = await db.aves.find_one({
             "_id": to_object_id(bird_id, "bird_id"),
             "user_id": current_user["id"],
-        })
+        }, {"padre_id": 1, "madre_id": 1})
         if bird:
             if bird.get("padre_id"):
                 ancestors.extend(await get_all_ancestors(bird.get("padre_id"), gen + 1, max_gen))
@@ -926,7 +1100,10 @@ async def calculate_consanguinidad(
     for aid, gen in padre_ids.items():
         if aid in madre_ids:
             min_gen = min(gen, madre_ids[aid])
-            ave = await db.aves.find_one({"_id": to_object_id(aid, "ancestor_id")})
+            ave = await db.aves.find_one(
+                {"_id": to_object_id(aid, "ancestor_id")},
+                {"codigo": 1, "nombre": 1}
+            )
             if ave:
                 common.append({
                     "id": aid,
@@ -982,7 +1159,8 @@ async def get_criadores(current_user: dict = Depends(get_current_user)):
         {
             "user_id": current_user["id"],
             "castado_por": {"$exists": True, "$nin": [None, ""]},
-        }
+        },
+        {"castado_por": 1}
     ).to_list(1000)
 
     seen_names = set()
@@ -1018,7 +1196,7 @@ async def create_cruce(cruce: CruceCreate, current_user: dict = Depends(get_curr
         padre = await db.aves.find_one({
             "_id": to_object_id(padre_id, "padre_id"),
             "user_id": current_user["id"],
-        })
+        }, {"tipo": 1})
         if not padre:
             raise HTTPException(status_code=404, detail="Padre no encontrado")
         if padre.get("tipo") != "gallo":
@@ -1030,7 +1208,7 @@ async def create_cruce(cruce: CruceCreate, current_user: dict = Depends(get_curr
         madre = await db.aves.find_one({
             "_id": to_object_id(madre_id, "madre_id"),
             "user_id": current_user["id"],
-        })
+        }, {"tipo": 1})
         if not madre:
             raise HTTPException(status_code=404, detail="Madre no encontrada")
         if madre.get("tipo") != "gallina":
@@ -1048,6 +1226,10 @@ async def create_cruce(cruce: CruceCreate, current_user: dict = Depends(get_curr
         **cruce.dict(),
         "padre_id": padre_id,
         "madre_id": madre_id,
+        "padre_externo": clean_text(cruce.padre_externo),
+        "madre_externo": clean_text(cruce.madre_externo),
+        "objetivo": clean_text(cruce.objetivo),
+        "notas": clean_text(cruce.notas),
         "user_id": current_user["id"],
         "consanguinidad_estimado": consanguinidad_estimado,
         "created_at": now,
@@ -1101,11 +1283,20 @@ async def update_cruce(cruce_id: str, cruce_update: CruceUpdate, current_user: d
     if "madre_id" in update_data:
         update_data["madre_id"] = madre_id
 
+    if "padre_externo" in update_data:
+        update_data["padre_externo"] = clean_text(update_data["padre_externo"])
+    if "madre_externo" in update_data:
+        update_data["madre_externo"] = clean_text(update_data["madre_externo"])
+    if "objetivo" in update_data:
+        update_data["objetivo"] = clean_text(update_data["objetivo"])
+    if "notas" in update_data:
+        update_data["notas"] = clean_text(update_data["notas"])
+
     if padre_id:
         padre = await db.aves.find_one({
             "_id": to_object_id(padre_id, "padre_id"),
             "user_id": current_user["id"],
-        })
+        }, {"tipo": 1})
         if not padre:
             raise HTTPException(status_code=404, detail="Padre no encontrado")
         if padre.get("tipo") != "gallo":
@@ -1115,7 +1306,7 @@ async def update_cruce(cruce_id: str, cruce_update: CruceUpdate, current_user: d
         madre = await db.aves.find_one({
             "_id": to_object_id(madre_id, "madre_id"),
             "user_id": current_user["id"],
-        })
+        }, {"tipo": 1})
         if not madre:
             raise HTTPException(status_code=404, detail="Madre no encontrada")
         if madre.get("tipo") != "gallina":
@@ -1159,6 +1350,7 @@ async def create_camada(camada: CamadaCreate, current_user: dict = Depends(get_c
     now = datetime.utcnow()
     camada_doc = {
         **camada.dict(),
+        "notas": clean_text(camada.notas),
         "user_id": current_user["id"],
         "created_at": now,
         "updated_at": now,
@@ -1202,6 +1394,8 @@ async def update_camada(camada_id: str, camada_update: CamadaUpdate, current_use
         raise HTTPException(status_code=404, detail="Camada no encontrada")
 
     update_data = {k: v for k, v in camada_update.dict().items() if v is not None}
+    if "notas" in update_data:
+        update_data["notas"] = clean_text(update_data["notas"])
     update_data["updated_at"] = datetime.utcnow()
 
     await db.camadas.update_one(
@@ -1287,13 +1481,15 @@ async def create_pelea(pelea: PeleaCreate, current_user: dict = Depends(get_curr
     ave = await db.aves.find_one({
         "_id": to_object_id(pelea.ave_id, "ave_id"),
         "user_id": current_user["id"],
-    })
+    }, {"_id": 1})
     if not ave:
         raise HTTPException(status_code=404, detail="Ave no encontrada")
 
     now = datetime.utcnow()
     pelea_doc = {
         **pelea.dict(),
+        "lugar": clean_text(pelea.lugar),
+        "notas": clean_text(pelea.notas),
         "user_id": current_user["id"],
         "created_at": now,
         "updated_at": now,
@@ -1489,6 +1685,10 @@ async def update_pelea(pelea_id: str, pelea_update: PeleaUpdate, current_user: d
         raise HTTPException(status_code=404, detail="Pelea no encontrada")
 
     update_data = {k: v for k, v in pelea_update.dict().items() if v is not None}
+    if "lugar" in update_data:
+        update_data["lugar"] = clean_text(update_data["lugar"])
+    if "notas" in update_data:
+        update_data["notas"] = clean_text(update_data["notas"])
     update_data["updated_at"] = datetime.utcnow()
 
     await db.peleas.update_one(
@@ -1518,13 +1718,15 @@ async def create_salud(salud: SaludCreate, current_user: dict = Depends(get_curr
     ave = await db.aves.find_one({
         "_id": to_object_id(salud.ave_id, "ave_id"),
         "user_id": current_user["id"],
-    })
+    }, {"_id": 1})
     if not ave:
         raise HTTPException(status_code=404, detail="Ave no encontrada")
 
     now = datetime.utcnow()
     salud_doc = {
         **salud.dict(),
+        "dosis": clean_text(salud.dosis),
+        "notas": clean_text(salud.notas),
         "user_id": current_user["id"],
         "created_at": now,
         "updated_at": now,
@@ -1562,18 +1764,19 @@ async def get_recordatorios(current_user: dict = Depends(get_current_user)):
         "proxima_fecha": {"$gte": today, "$lte": week_later},
     }).sort("proxima_fecha", 1).to_list(100)
 
+    ave_ids = list({r.get("ave_id") for r in records if r.get("ave_id")})
+    aves_map = {}
+    if ave_ids:
+        aves = await db.aves.find({"_id": {"$in": [to_object_id(aid, "ave_id") for aid in ave_ids]}}).to_list(len(ave_ids))
+        aves_map = {str(a["_id"]): a for a in aves}
+
     result = []
     for r in records:
         record_data = serialize_doc(r)
-        ave_id = r.get("ave_id")
-        if ave_id:
-            try:
-                ave = await db.aves.find_one({"_id": to_object_id(ave_id, "ave_id")})
-            except HTTPException:
-                ave = None
-            if ave:
-                record_data["ave_codigo"] = ave.get("codigo")
-                record_data["ave_nombre"] = ave.get("nombre")
+        ave = aves_map.get(r.get("ave_id"))
+        if ave:
+            record_data["ave_codigo"] = ave.get("codigo")
+            record_data["ave_nombre"] = ave.get("nombre")
         result.append(record_data)
 
     return result
@@ -1600,6 +1803,10 @@ async def update_salud(salud_id: str, salud_update: SaludUpdate, current_user: d
         raise HTTPException(status_code=404, detail="Registro no encontrado")
 
     update_data = {k: v for k, v in salud_update.dict().items() if v is not None}
+    if "dosis" in update_data:
+        update_data["dosis"] = clean_text(update_data["dosis"])
+    if "notas" in update_data:
+        update_data["notas"] = clean_text(update_data["notas"])
     update_data["updated_at"] = datetime.utcnow()
 
     await db.salud.update_one(
@@ -1629,7 +1836,7 @@ async def create_cuido(cuido: CuidoCreate, current_user: dict = Depends(get_curr
     ave = await db.aves.find_one({
         "_id": to_object_id(cuido.ave_id, "ave_id"),
         "user_id": current_user["id"],
-    })
+    }, {"tipo": 1})
     if not ave:
         raise HTTPException(status_code=404, detail="Ave no encontrada")
     if ave.get("tipo") != "gallo":
@@ -1664,7 +1871,7 @@ async def create_cuido(cuido: CuidoCreate, current_user: dict = Depends(get_curr
         "dias_descanso": None,
         "fecha_inicio_descanso": None,
         "fecha_fin_descanso": None,
-        "notas": cuido.notas,
+        "notas": clean_text(cuido.notas),
         "user_id": current_user["id"],
         "created_at": now,
         "updated_at": now,
@@ -1684,21 +1891,25 @@ async def get_cuidos(estado: Optional[str] = None, current_user: dict = Depends(
 
     cuidos = await db.cuido.find(query).sort("created_at", -1).to_list(1000)
 
+    ave_ids = list({c.get("ave_id") for c in cuidos if c.get("ave_id")})
+    aves_map = {}
+    if ave_ids:
+        aves = await db.aves.find(
+            {"_id": {"$in": [to_object_id(aid, "ave_id") for aid in ave_ids]}},
+            {"codigo": 1, "nombre": 1, "foto_principal": 1, "color": 1, "linea": 1}
+        ).to_list(len(ave_ids))
+        aves_map = {str(a["_id"]): a for a in aves}
+
     result = []
     for c in cuidos:
         cuido_data = serialize_doc(c)
-        ave_id = c.get("ave_id")
-        if ave_id:
-            try:
-                ave = await db.aves.find_one({"_id": to_object_id(ave_id, "ave_id")})
-            except HTTPException:
-                ave = None
-            if ave:
-                cuido_data["ave_codigo"] = ave.get("codigo")
-                cuido_data["ave_nombre"] = ave.get("nombre")
-                cuido_data["ave_foto"] = ave.get("foto_principal")
-                cuido_data["ave_color"] = ave.get("color")
-                cuido_data["ave_linea"] = ave.get("linea")
+        ave = aves_map.get(c.get("ave_id"))
+        if ave:
+            cuido_data["ave_codigo"] = ave.get("codigo")
+            cuido_data["ave_nombre"] = ave.get("nombre")
+            cuido_data["ave_foto"] = ave.get("foto_principal")
+            cuido_data["ave_color"] = ave.get("color")
+            cuido_data["ave_linea"] = ave.get("linea")
         result.append(cuido_data)
 
     return result
@@ -1717,7 +1928,10 @@ async def get_cuido(cuido_id: str, current_user: dict = Depends(get_current_user
     ave_id = cuido.get("ave_id")
     if ave_id:
         try:
-            ave = await db.aves.find_one({"_id": to_object_id(ave_id, "ave_id")})
+            ave = await db.aves.find_one(
+                {"_id": to_object_id(ave_id, "ave_id")},
+                {"codigo": 1, "nombre": 1, "foto_principal": 1, "color": 1, "linea": 1}
+            )
         except HTTPException:
             ave = None
         if ave:
@@ -1743,6 +1957,8 @@ async def update_cuido(cuido_id: str, cuido_update: CuidoUpdate, current_user: d
 
     if "trabajos" in update_data:
         update_data["trabajos"] = [t.dict() if hasattr(t, "dict") else t for t in update_data["trabajos"]]
+    if "notas" in update_data:
+        update_data["notas"] = clean_text(update_data["notas"])
 
     update_data["updated_at"] = datetime.utcnow()
 
@@ -1781,7 +1997,7 @@ async def registrar_tope(
         {"$set": {
             field_completado: True,
             field_fecha: datetime.utcnow().strftime("%Y-%m-%d"),
-            field_notas: notas,
+            field_notas: clean_text(notas),
             "updated_at": datetime.utcnow(),
         }},
     )
@@ -1813,7 +2029,7 @@ async def registrar_trabajo(
             t["tiempo_minutos"] = tiempo_minutos
             t["completado"] = True
             t["fecha_completado"] = datetime.utcnow().strftime("%Y-%m-%d")
-            t["notas"] = notas
+            t["notas"] = clean_text(notas)
             break
 
     await db.cuido.update_one(
@@ -1931,16 +2147,18 @@ async def get_dashboard(current_user: dict = Depends(get_current_user)):
     })
 
     recent_peleas = await db.peleas.find({"user_id": user_id}).sort("fecha", -1).limit(5).to_list(5)
+    ave_ids = [p.get("ave_id") for p in recent_peleas if p.get("ave_id")]
+    aves_map = {}
+    if ave_ids:
+        aves = await db.aves.find(
+            {"_id": {"$in": [to_object_id(aid, "ave_id") for aid in ave_ids]}},
+            {"codigo": 1, "nombre": 1}
+        ).to_list(len(ave_ids))
+        aves_map = {str(a["_id"]): a for a in aves}
+
     peleas_data = []
     for p in recent_peleas:
-        ave = None
-        ave_id = p.get("ave_id")
-        if ave_id:
-            try:
-                ave = await db.aves.find_one({"_id": to_object_id(ave_id, "ave_id")})
-            except HTTPException:
-                ave = None
-
+        ave = aves_map.get(p.get("ave_id"))
         peleas_data.append({
             "id": str(p["_id"]),
             "fecha": p.get("fecha"),

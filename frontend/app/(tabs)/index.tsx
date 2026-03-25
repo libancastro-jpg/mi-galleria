@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,12 +12,12 @@ import {
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../src/services/api';
 import { useAuth } from '../../src/context/AuthContext';
 import { RoosterLogo } from '../../src/components/RoosterLogo';
-import { TrophyIcon, GeneticsIcon, EggIcon, UserIcon, RoosterIcon, HenIcon, RoosterHeadIcon, BirdIcon, AvesIcon, PedigreeIcon } from '../../src/components/BirdIcons';
+import { UserIcon } from '../../src/components/BirdIcons';
 import { CamadaLogo } from '../../src/components/CamadaLogo';
 import { GalloLineaIcon } from '../../src/components/GalloLineaIcon';
 import { CrucesIcon } from '../../src/components/CrucesIcon';
@@ -49,7 +49,13 @@ interface DashboardData {
   recordatorios_salud: number;
 }
 
-// Color palette - Tema Claro
+interface SearchAve {
+  id: string;
+  tipo: string;
+  codigo: string;
+  nombre?: string;
+}
+
 const COLORS = {
   gold: '#d4a017',
   goldLight: 'rgba(212, 160, 23, 0.15)',
@@ -67,71 +73,129 @@ const COLORS = {
 export default function DashboardScreen() {
   const router = useRouter();
   const { user } = useAuth();
+
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Estados para búsqueda y menú
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchAve[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [searching, setSearching] = useState(false);
   const [showAddMenu, setShowAddMenu] = useState(false);
 
-  const fetchDashboard = async () => {
+  const isFetchingDashboardRef = useRef(false);
+  const avesCacheRef = useRef<SearchAve[] | null>(null);
+  const dashboardLoadedRef = useRef(false);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery.trim());
+    }, 250);
+
+    return () => clearTimeout(timeout);
+  }, [searchQuery]);
+
+  const fetchDashboard = useCallback(async (manualRefresh = false) => {
+    if (isFetchingDashboardRef.current) return;
+
+    isFetchingDashboardRef.current = true;
+
     try {
+      if (manualRefresh) {
+        setRefreshing(true);
+      } else if (!dashboardLoadedRef.current) {
+        setLoading(true);
+      }
+
       const result = await api.get('/dashboard');
       setData(result);
+      dashboardLoadedRef.current = true;
     } catch (error) {
       console.error('Error fetching dashboard:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
+      isFetchingDashboardRef.current = false;
     }
-  };
-
-  useEffect(() => {
-    fetchDashboard();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchDashboard(false);
+    }, [fetchDashboard])
+  );
 
   const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    fetchDashboard();
+    fetchDashboard(true);
+  }, [fetchDashboard]);
+
+  const loadAvesForSearch = useCallback(async () => {
+    if (avesCacheRef.current) return avesCacheRef.current;
+
+    const aves = await api.get('/aves');
+    const normalized = Array.isArray(aves) ? aves : [];
+    avesCacheRef.current = normalized;
+    return normalized;
   }, []);
 
-  // Función de búsqueda por placa
-  const handleSearch = async (query: string) => {
-    setSearchQuery(query);
-    if (query.length < 1) {
+  useEffect(() => {
+    let cancelled = false;
+
+    const runSearch = async () => {
+      if (!debouncedSearchQuery) {
+        setSearchResults([]);
+        setShowSearchResults(false);
+        setSearching(false);
+        return;
+      }
+
+      setSearching(true);
+
+      try {
+        const aves = await loadAvesForSearch();
+
+        if (cancelled) return;
+
+        const query = debouncedSearchQuery.toLowerCase();
+
+        const filtered = aves.filter((ave: SearchAve) => {
+          const codigo = ave.codigo?.toLowerCase() || '';
+          const nombre = ave.nombre?.toLowerCase() || '';
+          return codigo.includes(query) || nombre.includes(query);
+        });
+
+        setSearchResults(filtered.slice(0, 5));
+        setShowSearchResults(true);
+      } catch (error) {
+        console.error('Error searching:', error);
+      } finally {
+        if (!cancelled) {
+          setSearching(false);
+        }
+      }
+    };
+
+    runSearch();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedSearchQuery, loadAvesForSearch]);
+
+  const handleSelectAve = useCallback(
+    (aveId: string) => {
+      setSearchQuery('');
+      setDebouncedSearchQuery('');
       setSearchResults([]);
       setShowSearchResults(false);
-      return;
-    }
+      router.push(`/ave/detail/${aveId}`);
+    },
+    [router]
+  );
 
-    setSearching(true);
-    try {
-      const aves = await api.get('/aves');
-      const filtered = aves.filter((ave: any) =>
-        ave.codigo?.toLowerCase().includes(query.toLowerCase()) ||
-        ave.nombre?.toLowerCase().includes(query.toLowerCase())
-      );
-      setSearchResults(filtered.slice(0, 5));
-      setShowSearchResults(true);
-    } catch (error) {
-      console.error('Error searching:', error);
-    } finally {
-      setSearching(false);
-    }
-  };
-
-  const handleSelectAve = (aveId: string) => {
-    setSearchQuery('');
-    setSearchResults([]);
-    setShowSearchResults(false);
-    router.push(`/ave/detail/${aveId}`);
-  };
-
-  const getAlertStatus = () => {
+  const getAlertStatus = useCallback(() => {
     const count = data?.recordatorios_salud || 0;
     if (count === 0) {
       return {
@@ -155,12 +219,14 @@ export default function DashboardScreen() {
       text: `${count} alertas - Atención requerida`,
       icon: 'warning',
     };
-  };
+  }, [data?.recordatorios_salud]);
 
-  const formatUserName = (name: string | undefined) => {
+  const formatUserName = useCallback((name: string | undefined) => {
     if (!name) return 'Castador';
     return name.charAt(0).toUpperCase() + name.slice(1);
-  };
+  }, []);
+
+  const alertStatus = useMemo(() => getAlertStatus(), [getAlertStatus]);
 
   if (loading) {
     return (
@@ -172,13 +238,12 @@ export default function DashboardScreen() {
     );
   }
 
-  const alertStatus = getAlertStatus();
-
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -187,16 +252,17 @@ export default function DashboardScreen() {
           />
         }
       >
-        {/* Header con Logo Central */}
         <View style={styles.headerContainer}>
           <View style={styles.headerTop}>
             <View style={styles.headerLeft}>
               <Text style={styles.welcomeText}>Bienvenido,</Text>
               <Text style={styles.userName}>{formatUserName(user?.nombre)}</Text>
             </View>
+
             <View style={styles.headerCenter}>
               <RoosterLogo size={72} />
             </View>
+
             <View style={styles.headerRight}>
               <TouchableOpacity
                 style={styles.profileButton}
@@ -206,10 +272,10 @@ export default function DashboardScreen() {
               </TouchableOpacity>
             </View>
           </View>
+
           <Text style={styles.subtitle}>Panel General del Criadero</Text>
         </View>
 
-        {/* Alertas Section - Solo mostrar si hay recordatorios pendientes */}
         {(data?.recordatorios_salud || 0) > 0 && (
           <TouchableOpacity
             style={[styles.alertCard, { backgroundColor: alertStatus.bg }]}
@@ -218,17 +284,18 @@ export default function DashboardScreen() {
             <View style={[styles.alertIconContainer, { backgroundColor: alertStatus.color }]}>
               <Ionicons name={alertStatus.icon as any} size={22} color={COLORS.white} />
             </View>
+
             <View style={styles.alertContent}>
               <Text style={styles.alertTitle}>Recordatorios</Text>
               <Text style={[styles.alertText, { color: alertStatus.color }]}>
                 {alertStatus.text}
               </Text>
             </View>
+
             <Ionicons name="chevron-forward" size={20} color={alertStatus.color} />
           </TouchableOpacity>
         )}
 
-        {/* Barra de Búsqueda */}
         <View style={styles.searchSection}>
           <View style={styles.searchContainer}>
             <Ionicons name="search" size={20} color={COLORS.grayLight} />
@@ -237,12 +304,14 @@ export default function DashboardScreen() {
               placeholder="Buscar por placa o nombre..."
               placeholderTextColor={COLORS.grayLight}
               value={searchQuery}
-              onChangeText={handleSearch}
+              onChangeText={setSearchQuery}
             />
+
             {searchQuery.length > 0 && (
               <TouchableOpacity
                 onPress={() => {
                   setSearchQuery('');
+                  setDebouncedSearchQuery('');
                   setSearchResults([]);
                   setShowSearchResults(false);
                 }}
@@ -250,10 +319,10 @@ export default function DashboardScreen() {
                 <Ionicons name="close-circle" size={20} color={COLORS.grayLight} />
               </TouchableOpacity>
             )}
+
             {searching && <ActivityIndicator size="small" color={COLORS.gold} />}
           </View>
 
-          {/* Resultados de búsqueda */}
           {showSearchResults && searchResults.length > 0 && (
             <View style={styles.searchResults}>
               {searchResults.map((ave) => (
@@ -269,12 +338,14 @@ export default function DashboardScreen() {
                       color={ave.tipo === 'gallo' ? '#3b82f6' : '#ec4899'}
                     />
                   </View>
+
                   <View style={styles.searchResultInfo}>
                     <Text style={styles.searchResultPlaca}>Placa: {ave.codigo}</Text>
                     {ave.nombre && (
                       <Text style={styles.searchResultName}>{ave.nombre}</Text>
                     )}
                   </View>
+
                   <View style={styles.searchResultAction}>
                     <Text style={styles.searchResultActionText}>Ver pedigrí</Text>
                     <Ionicons name="chevron-forward" size={16} color={COLORS.gold} />
@@ -284,18 +355,19 @@ export default function DashboardScreen() {
             </View>
           )}
 
-          {showSearchResults && searchQuery.length > 0 && searchResults.length === 0 && !searching && (
-            <View style={styles.searchNoResults}>
-              <Text style={styles.searchNoResultsText}>
-                No se encontraron aves con "{searchQuery}"
-              </Text>
-            </View>
-          )}
+          {showSearchResults &&
+            debouncedSearchQuery.length > 0 &&
+            searchResults.length === 0 &&
+            !searching && (
+              <View style={styles.searchNoResults}>
+                <Text style={styles.searchNoResultsText}>
+                  No se encontraron aves con "{debouncedSearchQuery}"
+                </Text>
+              </View>
+            )}
         </View>
 
-        {/* Stats Cards */}
         <View style={styles.statsGrid}>
-          {/* Aves Activas */}
           <TouchableOpacity
             style={styles.statCardCompact}
             onPress={() => router.push('/(tabs)/aves')}
@@ -327,30 +399,36 @@ export default function DashboardScreen() {
             </View>
           </TouchableOpacity>
 
-          {/* Rendimiento */}
           <TouchableOpacity
             style={styles.statCard}
             onPress={() => router.push('/(tabs)/peleas')}
           >
             <View style={styles.statHeader}>
-              <TrophyIcon size={24} color={COLORS.gold} />
+              <Ionicons name="trophy" size={24} color={COLORS.gold} />
               <Text style={styles.statTitle}>Rendimiento</Text>
             </View>
+
             {(data?.peleas.total || 0) > 0 ? (
               <>
                 <View style={styles.rendimientoStats}>
                   <View style={styles.rendimientoRow}>
-                    <Text style={[styles.rendimientoLabel, { color: COLORS.greenDark }]}>Ganadas:</Text>
+                    <Text style={[styles.rendimientoLabel, { color: COLORS.greenDark }]}>
+                      Ganadas:
+                    </Text>
                     <Text style={[styles.rendimientoValue, { color: COLORS.greenDark }]}>
                       {data?.peleas.ganadas || 0}
                     </Text>
                   </View>
+
                   <View style={styles.rendimientoRow}>
-                    <Text style={[styles.rendimientoLabel, { color: COLORS.redDeep }]}>Perdidas:</Text>
+                    <Text style={[styles.rendimientoLabel, { color: COLORS.redDeep }]}>
+                      Perdidas:
+                    </Text>
                     <Text style={[styles.rendimientoValue, { color: COLORS.redDeep }]}>
                       {data?.peleas.perdidas || 0}
                     </Text>
                   </View>
+
                   <View style={styles.rendimientoRow}>
                     <Text style={styles.rendimientoLabel}>Efectividad:</Text>
                     <Text style={[styles.rendimientoValue, { color: COLORS.gold }]}>
@@ -358,6 +436,7 @@ export default function DashboardScreen() {
                     </Text>
                   </View>
                 </View>
+
                 <View style={styles.progressBarContainer}>
                   <View style={styles.progressBarBg}>
                     <View
@@ -376,7 +455,6 @@ export default function DashboardScreen() {
         </View>
 
         <View style={styles.statsGrid}>
-          {/* Cruces */}
           <TouchableOpacity
             style={styles.statCardCompact}
             onPress={() => router.push('/(tabs)/cruces')}
@@ -385,6 +463,7 @@ export default function DashboardScreen() {
               <CrucesIcon size={80} />
             </View>
             <Text style={styles.statTitleCentered}>Cruces</Text>
+
             {(data?.cruces_total || data?.cruces_planeados || 0) > 0 ? (
               <View style={styles.cruceStats}>
                 <View style={styles.cruceRow}>
@@ -399,12 +478,12 @@ export default function DashboardScreen() {
             )}
           </TouchableOpacity>
 
-          {/* Camadas */}
           <TouchableOpacity style={styles.statCardCompact} onPress={() => router.push('/camadas')}>
             <View style={styles.camadaLogoContainer}>
               <CamadaLogo size={66} />
             </View>
             <Text style={styles.statTitleCentered}>Camadas</Text>
+
             {(data?.camadas_total || data?.camadas_activas || 0) > 0 ? (
               <View style={styles.camadaStats}>
                 <View style={styles.camadaRow}>
@@ -423,7 +502,6 @@ export default function DashboardScreen() {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Botón Flotante + */}
       <TouchableOpacity
         style={styles.floatingButton}
         onPress={() => setShowAddMenu(true)}
@@ -431,7 +509,6 @@ export default function DashboardScreen() {
         <Ionicons name="add" size={32} color="#000" />
       </TouchableOpacity>
 
-      {/* Modal de Menú */}
       <Modal
         visible={showAddMenu}
         transparent
@@ -524,7 +601,6 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
   },
-  // Header con Logo Central
   headerContainer: {
     marginBottom: 20,
     paddingBottom: 16,
@@ -569,7 +645,6 @@ const styles = StyleSheet.create({
   profileButton: {
     padding: 4,
   },
-  // Alerts
   alertCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -600,7 +675,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 2,
   },
-  // Stats Grid
   statsGrid: {
     flexDirection: 'row',
     gap: 12,
@@ -650,14 +724,6 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     marginBottom: 4,
   },
-  statDetails: {
-    gap: 4,
-  },
-  statDetailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
   statDetailText: {
     fontSize: 13,
     color: COLORS.grayLight,
@@ -668,7 +734,6 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: 8,
   },
-  // Rendimiento
   rendimientoStats: {
     gap: 6,
     marginBottom: 12,
@@ -700,7 +765,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.gold,
     borderRadius: 3,
   },
-  // Cruces
   cruceStats: {
     gap: 8,
     marginTop: 8,
@@ -718,42 +782,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.white,
   },
-  // Camadas
   camadaLogoContainer: {
     alignItems: 'center',
     marginBottom: 8,
   },
-  // Cruces Logo Container
   crucesLogoContainer: {
     alignItems: 'center',
-    marginBottom: 8,
-  },
-  // Aves Logo Container
-  avesLogoContainer: {
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  // Aves Activas with Image
-  avesActivasContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  avesActivasImage: {
-    width: 88,
-    height: 88,
-    alignSelf: 'center',
-    marginRight: 12,
-  },
-  avesActivasStats: {
-    flex: 1,
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-  },
-  camadaTitle: {
-    fontSize: 14,
-    color: COLORS.grayLight,
-    fontWeight: '600',
-    textAlign: 'center',
     marginBottom: 8,
   },
   camadaStats: {
@@ -773,46 +807,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.white,
   },
-  // Section
-  section: {
-    marginTop: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.white,
-    marginBottom: 12,
-  },
-  // Actions
-  actionsGrid: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 12,
-  },
-  actionButton: {
-    flex: 1,
-    backgroundColor: COLORS.grayDark,
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.grayMedium,
-  },
-  actionIcon: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-  actionText: {
-    fontSize: 13,
-    color: COLORS.white,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  // Search Section
   searchSection: {
     marginBottom: 16,
   },
@@ -893,7 +887,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.grayLight,
   },
-  // Floating Button
   floatingButton: {
     position: 'absolute',
     bottom: 24,
@@ -911,7 +904,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
   },
-  // Add Menu Modal
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.7)',
@@ -944,13 +936,6 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.grayMedium,
-  },
-  addMenuIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   addMenuIconLarge: {
     width: 60,

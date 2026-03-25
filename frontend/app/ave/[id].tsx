@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -25,12 +25,13 @@ interface Ave {
   codigo: string;
   nombre?: string;
   tipo: string;
+  castado_por?: string;
 }
 
 export default function AveFormScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const isEdit = id && id !== 'new';
+  const isEdit = !!id && id !== 'new';
 
   const MEMBERSHIP_PLANS_ROUTE = '/planes';
 
@@ -64,46 +65,49 @@ export default function AveFormScreen() {
     'Necesitas un plan de membresía para continuar.'
   );
 
-  const COLORES_PLACA = [
-    'Amarillo',
-    'Azul',
-    'Rojo',
-    'Verde',
-    'Blanco',
-    'Negro',
-    'Naranja',
-    'Morado',
-    'Rosado',
-    'Gris',
-  ];
+  const COLORES_PLACA = useMemo(
+    () => [
+      'Amarillo',
+      'Azul',
+      'Rojo',
+      'Verde',
+      'Blanco',
+      'Negro',
+      'Naranja',
+      'Morado',
+      'Rosado',
+      'Gris',
+    ],
+    []
+  );
 
-  const COLORES = [
-    'Jabao',
-    'Cenizo',
-    'Canelo',
-    'Giro',
-    'Colorado',
-    'Pinto',
-    'Negro',
-    'Blanco',
-    'Indio',
-    'Gallino',
-    'Prieto',
-    'Amarillo',
-    'Ajiseñao',
-    'Melao',
-    'Joco',
-    'Gallo Fino',
-    'Otro',
-  ];
+  const COLORES = useMemo(
+    () => [
+      'Jabao',
+      'Cenizo',
+      'Canelo',
+      'Giro',
+      'Colorado',
+      'Pinto',
+      'Negro',
+      'Blanco',
+      'Indio',
+      'Gallino',
+      'Prieto',
+      'Amarillo',
+      'Ajiseñao',
+      'Melao',
+      'Joco',
+      'Gallo Fino',
+      'Otro',
+    ],
+    []
+  );
 
-  const TIPOS_CRESTA = [
-    'Rosa o Crestallado',
-    'Tusa de Peine',
-    'Pava',
-    'Sencilla',
-    'Otra',
-  ];
+  const TIPOS_CRESTA = useMemo(
+    () => ['Rosa o Crestallado', 'Tusa de Peine', 'Pava', 'Sencilla', 'Otra'],
+    []
+  );
 
   const [formData, setFormData] = useState({
     tipo: 'gallo',
@@ -125,10 +129,14 @@ export default function AveFormScreen() {
     castado_por: '',
   });
 
-  const [padreNombre, setPadreNombre] = useState('');
-  const [madreNombre, setMadreNombre] = useState('');
+  const updateFormData = useCallback(
+    (patch: Partial<typeof formData>) => {
+      setFormData((prev) => ({ ...prev, ...patch }));
+    },
+    []
+  );
 
-  const getColorPlaca = (color: string) => {
+  const getColorPlaca = useCallback((color: string) => {
     const colores: { [key: string]: string } = {
       Amarillo: '#fbbf24',
       Azul: '#3b82f6',
@@ -142,9 +150,9 @@ export default function AveFormScreen() {
       Gris: '#6b7280',
     };
     return colores[color] || '#d4a017';
-  };
+  }, []);
 
-  const extractErrorMessage = (error: any) => {
+  const extractErrorMessage = useCallback((error: any) => {
     return (
       error?.response?.data?.detail?.message ||
       error?.response?.data?.detail ||
@@ -152,9 +160,9 @@ export default function AveFormScreen() {
       error?.message ||
       'Ocurrió un error'
     );
-  };
+  }, []);
 
-  const isPremiumLimitError = (error: any) => {
+  const isPremiumLimitError = useCallback((error: any) => {
     const code =
       error?.response?.data?.detail?.code ||
       error?.response?.data?.code ||
@@ -181,9 +189,9 @@ export default function AveFormScreen() {
       message.includes('limite') ||
       message.includes('plan requerido')
     );
-  };
+  }, []);
 
-  const openPremiumModalFromError = (error: any) => {
+  const openPremiumModalFromError = useCallback((error: any) => {
     const title =
       error?.response?.data?.detail?.title ||
       error?.response?.data?.title ||
@@ -198,36 +206,35 @@ export default function AveFormScreen() {
     setPremiumModalTitle(title);
     setPremiumModalMessage(message);
     setShowPremiumModal(true);
-  };
+  }, []);
 
-  const goToMembershipPlans = () => {
+  const goToMembershipPlans = useCallback(() => {
     setShowPremiumModal(false);
     router.push(MEMBERSHIP_PLANS_ROUTE as any);
-  };
+  }, [router]);
 
-  useEffect(() => {
-    fetchAves();
-    fetchCastadores();
-    if (isEdit) {
-      fetchAve();
-    }
-  }, [id]);
-
-  const fetchAves = async () => {
+  const fetchInitialData = useCallback(async () => {
+    setLoading(true);
     try {
-      const aves = await api.get('/aves');
-      setGallos(aves.filter((a: Ave) => a.tipo === 'gallo'));
-      setGallinas(aves.filter((a: Ave) => a.tipo === 'gallina'));
-    } catch (error) {
-      console.error('Error fetching aves:', error);
-    }
-  };
+      const [avesResponse, aveDetailResponse] = await Promise.all([
+        api.get('/aves'),
+        isEdit ? api.get(`/aves/${id}`) : Promise.resolve(null),
+      ]);
 
-  const fetchCastadores = async () => {
-    try {
-      const aves = await api.get('/aves');
+      const aves: Ave[] = Array.isArray(avesResponse?.data)
+        ? avesResponse.data
+        : Array.isArray(avesResponse)
+          ? avesResponse
+          : [];
+
+      const gallosData = aves.filter((a: Ave) => a.tipo === 'gallo');
+      const gallinasData = aves.filter((a: Ave) => a.tipo === 'gallina');
+
+      setGallos(gallosData);
+      setGallinas(gallinasData);
+
       const castadoresMap: { [key: string]: number } = {};
-      aves.forEach((ave: any) => {
+      aves.forEach((ave: Ave) => {
         if (ave.castado_por && ave.castado_por.trim() !== '') {
           const nombre = ave.castado_por.trim();
           castadoresMap[nombre] = (castadoresMap[nombre] || 0) + 1;
@@ -239,51 +246,49 @@ export default function AveFormScreen() {
         .sort((a, b) => b.cantidad - a.cantidad);
 
       setCastadores(castadoresList);
-    } catch (error) {
-      console.error('Error fetching castadores:', error);
-    }
-  };
 
-  const fetchAve = async () => {
-    setLoading(true);
-    try {
-      const ave = await api.get(`/aves/${id}`);
-      setFormData({
-        tipo: ave.tipo || 'gallo',
-        codigo: ave.codigo || '',
-        color_placa: ave.color_placa || '',
-        nombre: ave.nombre || '',
-        foto_principal: ave.foto_principal || '',
-        fecha_nacimiento: ave.fecha_nacimiento || '',
-        color: ave.color || '',
-        cresta: ave.cresta || '',
-        linea: ave.linea || '',
-        estado: ave.estado || 'activo',
-        notas: ave.notas || '',
-        padre_id: ave.padre_id || '',
-        madre_id: ave.madre_id || '',
-        padre_externo: ave.padre_externo || '',
-        madre_externo: ave.madre_externo || '',
-        marcaje_qr: ave.marcaje_qr || '',
-        castado_por: ave.castado_por || '',
-      });
+      if (aveDetailResponse) {
+        const ave = aveDetailResponse?.data ?? aveDetailResponse;
 
-      if (ave.padre_id) {
-        const padre = gallos.find((g) => g.id === ave.padre_id);
-        setPadreNombre(padre?.codigo || 'Seleccionado');
-      }
-      if (ave.madre_id) {
-        const madre = gallinas.find((g) => g.id === ave.madre_id);
-        setMadreNombre(madre?.codigo || 'Seleccionada');
+        updateFormData({
+          tipo: ave.tipo || 'gallo',
+          codigo: ave.codigo || '',
+          color_placa: ave.color_placa || '',
+          nombre: ave.nombre || '',
+          foto_principal: ave.foto_principal || '',
+          fecha_nacimiento: ave.fecha_nacimiento || '',
+          color: ave.color || '',
+          cresta: ave.cresta || '',
+          linea: ave.linea || '',
+          estado: ave.estado || 'activo',
+          notas: ave.notas || '',
+          padre_id: ave.padre_id || '',
+          madre_id: ave.madre_id || '',
+          padre_externo: ave.padre_externo || '',
+          madre_externo: ave.madre_externo || '',
+          marcaje_qr: ave.marcaje_qr || '',
+          castado_por: ave.castado_por || '',
+        });
+
+        if (ave.padre_externo) {
+          setPadreExterno(ave.padre_externo);
+        }
+        if (ave.madre_externo) {
+          setMadreExterno(ave.madre_externo);
+        }
       }
     } catch (error: any) {
       Alert.alert('Error', extractErrorMessage(error));
     } finally {
       setLoading(false);
     }
-  };
+  }, [extractErrorMessage, id, isEdit, updateFormData]);
 
-  const pickImage = async () => {
+  useEffect(() => {
+    fetchInitialData();
+  }, [fetchInitialData]);
+
+  const pickImage = useCallback(async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
       Alert.alert('Permiso requerido', 'Necesitamos acceso a tu galería');
@@ -298,15 +303,14 @@ export default function AveFormScreen() {
       base64: true,
     });
 
-    if (!result.canceled && result.assets[0].base64) {
-      setFormData({
-        ...formData,
+    if (!result.canceled && result.assets?.[0]?.base64) {
+      updateFormData({
         foto_principal: `data:image/jpeg;base64,${result.assets[0].base64}`,
       });
     }
-  };
+  }, [updateFormData]);
 
-  const takePhoto = async () => {
+  const takePhoto = useCallback(async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
       Alert.alert('Permiso requerido', 'Necesitamos acceso a tu cámara');
@@ -320,24 +324,30 @@ export default function AveFormScreen() {
       base64: true,
     });
 
-    if (!result.canceled && result.assets[0].base64) {
-      setFormData({
-        ...formData,
+    if (!result.canceled && result.assets?.[0]?.base64) {
+      updateFormData({
         foto_principal: `data:image/jpeg;base64,${result.assets[0].base64}`,
       });
     }
-  };
+  }, [updateFormData]);
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (!formData.codigo.trim()) {
       Alert.alert('Error', 'El número de placa es obligatorio');
       return;
     }
 
+    if (saving) return;
+
     setSaving(true);
     try {
       const dataToSend = {
         ...formData,
+        codigo: formData.codigo.trim(),
+        nombre: formData.nombre.trim(),
+        linea: formData.linea.trim(),
+        notas: formData.notas.trim(),
+        castado_por: formData.castado_por.trim(),
         padre_id: formData.padre_id || null,
         madre_id: formData.madre_id || null,
         padre_externo: formData.padre_externo || null,
@@ -366,7 +376,36 @@ export default function AveFormScreen() {
     } finally {
       setSaving(false);
     }
-  };
+  }, [
+    extractErrorMessage,
+    formData,
+    id,
+    isEdit,
+    isPremiumLimitError,
+    openPremiumModalFromError,
+    router,
+    saving,
+  ]);
+
+  const padreSeleccionadoCodigo = useMemo(() => {
+    if (!formData.padre_id) return '';
+    return gallos.find((g) => g.id === formData.padre_id)?.codigo || 'Seleccionado';
+  }, [formData.padre_id, gallos]);
+
+  const madreSeleccionadaCodigo = useMemo(() => {
+    if (!formData.madre_id) return '';
+    return gallinas.find((g) => g.id === formData.madre_id)?.codigo || 'Seleccionada';
+  }, [formData.madre_id, gallinas]);
+
+  const gallosDisponibles = useMemo(
+    () => gallos.filter((g) => g.id !== id),
+    [gallos, id]
+  );
+
+  const gallinasDisponibles = useMemo(
+    () => gallinas.filter((g) => g.id !== id),
+    [gallinas, id]
+  );
 
   if (loading) {
     return (
@@ -392,7 +431,7 @@ export default function AveFormScreen() {
           <TouchableOpacity
             onPress={handleSave}
             disabled={saving}
-            style={styles.saveButton}
+            style={[styles.saveButton, saving && styles.saveButtonDisabled]}
           >
             {saving ? (
               <ActivityIndicator size="small" color="#000" />
@@ -402,7 +441,11 @@ export default function AveFormScreen() {
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.form} contentContainerStyle={styles.formContent}>
+        <ScrollView
+          style={styles.form}
+          contentContainerStyle={styles.formContent}
+          keyboardShouldPersistTaps="handled"
+        >
           <View style={styles.photoSectionCentered}>
             <TouchableOpacity
               style={styles.photoContainerCircle}
@@ -431,14 +474,14 @@ export default function AveFormScreen() {
                   </View>
                 </View>
               )}
-              {formData.foto_principal && (
+              {formData.foto_principal ? (
                 <TouchableOpacity
                   style={styles.removePhotoButtonCircle}
-                  onPress={() => setFormData({ ...formData, foto_principal: '' })}
+                  onPress={() => updateFormData({ foto_principal: '' })}
                 >
                   <Ionicons name="close-circle" size={24} color="#ef4444" />
                 </TouchableOpacity>
-              )}
+              ) : null}
             </TouchableOpacity>
           </View>
 
@@ -449,7 +492,7 @@ export default function AveFormScreen() {
                 styles.tipoButton,
                 formData.tipo === 'gallo' && styles.tipoButtonActive,
               ]}
-              onPress={() => setFormData({ ...formData, tipo: 'gallo' })}
+              onPress={() => updateFormData({ tipo: 'gallo' })}
             >
               <Ionicons
                 name="fitness"
@@ -465,12 +508,13 @@ export default function AveFormScreen() {
                 Gallo
               </Text>
             </TouchableOpacity>
+
             <TouchableOpacity
               style={[
                 styles.tipoButton,
                 formData.tipo === 'gallina' && styles.tipoButtonActive,
               ]}
-              onPress={() => setFormData({ ...formData, tipo: 'gallina' })}
+              onPress={() => updateFormData({ tipo: 'gallina' })}
             >
               <Ionicons
                 name="egg"
@@ -493,7 +537,7 @@ export default function AveFormScreen() {
             <TextInput
               style={[styles.input, styles.placaInput]}
               value={formData.codigo}
-              onChangeText={(text) => setFormData({ ...formData, codigo: text })}
+              onChangeText={(text) => updateFormData({ codigo: text })}
               placeholder="Ej: 12, 001, A-15"
               placeholderTextColor="#555555"
             />
@@ -502,7 +546,7 @@ export default function AveFormScreen() {
                 styles.colorPlacaButton,
                 formData.color_placa && { borderColor: '#d4a017' },
               ]}
-              onPress={() => setShowColorPlacaList(!showColorPlacaList)}
+              onPress={() => setShowColorPlacaList((prev) => !prev)}
             >
               <View
                 style={[
@@ -517,7 +561,7 @@ export default function AveFormScreen() {
             </TouchableOpacity>
           </View>
 
-          {showColorPlacaList && (
+          {showColorPlacaList ? (
             <View style={styles.colorPlacaGrid}>
               {COLORES_PLACA.map((color) => (
                 <TouchableOpacity
@@ -527,7 +571,7 @@ export default function AveFormScreen() {
                     formData.color_placa === color && styles.colorPlacaOptionActive,
                   ]}
                   onPress={() => {
-                    setFormData({ ...formData, color_placa: color });
+                    updateFormData({ color_placa: color });
                     setShowColorPlacaList(false);
                   }}
                 >
@@ -541,12 +585,12 @@ export default function AveFormScreen() {
                 </TouchableOpacity>
               ))}
             </View>
-          )}
+          ) : null}
 
           <Text style={styles.label}>Color del Ave</Text>
           <TouchableOpacity
             style={styles.selectButton}
-            onPress={() => setShowColorList(!showColorList)}
+            onPress={() => setShowColorList((prev) => !prev)}
           >
             <Text
               style={[
@@ -563,7 +607,7 @@ export default function AveFormScreen() {
             />
           </TouchableOpacity>
 
-          {showColorList && (
+          {showColorList ? (
             <View style={styles.colorGrid}>
               {COLORES.map((color) => (
                 <TouchableOpacity
@@ -573,7 +617,7 @@ export default function AveFormScreen() {
                     formData.color === color && styles.colorOptionActive,
                   ]}
                   onPress={() => {
-                    setFormData({ ...formData, color });
+                    updateFormData({ color });
                     setShowColorList(false);
                   }}
                 >
@@ -588,12 +632,12 @@ export default function AveFormScreen() {
                 </TouchableOpacity>
               ))}
             </View>
-          )}
+          ) : null}
 
           <Text style={styles.label}>Tipo de Cresta</Text>
           <TouchableOpacity
             style={styles.selectButton}
-            onPress={() => setShowCrestaList(!showCrestaList)}
+            onPress={() => setShowCrestaList((prev) => !prev)}
           >
             <Text
               style={[
@@ -610,7 +654,7 @@ export default function AveFormScreen() {
             />
           </TouchableOpacity>
 
-          {showCrestaList && (
+          {showCrestaList ? (
             <View style={styles.colorGrid}>
               {TIPOS_CRESTA.map((cresta) => (
                 <TouchableOpacity
@@ -620,7 +664,7 @@ export default function AveFormScreen() {
                     formData.cresta === cresta && styles.colorOptionActive,
                   ]}
                   onPress={() => {
-                    setFormData({ ...formData, cresta });
+                    updateFormData({ cresta });
                     setShowCrestaList(false);
                   }}
                 >
@@ -635,13 +679,13 @@ export default function AveFormScreen() {
                 </TouchableOpacity>
               ))}
             </View>
-          )}
+          ) : null}
 
           <Text style={styles.label}>Línea</Text>
           <TextInput
             style={styles.input}
             value={formData.linea}
-            onChangeText={(text) => setFormData({ ...formData, linea: text })}
+            onChangeText={(text) => updateFormData({ linea: text })}
             placeholder="Línea genética"
             placeholderTextColor="#555555"
           />
@@ -649,7 +693,7 @@ export default function AveFormScreen() {
           <Text style={styles.label}>Castador o Criador</Text>
           <TouchableOpacity
             style={styles.selectButton}
-            onPress={() => setShowCastadorList(!showCastadorList)}
+            onPress={() => setShowCastadorList((prev) => !prev)}
           >
             <Text
               style={[
@@ -666,17 +710,17 @@ export default function AveFormScreen() {
             />
           </TouchableOpacity>
 
-          {showCastadorList && (
+          {showCastadorList ? (
             <View style={styles.castadorList}>
               <TouchableOpacity
                 style={styles.castadorNuevoButton}
-                onPress={() => setShowNuevoCastador(!showNuevoCastador)}
+                onPress={() => setShowNuevoCastador((prev) => !prev)}
               >
                 <Ionicons name="add-circle" size={20} color="#d4a017" />
                 <Text style={styles.castadorNuevoText}>Crear nuevo castador/criador</Text>
               </TouchableOpacity>
 
-              {showNuevoCastador && (
+              {showNuevoCastador ? (
                 <View style={styles.nuevoCastadorForm}>
                   <TextInput
                     style={styles.nuevoCastadorInput}
@@ -688,23 +732,21 @@ export default function AveFormScreen() {
                   <TouchableOpacity
                     style={styles.nuevoCastadorConfirm}
                     onPress={() => {
-                      if (nuevoCastador.trim()) {
-                        setFormData({
-                          ...formData,
-                          castado_por: nuevoCastador.trim(),
-                        });
-                        setNuevoCastador('');
-                        setShowNuevoCastador(false);
-                        setShowCastadorList(false);
-                      }
+                      const nombre = nuevoCastador.trim();
+                      if (!nombre) return;
+
+                      updateFormData({ castado_por: nombre });
+                      setNuevoCastador('');
+                      setShowNuevoCastador(false);
+                      setShowCastadorList(false);
                     }}
                   >
                     <Text style={styles.nuevoCastadorConfirmText}>Agregar</Text>
                   </TouchableOpacity>
                 </View>
-              )}
+              ) : null}
 
-              {castadores.length > 0 && (
+              {castadores.length > 0 ? (
                 <View style={styles.castadoresExistentes}>
                   <Text style={styles.castadoresTitle}>Castadores/Criadores registrados:</Text>
                   {castadores.map((castador) => (
@@ -716,7 +758,7 @@ export default function AveFormScreen() {
                           styles.castadorItemActive,
                       ]}
                       onPress={() => {
-                        setFormData({ ...formData, castado_por: castador.nombre });
+                        updateFormData({ castado_por: castador.nombre });
                         setShowCastadorList(false);
                       }}
                     >
@@ -729,18 +771,16 @@ export default function AveFormScreen() {
                     </TouchableOpacity>
                   ))}
                 </View>
-              )}
-
-              {castadores.length === 0 && !showNuevoCastador && (
+              ) : !showNuevoCastador ? (
                 <Text style={styles.noCastadores}>No hay castadores registrados aún</Text>
-              )}
+              ) : null}
             </View>
-          )}
+          ) : null}
 
           <DatePickerField
             label="Fecha de Nacimiento"
             value={formData.fecha_nacimiento}
-            onChange={(date) => setFormData({ ...formData, fecha_nacimiento: date })}
+            onChange={(date) => updateFormData({ fecha_nacimiento: date })}
             placeholder="Seleccionar fecha"
           />
 
@@ -748,7 +788,7 @@ export default function AveFormScreen() {
           <TextInput
             style={styles.input}
             value={formData.nombre}
-            onChangeText={(text) => setFormData({ ...formData, nombre: text })}
+            onChangeText={(text) => updateFormData({ nombre: text })}
             placeholder="Ej: Campeón, Rey, etc."
             placeholderTextColor="#555555"
           />
@@ -762,7 +802,7 @@ export default function AveFormScreen() {
                   styles.estadoButton,
                   formData.estado === estado && styles.estadoButtonActive,
                 ]}
-                onPress={() => setFormData({ ...formData, estado })}
+                onPress={() => updateFormData({ estado })}
               >
                 <Text
                   style={[
@@ -778,7 +818,7 @@ export default function AveFormScreen() {
 
           <TouchableOpacity
             style={styles.padresSectionHeader}
-            onPress={() => setShowPadresSection(!showPadresSection)}
+            onPress={() => setShowPadresSection((prev) => !prev)}
           >
             <View style={styles.padresSectionHeaderLeft}>
               <Ionicons name="git-network-outline" size={20} color="#d4a017" />
@@ -791,7 +831,7 @@ export default function AveFormScreen() {
             />
           </TouchableOpacity>
 
-          {showPadresSection && (
+          {showPadresSection ? (
             <View style={styles.padresSectionContent}>
               <View style={styles.treeFormContainer}>
                 <View style={styles.treeFormCurrentBird}>
@@ -826,7 +866,7 @@ export default function AveFormScreen() {
                         (formData.padre_id || formData.padre_externo) &&
                           styles.treeFormNodeSelected,
                       ]}
-                      onPress={() => setShowPadreList(!showPadreList)}
+                      onPress={() => setShowPadreList((prev) => !prev)}
                     >
                       {formData.padre_id ? (
                         <>
@@ -839,8 +879,7 @@ export default function AveFormScreen() {
                             <Ionicons name="male" size={18} color="#3b82f6" />
                           </View>
                           <Text style={styles.treeFormNodeCode} numberOfLines={1}>
-                            {gallos.find((g) => g.id === formData.padre_id)?.codigo ||
-                              'Seleccionado'}
+                            {padreSeleccionadoCodigo}
                           </Text>
                         </>
                       ) : formData.padre_externo ? (
@@ -871,10 +910,10 @@ export default function AveFormScreen() {
                       )}
                     </TouchableOpacity>
 
-                    {(formData.padre_id || formData.padre_externo) && (
+                    {(formData.padre_id || formData.padre_externo) ? (
                       <TouchableOpacity
                         style={styles.treeFormAddAbueloBtn}
-                        onPress={() => setShowAbuelosPaternos(!showAbuelosPaternos)}
+                        onPress={() => setShowAbuelosPaternos((prev) => !prev)}
                       >
                         <Ionicons
                           name={showAbuelosPaternos ? 'chevron-up' : 'add'}
@@ -883,19 +922,19 @@ export default function AveFormScreen() {
                         />
                         <Text style={styles.treeFormAddAbueloText}>Abuelos</Text>
                       </TouchableOpacity>
-                    )}
+                    ) : null}
 
-                    {showPadreList && (
+                    {showPadreList ? (
                       <View style={styles.treeFormSelectList}>
                         <TouchableOpacity
                           style={styles.treeFormSelectOption}
-                          onPress={() => setShowPadreExterno(!showPadreExterno)}
+                          onPress={() => setShowPadreExterno((prev) => !prev)}
                         >
                           <Ionicons name="add-circle" size={18} color="#f59e0b" />
                           <Text style={styles.treeFormSelectOptionTextAdd}>Padre Externo</Text>
                         </TouchableOpacity>
 
-                        {showPadreExterno && (
+                        {showPadreExterno ? (
                           <View style={styles.treeFormExternalInputContainer}>
                             <TextInput
                               style={styles.treeFormInput}
@@ -914,10 +953,9 @@ export default function AveFormScreen() {
                             <TouchableOpacity
                               style={styles.treeFormConfirmBtn}
                               onPress={() => {
-                                if (padreExterno) {
-                                  setFormData({
-                                    ...formData,
-                                    padre_externo: padreExterno,
+                                if (padreExterno.trim()) {
+                                  updateFormData({
+                                    padre_externo: padreExterno.trim(),
                                     padre_id: '',
                                   });
                                 }
@@ -928,12 +966,12 @@ export default function AveFormScreen() {
                               <Text style={styles.treeFormConfirmText}>OK</Text>
                             </TouchableOpacity>
                           </View>
-                        )}
+                        ) : null}
 
                         <TouchableOpacity
                           style={styles.treeFormSelectOption}
                           onPress={() => {
-                            setFormData({ ...formData, padre_id: '', padre_externo: '' });
+                            updateFormData({ padre_id: '', padre_externo: '' });
                             setPadreExterno('');
                             setPadreGalleria('');
                             setShowPadreList(false);
@@ -943,7 +981,7 @@ export default function AveFormScreen() {
                           <Text style={styles.treeFormSelectOptionText}>Ninguno</Text>
                         </TouchableOpacity>
 
-                        {gallos.filter((g) => g.id !== id).map((gallo) => (
+                        {gallosDisponibles.map((gallo) => (
                           <TouchableOpacity
                             key={gallo.id}
                             style={[
@@ -952,8 +990,7 @@ export default function AveFormScreen() {
                                 styles.treeFormSelectOptionActive,
                             ]}
                             onPress={() => {
-                              setFormData({
-                                ...formData,
+                              updateFormData({
                                 padre_id: gallo.id,
                                 padre_externo: '',
                               });
@@ -967,7 +1004,7 @@ export default function AveFormScreen() {
                           </TouchableOpacity>
                         ))}
                       </View>
-                    )}
+                    ) : null}
                   </View>
 
                   <View style={styles.treeFormDivider} />
@@ -980,7 +1017,7 @@ export default function AveFormScreen() {
                         (formData.madre_id || formData.madre_externo) &&
                           styles.treeFormNodeSelected,
                       ]}
-                      onPress={() => setShowMadreList(!showMadreList)}
+                      onPress={() => setShowMadreList((prev) => !prev)}
                     >
                       {formData.madre_id ? (
                         <>
@@ -993,8 +1030,7 @@ export default function AveFormScreen() {
                             <Ionicons name="female" size={18} color="#ec4899" />
                           </View>
                           <Text style={styles.treeFormNodeCode} numberOfLines={1}>
-                            {gallinas.find((g) => g.id === formData.madre_id)?.codigo ||
-                              'Seleccionada'}
+                            {madreSeleccionadaCodigo}
                           </Text>
                         </>
                       ) : formData.madre_externo ? (
@@ -1025,10 +1061,10 @@ export default function AveFormScreen() {
                       )}
                     </TouchableOpacity>
 
-                    {(formData.madre_id || formData.madre_externo) && (
+                    {(formData.madre_id || formData.madre_externo) ? (
                       <TouchableOpacity
                         style={styles.treeFormAddAbueloBtn}
-                        onPress={() => setShowAbuelosMaternos(!showAbuelosMaternos)}
+                        onPress={() => setShowAbuelosMaternos((prev) => !prev)}
                       >
                         <Ionicons
                           name={showAbuelosMaternos ? 'chevron-up' : 'add'}
@@ -1037,13 +1073,13 @@ export default function AveFormScreen() {
                         />
                         <Text style={styles.treeFormAddAbueloText}>Abuelos</Text>
                       </TouchableOpacity>
-                    )}
+                    ) : null}
 
-                    {showMadreList && (
+                    {showMadreList ? (
                       <View style={styles.treeFormSelectList}>
                         <TouchableOpacity
                           style={styles.treeFormSelectOption}
-                          onPress={() => setShowMadreExterno(!showMadreExterno)}
+                          onPress={() => setShowMadreExterno((prev) => !prev)}
                         >
                           <Ionicons name="add-circle" size={18} color="#ec4899" />
                           <Text
@@ -1053,7 +1089,7 @@ export default function AveFormScreen() {
                           </Text>
                         </TouchableOpacity>
 
-                        {showMadreExterno && (
+                        {showMadreExterno ? (
                           <View style={styles.treeFormExternalInputContainer}>
                             <TextInput
                               style={styles.treeFormInput}
@@ -1072,10 +1108,9 @@ export default function AveFormScreen() {
                             <TouchableOpacity
                               style={[styles.treeFormConfirmBtn, { backgroundColor: '#ec4899' }]}
                               onPress={() => {
-                                if (madreExterno) {
-                                  setFormData({
-                                    ...formData,
-                                    madre_externo: madreExterno,
+                                if (madreExterno.trim()) {
+                                  updateFormData({
+                                    madre_externo: madreExterno.trim(),
                                     madre_id: '',
                                   });
                                 }
@@ -1086,12 +1121,12 @@ export default function AveFormScreen() {
                               <Text style={styles.treeFormConfirmText}>OK</Text>
                             </TouchableOpacity>
                           </View>
-                        )}
+                        ) : null}
 
                         <TouchableOpacity
                           style={styles.treeFormSelectOption}
                           onPress={() => {
-                            setFormData({ ...formData, madre_id: '', madre_externo: '' });
+                            updateFormData({ madre_id: '', madre_externo: '' });
                             setMadreExterno('');
                             setMadreGalleria('');
                             setShowMadreList(false);
@@ -1101,7 +1136,7 @@ export default function AveFormScreen() {
                           <Text style={styles.treeFormSelectOptionText}>Ninguna</Text>
                         </TouchableOpacity>
 
-                        {gallinas.filter((g) => g.id !== id).map((gallina) => (
+                        {gallinasDisponibles.map((gallina) => (
                           <TouchableOpacity
                             key={gallina.id}
                             style={[
@@ -1110,8 +1145,7 @@ export default function AveFormScreen() {
                                 styles.treeFormSelectOptionActive,
                             ]}
                             onPress={() => {
-                              setFormData({
-                                ...formData,
+                              updateFormData({
                                 madre_id: gallina.id,
                                 madre_externo: '',
                               });
@@ -1125,11 +1159,11 @@ export default function AveFormScreen() {
                           </TouchableOpacity>
                         ))}
                       </View>
-                    )}
+                    ) : null}
                   </View>
                 </View>
 
-                {showAbuelosPaternos && (formData.padre_id || formData.padre_externo) && (
+                {showAbuelosPaternos && (formData.padre_id || formData.padre_externo) ? (
                   <View style={styles.abuelosTreeSection}>
                     <View style={styles.abuelosTreeConnectorFromParent} />
                     <View style={styles.abuelosTreeHorizontal} />
@@ -1172,9 +1206,9 @@ export default function AveFormScreen() {
                       </View>
                     </View>
                   </View>
-                )}
+                ) : null}
 
-                {showAbuelosMaternos && (formData.madre_id || formData.madre_externo) && (
+                {showAbuelosMaternos && (formData.madre_id || formData.madre_externo) ? (
                   <View style={styles.abuelosTreeSection}>
                     <View style={styles.abuelosTreeConnectorFromParent} />
                     <View style={styles.abuelosTreeHorizontal} />
@@ -1217,16 +1251,16 @@ export default function AveFormScreen() {
                       </View>
                     </View>
                   </View>
-                )}
+                ) : null}
               </View>
             </View>
-          )}
+          ) : null}
 
           <Text style={styles.label}>Notas</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
             value={formData.notas}
-            onChangeText={(text) => setFormData({ ...formData, notas: text })}
+            onChangeText={(text) => updateFormData({ notas: text })}
             placeholder="Notas adicionales..."
             placeholderTextColor="#555555"
             multiline
@@ -1373,6 +1407,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 8,
   },
+  saveButtonDisabled: {
+    opacity: 0.7,
+  },
   saveButtonText: {
     fontSize: 14,
     fontWeight: '600',
@@ -1383,43 +1420,6 @@ const styles = StyleSheet.create({
   },
   formContent: {
     padding: 16,
-  },
-  photoSection: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  photoSectionTitle: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#9ca3af',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  photoContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    overflow: 'hidden',
-  },
-  photo: {
-    width: '100%',
-    height: '100%',
-  },
-  photoPlaceholder: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#f5f5f5',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#e0e0e0',
-    borderStyle: 'dashed',
-    borderRadius: 60,
-  },
-  photoText: {
-    fontSize: 12,
-    color: '#555555',
-    marginTop: 8,
   },
   label: {
     fontSize: 14,
@@ -1508,23 +1508,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#9ca3af',
   },
-  selectList: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    maxHeight: 200,
-  },
-  selectItem: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  selectItemText: {
-    fontSize: 16,
-    color: '#1a1a1a',
-  },
   colorGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1555,61 +1538,6 @@ const styles = StyleSheet.create({
   colorOptionTextActive: {
     color: '#000',
     fontWeight: '600',
-  },
-  addParentOption: {
-    backgroundColor: 'rgba(245, 158, 11, 0.08)',
-    borderBottomWidth: 2,
-    borderBottomColor: '#e0e0e0',
-  },
-  addParentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  addParentText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#f59e0b',
-  },
-  addParentSubtext: {
-    fontSize: 11,
-    color: '#707070',
-    marginTop: 4,
-  },
-  externalForm: {
-    backgroundColor: '#f5f5f5',
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  externalInput: {
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 14,
-    color: '#1a1a1a',
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  confirmExternalButton: {
-    backgroundColor: '#f59e0b',
-    borderRadius: 8,
-    padding: 12,
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  confirmExternalText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#000',
-  },
-  removePhotoButton: {
-    position: 'absolute',
-    top: 5,
-    right: 5,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 12,
   },
   photoModalOverlay: {
     flex: 1,
@@ -1831,17 +1759,6 @@ const styles = StyleSheet.create({
     color: '#555555',
     fontSize: 14,
   },
-  photoIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    marginTop: 8,
-  },
-  photoIndicatorText: {
-    fontSize: 12,
-    color: '#555555',
-  },
   padresSectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1870,12 +1787,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
     borderWidth: 1,
     borderColor: '#e0e0e0',
-  },
-  labelInSection: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#555555',
-    marginBottom: 8,
   },
   photoSectionCentered: {
     alignItems: 'center',
@@ -2066,12 +1977,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#f59e0b',
   },
-  treeFormExternalInput: {
-    flexDirection: 'row',
-    padding: 8,
-    backgroundColor: '#f5f5f5',
-    gap: 8,
-  },
   treeFormInput: {
     flex: 1,
     backgroundColor: '#ffffff',
@@ -2127,24 +2032,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: '#d4a017',
-  },
-  abuelosSection: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-  },
-  abuelosSectionTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#555555',
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  abuelosRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    gap: 12,
   },
   abuelosTreeSection: {
     alignItems: 'center',
@@ -2203,29 +2090,6 @@ const styles = StyleSheet.create({
     width: 70,
     borderWidth: 1,
     borderColor: '#e0e0e0',
-  },
-  abueloItem: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 12,
-  },
-  abueloLabel: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: '#9ca3af',
-    marginBottom: 6,
-  },
-  abueloInput: {
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 13,
-    color: '#1a1a1a',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    width: '100%',
-    textAlign: 'center',
   },
   premiumModalOverlay: {
     flex: 1,
