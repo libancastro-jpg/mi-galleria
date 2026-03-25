@@ -392,62 +392,38 @@ def serialize_doc(doc: dict) -> dict:
     return result
 
 
-@api_router.get("/aves", response_model=List[AveResponse])
-async def get_aves(
-    tipo: Optional[str] = None,
-    estado: Optional[str] = None,
-    color: Optional[str] = None,
-    linea: Optional[str] = None,
-    limit: int = 50,
-    skip: int = 0,
-    current_user: dict = Depends(get_current_user),
-):
-    query = {"user_id": current_user["id"]}
+def serialize_ave_list_doc(doc: dict) -> dict:
+    if doc is None:
+        return None
 
-    if tipo:
-        query["tipo"] = tipo
-    if estado:
-        query["estado"] = estado
-    if color:
-        query["color"] = {"$regex": color, "$options": "i"}
-    if linea:
-        query["linea"] = {"$regex": linea, "$options": "i"}
+    foto_principal = doc.get("foto_principal")
 
-    projection = {
-        "_id": 1,
-        "tipo": 1,
-        "codigo": 1,
-        "nombre": 1,
-        "color_placa": 1,
-        "foto_principal": 1,
-        "fecha_nacimiento": 1,
-        "color": 1,
-        "cresta": 1,
-        "linea": 1,
-        "castado_por": 1,
-        "estado": 1,
-        "notas": 1,
-        "padre_id": 1,
-        "madre_id": 1,
-        "padre_externo": 1,
-        "madre_externo": 1,
-        "marcaje_qr": 1,
-        "user_id": 1,
-        "created_at": 1,
-        "updated_at": 1,
+    if isinstance(foto_principal, str) and foto_principal.startswith("data:image"):
+        foto_principal = None
+
+    return {
+        "id": str(doc["_id"]),
+        "tipo": doc.get("tipo"),
+        "codigo": doc.get("codigo"),
+        "nombre": doc.get("nombre"),
+        "color_placa": doc.get("color_placa"),
+        "foto_principal": foto_principal,
+        "fecha_nacimiento": doc.get("fecha_nacimiento"),
+        "color": doc.get("color"),
+        "cresta": doc.get("cresta"),
+        "linea": doc.get("linea"),
+        "castado_por": doc.get("castado_por"),
+        "estado": doc.get("estado", "activo"),
+        "notas": doc.get("notas"),
+        "padre_id": doc.get("padre_id"),
+        "madre_id": doc.get("madre_id"),
+        "padre_externo": doc.get("padre_externo"),
+        "madre_externo": doc.get("madre_externo"),
+        "marcaje_qr": doc.get("marcaje_qr"),
+        "user_id": doc.get("user_id"),
+        "created_at": doc.get("created_at") or datetime.utcnow(),
+        "updated_at": doc.get("updated_at") or doc.get("created_at") or datetime.utcnow(),
     }
-
-    cursor = (
-        db.aves
-        .find(query, projection)
-        .sort("created_at", -1)
-        .skip(skip)
-        .limit(limit)
-    )
-
-    aves = await cursor.to_list(length=limit)
-
-    return [AveResponse(**serialize_ave_list_doc(ave)) for ave in aves]
 
 
 def clean_optional_id(value: Optional[str]) -> Optional[str]:
@@ -530,29 +506,7 @@ async def startup_db_indexes():
     except Exception as e:
         logger.exception(f"Error creando índices: {e}")
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    if not credentials:
-        raise HTTPException(status_code=401, detail="No autorizado")
-    try:
-        payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[ALGORITHM])
-        user_id = payload.get("sub")
-        if not user_id:
-            raise HTTPException(status_code=401, detail="Token inválido")
 
-        user = await db.users.find_one({"_id": to_object_id(user_id, "user_id")})
-        if not user:
-            raise HTTPException(status_code=401, detail="Usuario no encontrado")
-
-        return {
-            "id": str(user["_id"]),
-            **{k: v for k, v in user.items() if k not in ["_id", "pin"]}
-        }
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expirado")
-    except HTTPException:
-        raise
-    except Exception:
-        raise HTTPException(status_code=401, detail="Token inválido")
 # ============== AUTH ROUTES ==============
 
 @api_router.post("/auth/register", response_model=TokenResponse)
@@ -828,7 +782,6 @@ async def get_aves(
         "updated_at": 1,
     }
 
-    # 🔥 LIMITAR DATA REAL
     cursor = (
         db.aves
         .find(query, projection)
@@ -960,6 +913,9 @@ async def delete_ave(ave_id: str, current_user: dict = Depends(get_current_user)
         "warning": f"Esta ave era padre/madre de {children} aves y estaba en {cruces} cruces"
         if children > 0 or cruces > 0 else None,
     }
+
+
+# ============== PEDIGRI ROUTES ==============
 
 
 # ============== PEDIGRI ROUTES ==============
