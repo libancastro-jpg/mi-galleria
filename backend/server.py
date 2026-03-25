@@ -651,7 +651,7 @@ async def get_aves(
     if linea:
         query["linea"] = {"$regex": linea, "$options": "i"}
 
-    aves = await db.aves.find(query).sort("created_at", -1).to_list(200)
+    aves = await db.aves.find(query).sort("created_at", -1).to_list(100)
 
     result = []
     for ave in aves:
