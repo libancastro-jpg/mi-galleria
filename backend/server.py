@@ -530,7 +530,29 @@ async def startup_db_indexes():
     except Exception as e:
         logger.exception(f"Error creando índices: {e}")
 
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    if not credentials:
+        raise HTTPException(status_code=401, detail="No autorizado")
+    try:
+        payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[ALGORITHM])
+        user_id = payload.get("sub")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Token inválido")
 
+        user = await db.users.find_one({"_id": to_object_id(user_id, "user_id")})
+        if not user:
+            raise HTTPException(status_code=401, detail="Usuario no encontrado")
+
+        return {
+            "id": str(user["_id"]),
+            **{k: v for k, v in user.items() if k not in ["_id", "pin"]}
+        }
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expirado")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=401, detail="Token inválido")
 # ============== AUTH ROUTES ==============
 
 @api_router.post("/auth/register", response_model=TokenResponse)
