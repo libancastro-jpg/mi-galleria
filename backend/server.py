@@ -392,33 +392,62 @@ def serialize_doc(doc: dict) -> dict:
     return result
 
 
-def serialize_ave_list_doc(doc: dict) -> dict:
-    if doc is None:
-        return None
+@api_router.get("/aves", response_model=List[AveResponse])
+async def get_aves(
+    tipo: Optional[str] = None,
+    estado: Optional[str] = None,
+    color: Optional[str] = None,
+    linea: Optional[str] = None,
+    limit: int = 50,
+    skip: int = 0,
+    current_user: dict = Depends(get_current_user),
+):
+    query = {"user_id": current_user["id"]}
 
-    return {
-        "id": str(doc["_id"]),
-        "tipo": doc.get("tipo"),
-        "codigo": doc.get("codigo"),
-        "nombre": doc.get("nombre"),
-        "color_placa": doc.get("color_placa"),
-        "foto_principal": doc.get("foto_principal"),
-        "fecha_nacimiento": doc.get("fecha_nacimiento"),
-        "color": doc.get("color"),
-        "cresta": doc.get("cresta"),
-        "linea": doc.get("linea"),
-        "castado_por": doc.get("castado_por"),
-        "estado": doc.get("estado", "activo"),
-        "notas": doc.get("notas"),
-        "padre_id": doc.get("padre_id"),
-        "madre_id": doc.get("madre_id"),
-        "padre_externo": doc.get("padre_externo"),
-        "madre_externo": doc.get("madre_externo"),
-        "marcaje_qr": doc.get("marcaje_qr"),
-        "user_id": doc.get("user_id"),
-        "created_at": doc.get("created_at") or datetime.utcnow(),
-        "updated_at": doc.get("updated_at") or doc.get("created_at") or datetime.utcnow(),
+    if tipo:
+        query["tipo"] = tipo
+    if estado:
+        query["estado"] = estado
+    if color:
+        query["color"] = {"$regex": color, "$options": "i"}
+    if linea:
+        query["linea"] = {"$regex": linea, "$options": "i"}
+
+    projection = {
+        "_id": 1,
+        "tipo": 1,
+        "codigo": 1,
+        "nombre": 1,
+        "color_placa": 1,
+        "foto_principal": 1,
+        "fecha_nacimiento": 1,
+        "color": 1,
+        "cresta": 1,
+        "linea": 1,
+        "castado_por": 1,
+        "estado": 1,
+        "notas": 1,
+        "padre_id": 1,
+        "madre_id": 1,
+        "padre_externo": 1,
+        "madre_externo": 1,
+        "marcaje_qr": 1,
+        "user_id": 1,
+        "created_at": 1,
+        "updated_at": 1,
     }
+
+    cursor = (
+        db.aves
+        .find(query, projection)
+        .sort("created_at", -1)
+        .skip(skip)
+        .limit(limit)
+    )
+
+    aves = await cursor.to_list(length=limit)
+
+    return [AveResponse(**serialize_ave_list_doc(ave)) for ave in aves]
 
 
 def clean_optional_id(value: Optional[str]) -> Optional[str]:
