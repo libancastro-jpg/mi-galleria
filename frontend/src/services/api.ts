@@ -5,19 +5,8 @@ const BASE_URL =
 // Callback para manejar logout cuando hay error 401
 let onUnauthorized: (() => void) | null = null;
 
-type CacheEntry = {
-  data: any;
-  timestamp: number;
-};
-
 class ApiService {
   private token: string | null = null;
-
-  // 🔥 Cache en memoria (clave = URL completa)
-  private cache = new Map<string, CacheEntry>();
-
-  // 🔥 Evita múltiples requests iguales simultáneos
-  private pendingRequests = new Map<string, Promise<any>>();
 
   setToken(token: string | null) {
     this.token = token;
@@ -27,14 +16,10 @@ class ApiService {
     onUnauthorized = callback;
   }
 
-  private buildUrl(endpoint: string) {
+  private async request(endpoint: string, options: RequestInit = {}) {
     const ep = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
     const base = BASE_URL.replace(/\/+$/, '');
-    return `${base}/api${ep}`;
-  }
-
-  private async request(endpoint: string, options: RequestInit = {}, useCache = false) {
-    const url = this.buildUrl(endpoint);
+    const url = `${base}/api${ep}`;
 
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
@@ -45,74 +30,45 @@ class ApiService {
       (headers as Record<string, string>)['Authorization'] = `Bearer ${this.token}`;
     }
 
-    const cacheKey = `${options.method || 'GET'}:${url}`;
-
-    // 🔥 1. CACHE (solo GET)
-    if (useCache && options.method === 'GET') {
-      const cached = this.cache.get(cacheKey);
-      if (cached && Date.now() - cached.timestamp < 15000) {
-        return cached.data;
-      }
-    }
-
-    // 🔥 2. EVITAR REQUEST DUPLICADO
-    if (this.pendingRequests.has(cacheKey)) {
-      return this.pendingRequests.get(cacheKey);
-    }
-
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 20000); // 🔥 más corto
+    const timeout = setTimeout(() => controller.abort(), 60000);
 
-    const requestPromise = (async () => {
-      try {
-        const response = await fetch(url, {
-          ...options,
-          headers,
-          signal: controller.signal,
-        });
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers,
+        signal: controller.signal,
+      });
 
-        if (response.status === 401) {
-          if (onUnauthorized) onUnauthorized();
-        }
-
-        const text = await response.text();
-        let data: any = null;
-
-        try {
-          data = text ? JSON.parse(text) : null;
-        } catch {
-          data = text;
-        }
-
-        if (!response.ok) {
-          throw new Error(
-            typeof data === 'string'
-              ? data
-              : data?.message || data?.detail || `HTTP ${response.status}`
-          );
-        }
-
-        // 🔥 Guardar en cache
-        if (useCache && options.method === 'GET') {
-          this.cache.set(cacheKey, {
-            data,
-            timestamp: Date.now(),
-          });
-        }
-
-        return data;
-      } finally {
-        clearTimeout(timeout);
-        this.pendingRequests.delete(cacheKey);
+      // Si expira o es inválido el token
+      if (response.status === 401) {
+        if (onUnauthorized) onUnauthorized();
       }
-    })();
 
-    this.pendingRequests.set(cacheKey, requestPromise);
+      const text = await response.text();
+      let data: any = null;
 
-    return requestPromise;
+      try {
+        data = text ? JSON.parse(text) : null;
+      } catch {
+        data = text;
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          typeof data === 'string'
+            ? data
+            : data?.message || data?.detail || `HTTP ${response.status}`
+        );
+      }
+
+      return data;
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
-  async get(endpoint: string, params?: Record<string, string>, useCache = true) {
+  async get(endpoint: string, params?: Record<string, string>) {
     let url = endpoint;
 
     if (params) {
@@ -120,11 +76,10 @@ class ApiService {
       url = `${endpoint}?${searchParams.toString()}`;
     }
 
-    return this.request(url, { method: 'GET' }, useCache);
+    return this.request(url, { method: 'GET' });
   }
 
   async post(endpoint: string, data?: any) {
-    this.invalidateCache('/aves'); // 🔥 limpiar cache
     return this.request(endpoint, {
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
@@ -132,7 +87,6 @@ class ApiService {
   }
 
   async put(endpoint: string, data?: any) {
-    this.invalidateCache('/aves');
     return this.request(endpoint, {
       method: 'PUT',
       body: data ? JSON.stringify(data) : undefined,
@@ -140,17 +94,9 @@ class ApiService {
   }
 
   async delete(endpoint: string) {
-    this.invalidateCache('/aves');
-    return this.request(endpoint, { method: 'DELETE' });
-  }
-
-  // 🔥 limpiar cache relacionada
-  invalidateCache(endpointStartsWith: string) {
-    for (const key of this.cache.keys()) {
-      if (key.includes(endpointStartsWith)) {
-        this.cache.delete(key);
-      }
-    }
+    return this.request(endpoint, {
+      method: 'DELETE',
+    });
   }
 }
 

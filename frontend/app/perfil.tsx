@@ -18,9 +18,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../src/context/AuthContext';
 import { api } from '../src/services/api';
 
+// Color palette
 const COLORS = {
   gold: '#F5A623',
   goldLight: 'rgba(245, 166, 35, 0.15)',
+  greenDark: '#22c55e',
+  greenLight: 'rgba(34, 197, 94, 0.15)',
   redDeep: '#ef4444',
   redLight: 'rgba(239, 68, 68, 0.15)',
   grayDark: '#f5f5f5',
@@ -28,17 +31,16 @@ const COLORS = {
   grayLight: '#555555',
   white: '#ffffff',
   background: '#f5f5f5',
-  textDark: '#1a1a1a',
 };
 
 const PRIVACY_URL = 'https://sites.google.com/view/migalleria-privacidad';
 const TERMS_URL = 'https://sites.google.com/view/migalleria-terminos';
-const SUPPORT_URL = 'https://sites.google.com/view/migalleria-soporte';
 
 export default function PerfilScreen() {
   const router = useRouter();
   const { user, logout, refreshUser } = useAuth();
 
+  // Estados para edición
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -50,6 +52,8 @@ export default function PerfilScreen() {
   const [syncing, setSyncing] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
+
+  // ✅ NUEVO: Estado para desplegar Configuración
   const [configOpen, setConfigOpen] = useState(false);
 
   const openUrl = async (url: string) => {
@@ -66,6 +70,7 @@ export default function PerfilScreen() {
   };
 
   const handleLogout = async () => {
+    // En web, usar modal personalizado en lugar de Alert
     if (Platform.OS === 'web') {
       setShowLogoutConfirm(true);
     } else {
@@ -132,9 +137,9 @@ export default function PerfilScreen() {
       }
     } catch (error: any) {
       if (Platform.OS === 'web') {
-        console.error('Error:', error?.message);
+        console.error('Error:', error.message);
       } else {
-        Alert.alert('Error', error?.message || 'No se pudo actualizar');
+        Alert.alert('Error', error.message || 'No se pudo actualizar');
       }
     } finally {
       setSaving(false);
@@ -169,7 +174,7 @@ export default function PerfilScreen() {
       setConfirmPin('');
       Alert.alert('Éxito', 'PIN actualizado correctamente');
     } catch (error: any) {
-      Alert.alert('Error', error?.message || 'No se pudo cambiar el PIN');
+      Alert.alert('Error', error.message || 'No se pudo cambiar el PIN');
     } finally {
       setSaving(false);
     }
@@ -178,12 +183,13 @@ export default function PerfilScreen() {
   const handleSyncData = async () => {
     setSyncing(true);
     try {
+      // Refrescar los datos del usuario
       if (refreshUser) {
         await refreshUser();
       }
       Alert.alert('Éxito', 'Datos sincronizados correctamente');
     } catch (error: any) {
-      Alert.alert('Error', error?.message || 'No se pudo sincronizar');
+      Alert.alert('Error', error.message || 'No se pudo sincronizar');
     } finally {
       setSyncing(false);
     }
@@ -193,15 +199,14 @@ export default function PerfilScreen() {
     setExporting(true);
     try {
       const response = await api.get('/export/data');
-      const data = response?.data || response || {};
-
+      // En una app real, esto generaría un PDF/CSV
       Alert.alert(
         'Exportar Datos',
         'Esta función generará un archivo PDF/CSV con todos tus datos.\n\n' +
-          `Total de aves: ${data.aves || 0}\n` +
-          `Total de cruces: ${data.cruces || 0}\n` +
-          `Total de camadas: ${data.camadas || 0}\n` +
-          `Total de peleas: ${data.peleas || 0}`,
+          `Total de aves: ${response.aves || 0}\n` +
+          `Total de cruces: ${response.cruces || 0}\n` +
+          `Total de camadas: ${response.camadas || 0}\n` +
+          `Total de peleas: ${response.peleas || 0}`,
         [
           { text: 'Cancelar', style: 'cancel' },
           {
@@ -213,7 +218,7 @@ export default function PerfilScreen() {
         ]
       );
     } catch (error: any) {
-      Alert.alert('Error', error?.message || 'No se pudo exportar los datos');
+      Alert.alert('Error', error.message || 'No se pudo exportar los datos');
     } finally {
       setExporting(false);
     }
@@ -239,9 +244,9 @@ export default function PerfilScreen() {
           ),
         }}
       />
-
       <SafeAreaView style={styles.container} edges={['bottom']}>
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+          {/* Profile Header */}
           <View style={styles.profileHeader}>
             <View style={styles.avatarContainer}>
               <Ionicons name="person" size={50} color={COLORS.gold} />
@@ -250,6 +255,7 @@ export default function PerfilScreen() {
             <Text style={styles.userRole}>Criador de Gallos de Pelea</Text>
           </View>
 
+          {/* User Info Section */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Información Personal</Text>
 
@@ -297,6 +303,7 @@ export default function PerfilScreen() {
             </View>
           </View>
 
+          {/* ✅ CONFIGURACIÓN desplegable */}
           <View style={styles.section}>
             <TouchableOpacity
               onPress={() => setConfigOpen((v) => !v)}
@@ -371,6 +378,7 @@ export default function PerfilScreen() {
             )}
           </View>
 
+          {/* LEGAL Section */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Legal</Text>
 
@@ -389,16 +397,9 @@ export default function PerfilScreen() {
               <Text style={styles.actionText}>Términos y Condiciones</Text>
               <Ionicons name="chevron-forward" size={20} color={COLORS.grayLight} />
             </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionItem} onPress={() => openUrl(SUPPORT_URL)}>
-              <View style={styles.actionIcon}>
-                <Ionicons name="help-circle-outline" size={20} color={COLORS.gold} />
-              </View>
-              <Text style={styles.actionText}>Soporte</Text>
-              <Ionicons name="chevron-forward" size={20} color={COLORS.grayLight} />
-            </TouchableOpacity>
           </View>
 
+          {/* Logout / Delete Section */}
           <View style={styles.section}>
             <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
               <Ionicons name="log-out" size={22} color={COLORS.redDeep} />
@@ -406,19 +407,20 @@ export default function PerfilScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.deleteContainer}
+              style={[styles.logoutButton, { marginTop: 10 }]}
               onPress={handleDeleteAccount}
               disabled={deletingAccount}
-              activeOpacity={0.7}
             >
               {deletingAccount ? (
                 <ActivityIndicator size="small" color={COLORS.redDeep} />
               ) : (
-                <Text style={styles.deleteText}>Eliminar cuenta permanentemente</Text>
+                <Ionicons name="trash" size={22} color={COLORS.redDeep} />
               )}
+              <Text style={styles.logoutText}>Eliminar Cuenta</Text>
             </TouchableOpacity>
           </View>
 
+          {/* App Info */}
           <View style={styles.appInfo}>
             <Text style={styles.appName}>Mi Galleria</Text>
             <Text style={styles.appVersion}>Versión 1.0.0</Text>
@@ -426,6 +428,7 @@ export default function PerfilScreen() {
         </ScrollView>
       </SafeAreaView>
 
+      {/* Modal para editar Galleria */}
       <Modal
         visible={showEditModal}
         transparent
@@ -469,6 +472,7 @@ export default function PerfilScreen() {
         </View>
       </Modal>
 
+      {/* Modal de confirmación de Logout (para web) */}
       <Modal
         visible={showLogoutConfirm}
         transparent
@@ -494,15 +498,14 @@ export default function PerfilScreen() {
                 style={[styles.modalConfirmButton, { backgroundColor: COLORS.redDeep }]}
                 onPress={confirmLogout}
               >
-                <Text style={[styles.modalConfirmText, { color: COLORS.white }]}>
-                  Cerrar Sesión
-                </Text>
+                <Text style={styles.modalConfirmText}>Cerrar Sesión</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
 
+      {/* Modal para cambiar PIN */}
       <Modal
         visible={showPinModal}
         transparent
@@ -595,6 +598,7 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 32,
   },
+  // Profile Header
   profileHeader: {
     alignItems: 'center',
     paddingVertical: 24,
@@ -614,7 +618,7 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: COLORS.textDark,
+    color: '#1a1a1a',
   },
   userRole: {
     fontSize: 14,
@@ -622,6 +626,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontWeight: '500',
   },
+  // Section
   section: {
     marginBottom: 24,
   },
@@ -633,11 +638,15 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 12,
   },
+
+  // ✅ NUEVO: header clickeable de Configuración
   configHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+
+  // Info Card
   infoCard: {
     backgroundColor: COLORS.grayDark,
     borderRadius: 16,
@@ -669,7 +678,7 @@ const styles = StyleSheet.create({
   },
   infoValue: {
     fontSize: 15,
-    color: COLORS.textDark,
+    color: '#1a1a1a',
     fontWeight: '500',
   },
   divider: {
@@ -677,6 +686,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.grayMedium,
     marginHorizontal: 14,
   },
+  // Action Items
   actionItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -698,9 +708,10 @@ const styles = StyleSheet.create({
   actionText: {
     flex: 1,
     fontSize: 15,
-    color: COLORS.textDark,
+    color: '#1a1a1a',
     marginLeft: 14,
   },
+  // Logout
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -717,18 +728,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.redDeep,
   },
-  deleteContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 12,
-    paddingVertical: 4,
-  },
-  deleteText: {
-    fontSize: 13,
-    color: COLORS.redDeep,
-    fontWeight: '500',
-    textDecorationLine: 'underline',
-  },
+  // App Info
   appInfo: {
     alignItems: 'center',
     paddingVertical: 24,
@@ -743,6 +743,7 @@ const styles = StyleSheet.create({
     color: COLORS.grayLight,
     marginTop: 4,
   },
+  // Modal
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.8)',
@@ -760,7 +761,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: COLORS.textDark,
+    color: '#1a1a1a',
     marginBottom: 20,
     textAlign: 'center',
   },
@@ -774,7 +775,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 14,
     fontSize: 16,
-    color: COLORS.textDark,
+    color: '#1a1a1a',
     marginBottom: 20,
   },
   modalButtons: {

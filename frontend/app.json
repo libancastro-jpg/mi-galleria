@@ -2,7 +2,7 @@
   "expo": {
     "name": "Mi Galleria",
     "slug": "mi-galleria",
-    "version": "1.0.3",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "mi-galleria",
@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.migalleria.app",
-      "buildNumber": "5",
+      "buildNumber": "1",
       "infoPlist": {
         "NSCameraUsageDescription": "Tomar fotos de tus aves para identificarlas fácilmente",
         "NSPhotoLibraryUsageDescription": "Seleccionar fotos de tus aves desde tu galería",
@@ -40,8 +40,6 @@
     },
     "plugins": [
       "expo-router",
-      "react-native-iap",
-      "expo-dev-client",
       [
         "expo-splash-screen",
         {
