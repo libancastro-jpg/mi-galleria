@@ -156,9 +156,12 @@ class CruceBase(BaseModel):
     marca_lado: Optional[str] = None
     marca_color: Optional[str] = None
     sin_marca: Optional[bool] = False
+    marcas_nacimiento: Optional[List[str]] = []
+
 
 class CruceCreate(CruceBase):
     pass
+
 
 class CruceUpdate(BaseModel):
     padre_id: Optional[str] = None
@@ -180,6 +183,8 @@ class CruceUpdate(BaseModel):
     marca_lado: Optional[str] = None
     marca_color: Optional[str] = None
     sin_marca: Optional[bool] = None
+    marcas_nacimiento: Optional[List[str]] = None
+
 
 class CruceResponse(CruceBase):
     id: str
@@ -902,43 +907,99 @@ async def get_castadores(current_user: dict = Depends(get_current_user)):
 
 # ============== CRUCES ROUTES ==============
 
+def normalize_marcas_payload(data: dict, existing: Optional[dict] = None) -> dict:
+    marcas = data.get("marcas_nacimiento")
+
+    if data.get("sin_marca") is True:
+        data["marcas_nacimiento"] = []
+        data["marca_nacimiento"] = None
+        data["marca_lado"] = None
+        data["marca_color"] = None
+        return data
+
+    if marcas is None:
+        if existing and "marcas_nacimiento" in existing:
+            marcas = existing.get("marcas_nacimiento") or []
+        else:
+            marcas = []
+
+    marcas = [str(m).strip() for m in marcas if str(m).strip()]
+    data["marcas_nacimiento"] = marcas
+
+    if not marcas:
+        data["marca_nacimiento"] = None
+        data["marca_lado"] = None
+        data["marca_color"] = None
+        return data
+
+    first_mark = marcas[0]
+
+    if first_mark == "marca_casera":
+        data["marca_nacimiento"] = "marca_casera"
+        data["marca_lado"] = None
+        if not data.get("marca_color") and existing:
+            data["marca_color"] = existing.get("marca_color")
+        return data
+
+    parts = first_mark.split("_")
+    if len(parts) >= 3:
+        data["marca_nacimiento"] = f"{parts[0]}_{parts[1]}"
+        data["marca_lado"] = parts[2]
+
+    return data
+
+
 @api_router.post("/cruces", response_model=CruceResponse)
 async def create_cruce(cruce: CruceCreate, current_user: dict = Depends(get_current_user)):
     if cruce.padre_id:
-        padre = await db.aves.find_one({"_id": ObjectId(cruce.padre_id), "user_id": current_user["id"]})
+        padre = await db.aves.find_one({
+            "_id": ObjectId(cruce.padre_id),
+            "user_id": current_user["id"]
+        })
         if not padre:
             raise HTTPException(status_code=404, detail="Padre no encontrado")
         if padre.get("tipo") != "gallo":
             raise HTTPException(status_code=400, detail="El padre debe ser un gallo")
     elif not cruce.padre_externo:
         raise HTTPException(status_code=400, detail="Debes seleccionar o agregar un padre")
-    
+
     if cruce.madre_id:
-        madre = await db.aves.find_one({"_id": ObjectId(cruce.madre_id), "user_id": current_user["id"]})
+        madre = await db.aves.find_one({
+            "_id": ObjectId(cruce.madre_id),
+            "user_id": current_user["id"]
+        })
         if not madre:
             raise HTTPException(status_code=404, detail="Madre no encontrada")
         if madre.get("tipo") != "gallina":
             raise HTTPException(status_code=400, detail="La madre debe ser una gallina")
     elif not cruce.madre_externo:
         raise HTTPException(status_code=400, detail="Debes seleccionar o agregar una madre")
-    
+
     consanguinidad_estimado = 0.0
     if cruce.padre_id and cruce.madre_id:
-        consang_result = await calculate_consanguinidad(cruce.padre_id, cruce.madre_id, current_user)
+        consang_result = await calculate_consanguinidad(
+            cruce.padre_id,
+            cruce.madre_id,
+            current_user
+        )
         consanguinidad_estimado = consang_result["porcentaje_estimado"]
-    
+
+    cruce_data = cruce.dict()
+    cruce_data = normalize_marcas_payload(cruce_data)
+
     cruce_doc = {
-        **cruce.dict(),
+        **cruce_data,
         "user_id": current_user["id"],
         "consanguinidad_estimado": consanguinidad_estimado,
         "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow()
+        "updated_at": datetime.utcnow(),
     }
-    
+
     result = await db.cruces.insert_one(cruce_doc)
-    cruce_doc["_id"] = result.inserted_id
-    
-    return CruceResponse(**serialize_doc(cruce_doc))
+    created = await db.cruces.find_one({"_id": result.inserted_id})
+
+    return CruceResponse(**serialize_doc(created))
+
 
 @api_router.get("/cruces", response_model=List[CruceResponse])
 async def get_cruces(
@@ -948,59 +1009,92 @@ async def get_cruces(
     query = {"user_id": current_user["id"]}
     if estado:
         query["estado"] = estado
-    
+
     cruces = await db.cruces.find(query).sort("created_at", -1).to_list(1000)
     return [CruceResponse(**serialize_doc(c)) for c in cruces]
 
+
 @api_router.get("/cruces/{cruce_id}", response_model=CruceResponse)
 async def get_cruce(cruce_id: str, current_user: dict = Depends(get_current_user)):
-    cruce = await db.cruces.find_one({"_id": ObjectId(cruce_id), "user_id": current_user["id"]})
+    cruce = await db.cruces.find_one({
+        "_id": ObjectId(cruce_id),
+        "user_id": current_user["id"]
+    })
     if not cruce:
         raise HTTPException(status_code=404, detail="Cruce no encontrado")
     return CruceResponse(**serialize_doc(cruce))
 
+
 @api_router.put("/cruces/{cruce_id}", response_model=CruceResponse)
-async def update_cruce(cruce_id: str, cruce_update: CruceUpdate, current_user: dict = Depends(get_current_user)):
-    existing = await db.cruces.find_one({"_id": ObjectId(cruce_id), "user_id": current_user["id"]})
+async def update_cruce(
+    cruce_id: str,
+    cruce_update: CruceUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    existing = await db.cruces.find_one({
+        "_id": ObjectId(cruce_id),
+        "user_id": current_user["id"]
+    })
     if not existing:
         raise HTTPException(status_code=404, detail="Cruce no encontrado")
-    
-    update_data = {k: v for k, v in cruce_update.dict().items() if v is not None}
+
+    update_data = cruce_update.dict(exclude_unset=True)
     update_data["updated_at"] = datetime.utcnow()
-    
+
     padre_id = update_data.get("padre_id", existing.get("padre_id"))
     madre_id = update_data.get("madre_id", existing.get("madre_id"))
-    
+
     if padre_id:
-        padre = await db.aves.find_one({"_id": ObjectId(padre_id), "user_id": current_user["id"]})
+        padre = await db.aves.find_one({
+            "_id": ObjectId(padre_id),
+            "user_id": current_user["id"]
+        })
         if not padre:
             raise HTTPException(status_code=404, detail="Padre no encontrado")
         if padre.get("tipo") != "gallo":
             raise HTTPException(status_code=400, detail="El padre debe ser un gallo")
-    
+
     if madre_id:
-        madre = await db.aves.find_one({"_id": ObjectId(madre_id), "user_id": current_user["id"]})
+        madre = await db.aves.find_one({
+            "_id": ObjectId(madre_id),
+            "user_id": current_user["id"]
+        })
         if not madre:
             raise HTTPException(status_code=404, detail="Madre no encontrada")
         if madre.get("tipo") != "gallina":
             raise HTTPException(status_code=400, detail="La madre debe ser una gallina")
-    
+
     if padre_id and madre_id:
-        consang_result = await calculate_consanguinidad(padre_id, madre_id, current_user)
+        consang_result = await calculate_consanguinidad(
+            padre_id,
+            madre_id,
+            current_user
+        )
         update_data["consanguinidad_estimado"] = consang_result["porcentaje_estimado"]
-    
-    await db.cruces.update_one({"_id": ObjectId(cruce_id)}, {"$set": update_data})
-    
-    updated = await db.cruces.find_one({"_id": ObjectId(cruce_id)})
+
+    update_data = normalize_marcas_payload(update_data, existing=existing)
+
+    await db.cruces.update_one(
+        {"_id": ObjectId(cruce_id), "user_id": current_user["id"]},
+        {"$set": update_data}
+    )
+
+    updated = await db.cruces.find_one({
+        "_id": ObjectId(cruce_id),
+        "user_id": current_user["id"]
+    })
     return CruceResponse(**serialize_doc(updated))
+
 
 @api_router.delete("/cruces/{cruce_id}")
 async def delete_cruce(cruce_id: str, current_user: dict = Depends(get_current_user)):
-    result = await db.cruces.delete_one({"_id": ObjectId(cruce_id), "user_id": current_user["id"]})
+    result = await db.cruces.delete_one({
+        "_id": ObjectId(cruce_id),
+        "user_id": current_user["id"]
+    })
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Cruce no encontrado")
     return {"message": "Cruce eliminado"}
-
 # ============== CAMADAS ROUTES ==============
 
 @api_router.post("/camadas", response_model=CamadaResponse)
