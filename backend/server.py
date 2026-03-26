@@ -584,7 +584,9 @@ async def get_aves(
     if limit > 200:
         limit = 200
 
-    aves = await db.aves.find(query).sort("created_at", -1).limit(limit).to_list(limit)
+    cursor = db.aves.find(query).sort("created_at", -1).limit(limit)
+    cursor = cursor.hint([("user_id", 1), ("created_at", -1)])
+    aves = await cursor.to_list(length=limit)
 
     print(f"FIN /aves: {(time.time() - start_time):.2f} segundos")
     return [AveResponse(**serialize_doc(ave)) for ave in aves]
