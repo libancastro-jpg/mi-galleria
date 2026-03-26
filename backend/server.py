@@ -559,11 +559,13 @@ async def create_ave(ave: AveCreate, current_user: dict = Depends(get_current_us
 async def migrar_imagenes_publico():
     import cloudinary.uploader
 
-    aves = await db.aves.find({"foto_principal": {"$regex": "^data:image"}}).to_list(1000)
+    cursor = db.aves.find({
+        "foto_principal": {"$regex": "^data:image"}
+    }).limit(20)  # 👈 SOLO 20 POR VEZ
 
     migradas = 0
 
-    for ave in aves:
+    async for ave in cursor:
         try:
             result = cloudinary.uploader.upload(ave["foto_principal"])
             nueva_url = result.get("secure_url")
@@ -574,10 +576,11 @@ async def migrar_imagenes_publico():
             )
 
             migradas += 1
+
         except Exception as e:
             print("Error migrando:", e)
 
-    return {"mensaje": f"{migradas} imágenes migradas"}
+    return {"mensaje": f"{migradas} imágenes migradas (batch)"}
 
 @api_router.get("/aves", response_model=List[AveResponse])
 async def get_aves(
