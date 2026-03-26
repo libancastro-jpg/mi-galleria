@@ -555,6 +555,30 @@ async def create_ave(ave: AveCreate, current_user: dict = Depends(get_current_us
     
     return AveResponse(**serialize_doc(ave_doc))
 
+@api_router.get("/aves/migrar-imagenes-publico")
+async def migrar_imagenes_publico():
+    import cloudinary.uploader
+
+    aves = await db.aves.find({"foto_principal": {"$regex": "^data:image"}}).to_list(1000)
+
+    migradas = 0
+
+    for ave in aves:
+        try:
+            result = cloudinary.uploader.upload(ave["foto_principal"])
+            nueva_url = result.get("secure_url")
+
+            await db.aves.update_one(
+                {"_id": ave["_id"]},
+                {"$set": {"foto_principal": nueva_url}}
+            )
+
+            migradas += 1
+        except Exception as e:
+            print("Error migrando:", e)
+
+    return {"mensaje": f"{migradas} imágenes migradas"}
+
 @api_router.get("/aves", response_model=List[AveResponse])
 async def get_aves(
     tipo: Optional[str] = None,
