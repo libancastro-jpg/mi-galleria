@@ -585,7 +585,7 @@ async def get_aves(
         limit = 200
 
     cursor = db.aves.find(query).sort("created_at", -1).limit(limit)
-    cursor = cursor.hint([("user_id", 1), ("created_at", -1)])
+    cursor = cursor.hint([("user_id", 1), ("estado", 1), ("created_at", -1)])
     aves = await cursor.to_list(length=limit)
 
     print(f"FIN /aves: {(time.time() - start_time):.2f} segundos")
