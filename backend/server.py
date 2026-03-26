@@ -1398,11 +1398,17 @@ async def update_pelea(pelea_id: str, pelea_update: PeleaUpdate, current_user: d
     updated = await db.peleas.find_one({"_id": ObjectId(pelea_id)})
     return PeleaResponse(**serialize_doc(updated))
 
+
 @api_router.delete("/peleas/{pelea_id}")
 async def delete_pelea(pelea_id: str, current_user: dict = Depends(get_current_user)):
-    result = await db.peleas.delete_one({"_id": ObjectId(pelea_id), "user_id": current_user["id"]})
+    result = await db.peleas.delete_one({
+        "_id": ObjectId(pelea_id),
+        "user_id": current_user["id"]
+    })
+
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Pelea no encontrada")
+
     return {"message": "Pelea eliminada"}
 
 # ============== SALUD ROUTES ==============
