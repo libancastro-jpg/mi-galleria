@@ -561,9 +561,15 @@ async def get_aves(
     estado: Optional[str] = None,
     color: Optional[str] = None,
     linea: Optional[str] = None,
+    limit: int = 50,
     current_user: dict = Depends(get_current_user)
 ):
+    import time
+    start_time = time.time()
+    print("INICIO /aves")
+
     query = {"user_id": current_user["id"]}
+
     if tipo:
         query["tipo"] = tipo
     if estado:
@@ -572,8 +578,15 @@ async def get_aves(
         query["color"] = {"$regex": color, "$options": "i"}
     if linea:
         query["linea"] = {"$regex": linea, "$options": "i"}
-    
-    aves = await db.aves.find(query).sort("created_at", -1).to_list(1000)
+
+    if limit < 1:
+        limit = 1
+    if limit > 200:
+        limit = 200
+
+    aves = await db.aves.find(query).sort("created_at", -1).limit(limit).to_list(limit)
+
+    print(f"FIN /aves: {(time.time() - start_time):.2f} segundos")
     return [AveResponse(**serialize_doc(ave)) for ave in aves]
 
 @api_router.get("/aves/{ave_id}", response_model=AveResponse)
@@ -1747,6 +1760,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.on_event("startup")
+async def startup_db_indexes():
+    await db.aves.create_index([("user_id", 1), ("created_at", -1)])
+    await db.aves.create_index([("user_id", 1), ("estado", 1), ("created_at", -1)])
+    await db.aves.create_index([("user_id", 1), ("tipo", 1), ("created_at", -1)])
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
