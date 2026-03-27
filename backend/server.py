@@ -408,6 +408,29 @@ def serialize_doc(doc: dict) -> dict:
                 result[k] = v
     return result
 
+def normalize_pelea_doc(doc: dict) -> dict:
+    if doc is None:
+        return None
+
+    doc = serialize_doc(doc)
+
+    # Si ya viene en formato nuevo
+    if "ganadas" in doc or "perdidas" in doc or "entabladas" in doc:
+        doc["ganadas"] = int(doc.get("ganadas", 0) or 0)
+        doc["perdidas"] = int(doc.get("perdidas", 0) or 0)
+        doc["entabladas"] = int(doc.get("entabladas", 0) or 0)
+        return doc
+
+    # Compatibilidad con formato viejo
+    resultado = doc.get("resultado")
+    cantidad = int(doc.get("cantidad_resultado", 1) or 1)
+
+    doc["ganadas"] = cantidad if resultado == "GANO" else 0
+    doc["perdidas"] = cantidad if resultado == "PERDIO" else 0
+    doc["entabladas"] = cantidad if resultado == "ENTABLO" else 0
+
+    return doc
+
 # ============== AUTH ROUTES ==============
 
 @api_router.post("/auth/register", response_model=TokenResponse)
@@ -1228,6 +1251,8 @@ async def delete_camada(camada_id: str, current_user: dict = Depends(get_current
 
 # ============== PELEAS ROUTES ==============
 
+# ============== PELEAS ROUTES ==============
+
 @api_router.post("/peleas", response_model=PeleaResponse)
 async def create_pelea(pelea: PeleaCreate, current_user: dict = Depends(get_current_user)):
     ave = await db.aves.find_one({"_id": ObjectId(pelea.ave_id), "user_id": current_user["id"]})
@@ -1244,7 +1269,7 @@ async def create_pelea(pelea: PeleaCreate, current_user: dict = Depends(get_curr
     result = await db.peleas.insert_one(pelea_doc)
     pelea_doc["_id"] = result.inserted_id
     
-    return PeleaResponse(**serialize_doc(pelea_doc))
+    return PeleaResponse(**normalize_pelea_doc(pelea_doc))
 
 
 @api_router.get("/peleas", response_model=List[PeleaResponse])
@@ -1258,10 +1283,8 @@ async def get_peleas(
         query["ave_id"] = ave_id
     
     peleas = await db.peleas.find(query).sort("fecha", -1).to_list(1000)
-    return [PeleaResponse(**serialize_doc(p)) for p in peleas]
+    return [PeleaResponse(**normalize_pelea_doc(p)) for p in peleas]
 
-
-# ================= ESTADISTICAS =================
 
 @api_router.get("/peleas/estadisticas")
 async def get_estadisticas_peleas(
@@ -1274,7 +1297,8 @@ async def get_estadisticas_peleas(
     if ave_id:
         query["ave_id"] = ave_id
 
-    peleas = await db.peleas.find(query).to_list(1000)
+    peleas_raw = await db.peleas.find(query).to_list(1000)
+    peleas = [normalize_pelea_doc(p) for p in peleas_raw]
 
     if linea:
         aves_linea = await db.aves.find({
@@ -1306,7 +1330,6 @@ async def get_estadisticas_peleas(
         if cal in calificaciones:
             calificaciones[cal] += 1
 
-    # Racha (simplificada)
     sorted_peleas = sorted(peleas, key=lambda x: x.get("fecha", ""), reverse=True)
 
     racha_actual = 0
@@ -1344,15 +1367,15 @@ async def get_estadisticas_peleas(
     }
 
 
-# ================= PADRES =================
-
 @api_router.get("/peleas/estadisticas-padres")
 async def get_estadisticas_padres(current_user: dict = Depends(get_current_user)):
     user_id = current_user["id"]
 
-    peleas = await db.peleas.find({"user_id": user_id}).to_list(10000)
-    if not peleas:
+    peleas_raw = await db.peleas.find({"user_id": user_id}).to_list(10000)
+    if not peleas_raw:
         return {"padres": [], "madres": []}
+
+    peleas = [normalize_pelea_doc(p) for p in peleas_raw]
 
     aves = await db.aves.find({"user_id": user_id}).to_list(10000)
     aves_map = {str(a["_id"]): a for a in aves}
@@ -1447,7 +1470,7 @@ async def get_pelea(pelea_id: str, current_user: dict = Depends(get_current_user
     pelea = await db.peleas.find_one({"_id": ObjectId(pelea_id), "user_id": current_user["id"]})
     if not pelea:
         raise HTTPException(status_code=404, detail="Pelea no encontrada")
-    return PeleaResponse(**serialize_doc(pelea))
+    return PeleaResponse(**normalize_pelea_doc(pelea))
 
 
 @api_router.put("/peleas/{pelea_id}", response_model=PeleaResponse)
@@ -1462,7 +1485,7 @@ async def update_pelea(pelea_id: str, pelea_update: PeleaUpdate, current_user: d
     await db.peleas.update_one({"_id": ObjectId(pelea_id)}, {"$set": update_data})
     
     updated = await db.peleas.find_one({"_id": ObjectId(pelea_id)})
-    return PeleaResponse(**serialize_doc(updated))
+    return PeleaResponse(**normalize_pelea_doc(updated))
 
 
 @api_router.delete("/peleas/{pelea_id}")
