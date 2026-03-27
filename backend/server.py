@@ -228,16 +228,27 @@ class PeleaBase(BaseModel):
     ave_id: str
     fecha: str
     lugar: Optional[str] = None
-    resultado: str
-    cantidad_resultado: int = 1
+    ganadas: int = 0
+    perdidas: int = 0
+    entabladas: int = 0
     calificacion: str
     notas: Optional[str] = None
 
-    @validator("cantidad_resultado")
-    def validar_cantidad_resultado(cls, v):
-        if v < 1:
-            raise ValueError("La cantidad del resultado debe ser mayor o igual a 1")
+    @validator("ganadas", "perdidas", "entabladas")
+    def validar_cantidades(cls, v):
+        if v < 0:
+            raise ValueError("Las cantidades no pueden ser negativas")
         return v
+
+    @validator("entabladas", always=True)
+    def validar_al_menos_un_resultado(cls, v, values):
+        ganadas = values.get("ganadas", 0)
+        perdidas = values.get("perdidas", 0)
+        entabladas = v or 0
+
+        if ganadas == 0 and perdidas == 0 and entabladas == 0:
+            raise ValueError("Debes registrar al menos un resultado")
+        return entabladas
 
 
 class PeleaCreate(PeleaBase):
@@ -248,15 +259,16 @@ class PeleaUpdate(BaseModel):
     ave_id: Optional[str] = None
     fecha: Optional[str] = None
     lugar: Optional[str] = None
-    resultado: Optional[str] = None
-    cantidad_resultado: Optional[int] = None
+    ganadas: Optional[int] = None
+    perdidas: Optional[int] = None
+    entabladas: Optional[int] = None
     calificacion: Optional[str] = None
     notas: Optional[str] = None
 
-    @validator("cantidad_resultado")
-    def validar_cantidad_resultado(cls, v):
-        if v is not None and v < 1:
-            raise ValueError("La cantidad del resultado debe ser mayor o igual a 1")
+    @validator("ganadas", "perdidas", "entabladas")
+    def validar_cantidades_update(cls, v):
+        if v is not None and v < 0:
+            raise ValueError("Las cantidades no pueden ser negativas")
         return v
 
 
@@ -1234,41 +1246,23 @@ async def create_pelea(pelea: PeleaCreate, current_user: dict = Depends(get_curr
     
     return PeleaResponse(**serialize_doc(pelea_doc))
 
+
 @api_router.get("/peleas", response_model=List[PeleaResponse])
 async def get_peleas(
     ave_id: Optional[str] = None,
-    resultado: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
     query = {"user_id": current_user["id"]}
+    
     if ave_id:
         query["ave_id"] = ave_id
-    if resultado:
-        query["resultado"] = resultado
     
     peleas = await db.peleas.find(query).sort("fecha", -1).to_list(1000)
     return [PeleaResponse(**serialize_doc(p)) for p in peleas]
 
-@api_router.get("/peleas/estadisticas")
-async def get_estadisticas_peleas(
-    ave_id: Optional[str] = None,
-    linea: Optional[str] = None,
-    current_user: dict = Depends(get_current_user)
-):
-    query = {"user_id": current_user["id"]}
-    if ave_id:
-        query["ave_id"] = ave_id
-    
-    peleas = await db.peleas.find(query).to_list(1000)
-    
-    if linea:
-        aves_linea = await db.aves.find({
-            "user_id": current_user["id"],
-            "linea": {"$regex": linea, "$options": "i"}
-        }).to_list(1000)
-        ave_ids = [str(a["_id"]) for a in aves_linea]
-        peleas = [p for p in peleas if p.get("ave_id") in ave_ids]
-    
+
+# ================= ESTADISTICAS =================
+
 @api_router.get("/peleas/estadisticas")
 async def get_estadisticas_peleas(
     ave_id: Optional[str] = None,
@@ -1291,22 +1285,14 @@ async def get_estadisticas_peleas(
         ave_ids = [str(a["_id"]) for a in aves_linea]
         peleas = [p for p in peleas if p.get("ave_id") in ave_ids]
 
-    total = sum(int(p.get("cantidad_resultado", 1)) for p in peleas)
-    ganadas = sum(
-        int(p.get("cantidad_resultado", 1))
+    total = sum(
+        p.get("ganadas", 0) + p.get("perdidas", 0) + p.get("entabladas", 0)
         for p in peleas
-        if p.get("resultado") == "GANO"
     )
-    perdidas = sum(
-        int(p.get("cantidad_resultado", 1))
-        for p in peleas
-        if p.get("resultado") == "PERDIO"
-    )
-    entabladas = sum(
-        int(p.get("cantidad_resultado", 1))
-        for p in peleas
-        if p.get("resultado") == "ENTABLO"
-    )
+
+    ganadas = sum(p.get("ganadas", 0) for p in peleas)
+    perdidas = sum(p.get("perdidas", 0) for p in peleas)
+    entabladas = sum(p.get("entabladas", 0) for p in peleas)
 
     calificaciones = {
         "EXTRAORDINARIA": 0,
@@ -1320,15 +1306,28 @@ async def get_estadisticas_peleas(
         if cal in calificaciones:
             calificaciones[cal] += 1
 
+    # Racha (simplificada)
     sorted_peleas = sorted(peleas, key=lambda x: x.get("fecha", ""), reverse=True)
 
     racha_actual = 0
     racha_tipo = None
 
     if sorted_peleas:
-        racha_tipo = sorted_peleas[0].get("resultado")
+        primera = sorted_peleas[0]
+
+        if primera.get("ganadas", 0) > 0:
+            racha_tipo = "GANO"
+        elif primera.get("perdidas", 0) > 0:
+            racha_tipo = "PERDIO"
+        elif primera.get("entabladas", 0) > 0:
+            racha_tipo = "ENTABLO"
+
         for p in sorted_peleas:
-            if p.get("resultado") == racha_tipo:
+            if racha_tipo == "GANO" and p.get("ganadas", 0) > 0:
+                racha_actual += 1
+            elif racha_tipo == "PERDIO" and p.get("perdidas", 0) > 0:
+                racha_actual += 1
+            elif racha_tipo == "ENTABLO" and p.get("entabladas", 0) > 0:
                 racha_actual += 1
             else:
                 break
@@ -1343,6 +1342,9 @@ async def get_estadisticas_peleas(
         "racha_actual": racha_actual,
         "racha_tipo": racha_tipo
     }
+
+
+# ================= PADRES =================
 
 @api_router.get("/peleas/estadisticas-padres")
 async def get_estadisticas_padres(current_user: dict = Depends(get_current_user)):
@@ -1364,9 +1366,12 @@ async def get_estadisticas_padres(current_user: dict = Depends(get_current_user)
         if not ave:
             continue
 
-        resultado = pelea.get("resultado")
-        cantidad = int(pelea.get("cantidad_resultado", 1))
-        gano = cantidad if resultado == "GANO" else 0
+        ganadas = pelea.get("ganadas", 0)
+        total = (
+            pelea.get("ganadas", 0) +
+            pelea.get("perdidas", 0) +
+            pelea.get("entabladas", 0)
+        )
 
         padre_id = ave.get("padre_id")
         if padre_id and padre_id in aves_map:
@@ -1381,8 +1386,8 @@ async def get_estadisticas_padres(current_user: dict = Depends(get_current_user)
                     "hijos_ids": set()
                 }
 
-            padre_stats[padre_id]["ganadas"] += gano
-            padre_stats[padre_id]["total"] += cantidad
+            padre_stats[padre_id]["ganadas"] += ganadas
+            padre_stats[padre_id]["total"] += total
             padre_stats[padre_id]["hijos_ids"].add(ave_id)
 
         madre_id = ave.get("madre_id")
@@ -1398,8 +1403,8 @@ async def get_estadisticas_padres(current_user: dict = Depends(get_current_user)
                     "hijos_ids": set()
                 }
 
-            madre_stats[madre_id]["ganadas"] += gano
-            madre_stats[madre_id]["total"] += cantidad
+            madre_stats[madre_id]["ganadas"] += ganadas
+            madre_stats[madre_id]["total"] += total
             madre_stats[madre_id]["hijos_ids"].add(ave_id)
 
     padres_list = []
@@ -1436,12 +1441,14 @@ async def get_estadisticas_padres(current_user: dict = Depends(get_current_user)
         "madres": madres_list[:10]
     }
 
+
 @api_router.get("/peleas/{pelea_id}", response_model=PeleaResponse)
 async def get_pelea(pelea_id: str, current_user: dict = Depends(get_current_user)):
     pelea = await db.peleas.find_one({"_id": ObjectId(pelea_id), "user_id": current_user["id"]})
     if not pelea:
         raise HTTPException(status_code=404, detail="Pelea no encontrada")
     return PeleaResponse(**serialize_doc(pelea))
+
 
 @api_router.put("/peleas/{pelea_id}", response_model=PeleaResponse)
 async def update_pelea(pelea_id: str, pelea_update: PeleaUpdate, current_user: dict = Depends(get_current_user)):
