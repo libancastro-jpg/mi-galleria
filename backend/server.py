@@ -229,19 +229,36 @@ class PeleaBase(BaseModel):
     fecha: str
     lugar: Optional[str] = None
     resultado: str
+    cantidad_resultado: int = 1
     calificacion: str
     notas: Optional[str] = None
 
+    @validator("cantidad_resultado")
+    def validar_cantidad_resultado(cls, v):
+        if v < 1:
+            raise ValueError("La cantidad del resultado debe ser mayor o igual a 1")
+        return v
+
+
 class PeleaCreate(PeleaBase):
     pass
+
 
 class PeleaUpdate(BaseModel):
     ave_id: Optional[str] = None
     fecha: Optional[str] = None
     lugar: Optional[str] = None
     resultado: Optional[str] = None
+    cantidad_resultado: Optional[int] = None
     calificacion: Optional[str] = None
     notas: Optional[str] = None
+
+    @validator("cantidad_resultado")
+    def validar_cantidad_resultado(cls, v):
+        if v is not None and v < 1:
+            raise ValueError("La cantidad del resultado debe ser mayor o igual a 1")
+        return v
+
 
 class PeleaResponse(PeleaBase):
     id: str
@@ -1252,24 +1269,62 @@ async def get_estadisticas_peleas(
         ave_ids = [str(a["_id"]) for a in aves_linea]
         peleas = [p for p in peleas if p.get("ave_id") in ave_ids]
     
-    total = len(peleas)
-    ganadas = len([p for p in peleas if p.get("resultado") == "GANO"])
-    perdidas = len([p for p in peleas if p.get("resultado") == "PERDIO"])
-    
+@api_router.get("/peleas/estadisticas")
+async def get_estadisticas_peleas(
+    ave_id: Optional[str] = None,
+    linea: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    query = {"user_id": current_user["id"]}
+
+    if ave_id:
+        query["ave_id"] = ave_id
+
+    peleas = await db.peleas.find(query).to_list(1000)
+
+    if linea:
+        aves_linea = await db.aves.find({
+            "user_id": current_user["id"],
+            "linea": {"$regex": linea, "$options": "i"}
+        }).to_list(1000)
+
+        ave_ids = [str(a["_id"]) for a in aves_linea]
+        peleas = [p for p in peleas if p.get("ave_id") in ave_ids]
+
+    total = sum(int(p.get("cantidad_resultado", 1)) for p in peleas)
+    ganadas = sum(
+        int(p.get("cantidad_resultado", 1))
+        for p in peleas
+        if p.get("resultado") == "GANO"
+    )
+    perdidas = sum(
+        int(p.get("cantidad_resultado", 1))
+        for p in peleas
+        if p.get("resultado") == "PERDIO"
+    )
+    entabladas = sum(
+        int(p.get("cantidad_resultado", 1))
+        for p in peleas
+        if p.get("resultado") == "ENTABLO"
+    )
+
     calificaciones = {
         "EXTRAORDINARIA": 0,
         "BUENA": 0,
         "REGULAR": 0,
         "MALA": 0
     }
+
     for p in peleas:
         cal = p.get("calificacion")
         if cal in calificaciones:
             calificaciones[cal] += 1
-    
+
     sorted_peleas = sorted(peleas, key=lambda x: x.get("fecha", ""), reverse=True)
+
     racha_actual = 0
     racha_tipo = None
+
     if sorted_peleas:
         racha_tipo = sorted_peleas[0].get("resultado")
         for p in sorted_peleas:
@@ -1277,11 +1332,12 @@ async def get_estadisticas_peleas(
                 racha_actual += 1
             else:
                 break
-    
+
     return {
         "total": total,
         "ganadas": ganadas,
         "perdidas": perdidas,
+        "entabladas": entabladas,
         "porcentaje_victorias": round((ganadas / total * 100) if total > 0 else 0, 1),
         "calificaciones": calificaciones,
         "racha_actual": racha_actual,
@@ -1291,26 +1347,27 @@ async def get_estadisticas_peleas(
 @api_router.get("/peleas/estadisticas-padres")
 async def get_estadisticas_padres(current_user: dict = Depends(get_current_user)):
     user_id = current_user["id"]
-    
+
     peleas = await db.peleas.find({"user_id": user_id}).to_list(10000)
     if not peleas:
         return {"padres": [], "madres": []}
-    
+
     aves = await db.aves.find({"user_id": user_id}).to_list(10000)
     aves_map = {str(a["_id"]): a for a in aves}
-    
+
     padre_stats = {}
     madre_stats = {}
-    
+
     for pelea in peleas:
         ave_id = pelea.get("ave_id")
         ave = aves_map.get(ave_id)
         if not ave:
             continue
-        
+
         resultado = pelea.get("resultado")
-        gano = 1 if resultado == "GANO" else 0
-        
+        cantidad = int(pelea.get("cantidad_resultado", 1))
+        gano = cantidad if resultado == "GANO" else 0
+
         padre_id = ave.get("padre_id")
         if padre_id and padre_id in aves_map:
             padre = aves_map[padre_id]
@@ -1323,10 +1380,11 @@ async def get_estadisticas_padres(current_user: dict = Depends(get_current_user)
                     "total": 0,
                     "hijos_ids": set()
                 }
+
             padre_stats[padre_id]["ganadas"] += gano
-            padre_stats[padre_id]["total"] += 1
+            padre_stats[padre_id]["total"] += cantidad
             padre_stats[padre_id]["hijos_ids"].add(ave_id)
-        
+
         madre_id = ave.get("madre_id")
         if madre_id and madre_id in aves_map:
             madre = aves_map[madre_id]
@@ -1339,10 +1397,11 @@ async def get_estadisticas_padres(current_user: dict = Depends(get_current_user)
                     "total": 0,
                     "hijos_ids": set()
                 }
+
             madre_stats[madre_id]["ganadas"] += gano
-            madre_stats[madre_id]["total"] += 1
+            madre_stats[madre_id]["total"] += cantidad
             madre_stats[madre_id]["hijos_ids"].add(ave_id)
-    
+
     padres_list = []
     for pid, data in padre_stats.items():
         porcentaje = round((data["ganadas"] / data["total"] * 100) if data["total"] > 0 else 0, 1)
@@ -1355,7 +1414,7 @@ async def get_estadisticas_padres(current_user: dict = Depends(get_current_user)
             "porcentaje": porcentaje,
             "hijos_peleados": len(data["hijos_ids"])
         })
-    
+
     madres_list = []
     for mid, data in madre_stats.items():
         porcentaje = round((data["ganadas"] / data["total"] * 100) if data["total"] > 0 else 0, 1)
@@ -1368,10 +1427,10 @@ async def get_estadisticas_padres(current_user: dict = Depends(get_current_user)
             "porcentaje": porcentaje,
             "hijos_peleados": len(data["hijos_ids"])
         })
-    
+
     padres_list.sort(key=lambda x: (-x["porcentaje"], -x["total"]))
     madres_list.sort(key=lambda x: (-x["porcentaje"], -x["total"]))
-    
+
     return {
         "padres": padres_list[:10],
         "madres": madres_list[:10]
