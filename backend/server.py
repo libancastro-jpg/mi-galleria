@@ -256,7 +256,6 @@ class PeleaBase(BaseModel):
 class PeleaCreate(PeleaBase):
     pass
 
-
 class PeleaUpdate(BaseModel):
     ave_id: Optional[str] = None
     fecha: Optional[str] = None
