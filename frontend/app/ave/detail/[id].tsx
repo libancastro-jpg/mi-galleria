@@ -33,8 +33,11 @@ interface Ave {
 
 interface Pelea {
   id: string;
+  ave_id?: string;
   fecha: string;
-  resultado: string;
+  ganadas?: number;
+  perdidas?: number;
+  entabladas?: number;
   calificacion: string;
   lugar?: string;
 }
@@ -404,6 +407,39 @@ export default function AveDetailScreen() {
 
   const isFetchingRef = useRef(false);
 
+  const totalGanadas = useMemo(
+    () => peleas.reduce((acc, pelea) => acc + Number(pelea.ganadas || 0), 0),
+    [peleas]
+  );
+
+  const totalPerdidas = useMemo(
+    () => peleas.reduce((acc, pelea) => acc + Number(pelea.perdidas || 0), 0),
+    [peleas]
+  );
+
+  const totalEntabladas = useMemo(
+    () => peleas.reduce((acc, pelea) => acc + Number(pelea.entabladas || 0), 0),
+    [peleas]
+  );
+
+  const totalPeleas = useMemo(
+    () =>
+      peleas.reduce(
+        (acc, pelea) =>
+          acc +
+          Number(pelea.ganadas || 0) +
+          Number(pelea.perdidas || 0) +
+          Number(pelea.entabladas || 0),
+        0
+      ),
+    [peleas]
+  );
+
+  const porcentajeVictorias = useMemo(() => {
+    if (totalPeleas === 0) return 0;
+    return Math.round((totalGanadas / totalPeleas) * 100);
+  }, [totalGanadas, totalPeleas]);
+
   const tabs = useMemo(
     () => [
       { key: 'pedigri', label: 'Pedigrí', icon: 'git-branch' },
@@ -429,17 +465,42 @@ export default function AveDetailScreen() {
 
         const [aveData, peleasData, saludData, hijosData, pedigriData] = await Promise.all([
           api.get(`/aves/${id}`),
-          api.get('/peleas', { ave_id: id }),
+          api.get('/peleas'),
           api.get('/salud', { ave_id: id }),
           api.get(`/aves/${id}/hijos`),
           api.get(`/aves/${id}/pedigri`, { generations: '3' }),
         ]);
 
+        const peleasArray = Array.isArray(peleasData)
+          ? peleasData
+          : Array.isArray(peleasData?.data)
+          ? peleasData.data
+          : [];
+
+        const peleasDelAve = peleasArray.filter(
+          (p: any) => String(p.ave_id) === String(id)
+        );
+
         setAve(aveData);
-        setPeleas(Array.isArray(peleasData) ? peleasData : []);
-        setSalud(Array.isArray(saludData) ? saludData : []);
-        setHijos(Array.isArray(hijosData) ? hijosData : []);
-        setPedigri(pedigriData ?? null);
+        setPeleas(peleasDelAve);
+
+        setSalud(
+          Array.isArray(saludData)
+            ? saludData
+            : Array.isArray(saludData?.data)
+            ? saludData.data
+            : []
+        );
+
+        setHijos(
+          Array.isArray(hijosData)
+            ? hijosData
+            : Array.isArray(hijosData?.data)
+            ? hijosData.data
+            : []
+        );
+
+        setPedigri(pedigriData?.data ?? pedigriData ?? null);
       } catch (error: any) {
         Alert.alert('Error', error?.message || 'No se pudo cargar el detalle');
       } finally {
@@ -984,53 +1045,80 @@ export default function AveDetailScreen() {
       <View style={styles.tabContent}>
         {peleas.length > 0 ? (
           <>
-            <View style={styles.statsRow}>
+            <View style={styles.statsGrid}>
               <View style={styles.statBox}>
-                <Text style={styles.statNumber}>
-                  {peleas.filter((p) => p.resultado === 'GANO').length}
-                </Text>
+                <Text style={styles.statNumber}>{totalGanadas}</Text>
                 <Text style={styles.statLabel}>Ganadas</Text>
               </View>
+
               <View style={styles.statBox}>
-                <Text style={styles.statNumber}>
-                  {peleas.filter((p) => p.resultado === 'PERDIO').length}
-                </Text>
+                <Text style={styles.statNumber}>{totalPerdidas}</Text>
                 <Text style={styles.statLabel}>Perdidas</Text>
               </View>
+
+              <View style={styles.statBox}>
+                <Text style={styles.statNumber}>{totalEntabladas}</Text>
+                <Text style={styles.statLabel}>Entabladas</Text>
+              </View>
+
               <View style={styles.statBox}>
                 <Text style={[styles.statNumber, { color: '#22c55e' }]}>
-                  {peleas.length > 0
-                    ? Math.round(
-                        (peleas.filter((p) => p.resultado === 'GANO').length / peleas.length) * 100
-                      )
-                    : 0}
-                  %
+                  {porcentajeVictorias}%
                 </Text>
                 <Text style={styles.statLabel}>Victoria</Text>
               </View>
             </View>
 
-            {peleas.map((pelea) => (
-              <View key={pelea.id} style={styles.peleaItem}>
-                <View
-                  style={[
-                    styles.peleaResult,
-                    pelea.resultado === 'GANO' ? styles.peleaWin : styles.peleaLoss,
-                  ]}
-                >
-                  <Text style={styles.peleaResultText}>
-                    {pelea.resultado === 'GANO' ? 'G' : 'P'}
-                  </Text>
+            <View style={styles.totalPeleasCard}>
+              <Text style={styles.totalPeleasLabel}>Total acumulado</Text>
+              <Text style={styles.totalPeleasValue}>{totalPeleas}</Text>
+            </View>
+
+            {peleas.map((pelea) => {
+              const ganadas = Number(pelea.ganadas || 0);
+              const perdidas = Number(pelea.perdidas || 0);
+              const entabladas = Number(pelea.entabladas || 0);
+
+              return (
+                <View key={pelea.id} style={styles.peleaItem}>
+                  <View style={styles.peleaInfoOnly}>
+                    <Text style={styles.peleaDate}>{pelea.fecha}</Text>
+
+                    <View style={styles.peleaResultadosRow}>
+                      {ganadas > 0 ? (
+                        <View style={[styles.peleaMiniBadge, styles.peleaMiniBadgeWin]}>
+                          <Text style={styles.peleaMiniBadgeText}>G x{ganadas}</Text>
+                        </View>
+                      ) : null}
+
+                      {perdidas > 0 ? (
+                        <View style={[styles.peleaMiniBadge, styles.peleaMiniBadgeLoss]}>
+                          <Text style={styles.peleaMiniBadgeText}>P x{perdidas}</Text>
+                        </View>
+                      ) : null}
+
+                      {entabladas > 0 ? (
+                        <View style={[styles.peleaMiniBadge, styles.peleaMiniBadgeDraw]}>
+                          <Text style={styles.peleaMiniBadgeText}>E x{entabladas}</Text>
+                        </View>
+                      ) : null}
+                    </View>
+
+                    {pelea.lugar ? (
+                      <Text style={styles.peleaPlace}>{pelea.lugar}</Text>
+                    ) : null}
+                  </View>
+
+                  <View style={styles.peleaRightSide}>
+                    <View style={styles.peleaRating}>
+                      <Text style={styles.peleaRatingText}>
+                        {pelea.calificacion?.charAt(0)}
+                      </Text>
+                    </View>
+                  </View>
                 </View>
-                <View style={styles.peleaInfo}>
-                  <Text style={styles.peleaDate}>{pelea.fecha}</Text>
-                  {pelea.lugar ? <Text style={styles.peleaPlace}>{pelea.lugar}</Text> : null}
-                </View>
-                <View style={styles.peleaRating}>
-                  <Text style={styles.peleaRatingText}>{pelea.calificacion?.charAt(0)}</Text>
-                </View>
-              </View>
-            ))}
+              );
+            })}
           </>
         ) : (
           <View style={styles.emptyState}>
@@ -1046,7 +1134,15 @@ export default function AveDetailScreen() {
         )}
       </View>
     );
-  }, [peleas, router]);
+  }, [
+    peleas,
+    router,
+    totalGanadas,
+    totalPerdidas,
+    totalEntabladas,
+    totalPeleas,
+    porcentajeVictorias,
+  ]);
 
   const renderSaludTab = useCallback(() => {
     return (
@@ -1861,8 +1957,15 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 16,
   },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 16,
+  },
   statBox: {
     flex: 1,
+    minWidth: '47%',
     backgroundColor: '#242424',
     borderRadius: 12,
     padding: 16,
@@ -1880,6 +1983,26 @@ const styles = StyleSheet.create({
     color: '#a0a0a0',
     marginTop: 4,
   },
+  totalPeleasCard: {
+    backgroundColor: '#242424',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#333333',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  totalPeleasLabel: {
+    fontSize: 14,
+    color: '#a0a0a0',
+  },
+  totalPeleasValue: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#f59e0b',
+  },
   peleaItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1890,36 +2013,47 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#333333',
   },
-  peleaResult: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  peleaWin: {
-    backgroundColor: 'rgba(34, 197, 94, 0.2)',
-  },
-  peleaLoss: {
-    backgroundColor: 'rgba(239, 68, 68, 0.2)',
-  },
-  peleaResultText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  peleaInfo: {
+  peleaInfoOnly: {
     flex: 1,
-    marginLeft: 12,
   },
   peleaDate: {
     fontSize: 14,
     color: '#fff',
   },
+  peleaResultadosRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 6,
+  },
+  peleaMiniBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  peleaMiniBadgeWin: {
+    backgroundColor: 'rgba(34, 197, 94, 0.2)',
+  },
+  peleaMiniBadgeLoss: {
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+  },
+  peleaMiniBadgeDraw: {
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+  },
+  peleaMiniBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#fff',
+  },
   peleaPlace: {
     fontSize: 12,
-    color: '#a0a0a0',
-    marginTop: 2,
+    color: '#9ca3af',
+    marginTop: 6,
+  },
+  peleaRightSide: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
   },
   peleaRating: {
     width: 32,

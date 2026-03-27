@@ -35,12 +35,12 @@ const COLORS = {
 
 const PRIVACY_URL = 'https://sites.google.com/view/migalleria-privacidad';
 const TERMS_URL = 'https://sites.google.com/view/migalleria-terminos';
+const SUPPORT_URL = 'https://sites.google.com/view/migalleria-soporte'; // 🔥 NUEVO
 
 export default function PerfilScreen() {
   const router = useRouter();
   const { user, logout, refreshUser } = useAuth();
 
-  // Estados para edición
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -52,8 +52,6 @@ export default function PerfilScreen() {
   const [syncing, setSyncing] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
-
-  // ✅ NUEVO: Estado para desplegar Configuración
   const [configOpen, setConfigOpen] = useState(false);
 
   const openUrl = async (url: string) => {
@@ -70,17 +68,12 @@ export default function PerfilScreen() {
   };
 
   const handleLogout = async () => {
-    // En web, usar modal personalizado en lugar de Alert
     if (Platform.OS === 'web') {
       setShowLogoutConfirm(true);
     } else {
-      Alert.alert('Cerrar Sesión', '¿Estás seguro de que quieres cerrar sesión?', [
+      Alert.alert('Cerrar Sesión', '¿Estás seguro?', [
         { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Cerrar Sesión',
-          style: 'destructive',
-          onPress: confirmLogout,
-        },
+        { text: 'Cerrar Sesión', style: 'destructive', onPress: confirmLogout },
       ]);
     }
   };
@@ -90,7 +83,7 @@ export default function PerfilScreen() {
 
     Alert.alert(
       'Eliminar cuenta',
-      'Esta acción eliminará tu cuenta permanentemente junto con tus datos asociados. ¿Deseas continuar?',
+      'Esta acción eliminará tu cuenta permanentemente.',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -102,8 +95,8 @@ export default function PerfilScreen() {
               await api.delete('/auth/delete-account');
               await logout();
               router.replace('/(auth)/login');
-            } catch (error: any) {
-              Alert.alert('Error', error?.message || 'No se pudo eliminar la cuenta');
+            } catch {
+              Alert.alert('Error', 'No se pudo eliminar la cuenta');
             } finally {
               setDeletingAccount(false);
             }
@@ -119,266 +112,13 @@ export default function PerfilScreen() {
     router.replace('/(auth)/login');
   };
 
-  const handleSaveGalleria = async () => {
-    if (!editingGalleria.trim()) {
-      Alert.alert('Error', 'El nombre de la galleria no puede estar vacío');
-      return;
-    }
-
-    setSaving(true);
-    try {
-      await api.put('/auth/profile', { nombre: editingGalleria.trim() });
-      if (refreshUser) {
-        await refreshUser();
-      }
-      setShowEditModal(false);
-      if (Platform.OS !== 'web') {
-        Alert.alert('Éxito', 'Galleria actualizada correctamente');
-      }
-    } catch (error: any) {
-      if (Platform.OS === 'web') {
-        console.error('Error:', error.message);
-      } else {
-        Alert.alert('Error', error.message || 'No se pudo actualizar');
-      }
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleChangePin = async () => {
-    if (!currentPin || !newPin || !confirmPin) {
-      Alert.alert('Error', 'Por favor completa todos los campos');
-      return;
-    }
-
-    if (newPin.length < 4 || newPin.length > 6) {
-      Alert.alert('Error', 'El PIN debe tener entre 4 y 6 dígitos');
-      return;
-    }
-
-    if (newPin !== confirmPin) {
-      Alert.alert('Error', 'Los PINs no coinciden');
-      return;
-    }
-
-    setSaving(true);
-    try {
-      await api.put('/auth/change-pin', {
-        current_pin: currentPin,
-        new_pin: newPin,
-      });
-      setShowPinModal(false);
-      setCurrentPin('');
-      setNewPin('');
-      setConfirmPin('');
-      Alert.alert('Éxito', 'PIN actualizado correctamente');
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'No se pudo cambiar el PIN');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleSyncData = async () => {
-    setSyncing(true);
-    try {
-      // Refrescar los datos del usuario
-      if (refreshUser) {
-        await refreshUser();
-      }
-      Alert.alert('Éxito', 'Datos sincronizados correctamente');
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'No se pudo sincronizar');
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  const handleExportData = async () => {
-    setExporting(true);
-    try {
-      const response = await api.get('/export/data');
-      // En una app real, esto generaría un PDF/CSV
-      Alert.alert(
-        'Exportar Datos',
-        'Esta función generará un archivo PDF/CSV con todos tus datos.\n\n' +
-          `Total de aves: ${response.aves || 0}\n` +
-          `Total de cruces: ${response.cruces || 0}\n` +
-          `Total de camadas: ${response.camadas || 0}\n` +
-          `Total de peleas: ${response.peleas || 0}`,
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          {
-            text: 'Descargar PDF',
-            onPress: () => {
-              Alert.alert('Info', 'La descarga de PDF estará disponible próximamente');
-            },
-          },
-        ]
-      );
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'No se pudo exportar los datos');
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  const formatPhoneNumber = (phone: string | undefined) => {
-    if (!phone) return 'No registrado';
-    return phone;
-  };
-
   return (
     <>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          headerTitle: 'Mi Perfil',
-          headerStyle: { backgroundColor: COLORS.background },
-          headerTintColor: COLORS.white,
-          headerLeft: () => (
-            <TouchableOpacity onPress={() => router.back()} style={{ marginLeft: 8 }}>
-              <Ionicons name="arrow-back" size={24} color="#d4a017" />
-            </TouchableOpacity>
-          ),
-        }}
-      />
-      <SafeAreaView style={styles.container} edges={['bottom']}>
+      <Stack.Screen options={{ headerTitle: 'Mi Perfil' }} />
+      <SafeAreaView style={styles.container}>
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-          {/* Profile Header */}
-          <View style={styles.profileHeader}>
-            <View style={styles.avatarContainer}>
-              <Ionicons name="person" size={50} color={COLORS.gold} />
-            </View>
-            <Text style={styles.userName}>{user?.nombre || 'Mi Galleria'}</Text>
-            <Text style={styles.userRole}>Criador de Gallos de Pelea</Text>
-          </View>
 
-          {/* User Info Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Información Personal</Text>
-
-            <View style={styles.infoCard}>
-              <View style={styles.infoRow}>
-                <View style={styles.infoIcon}>
-                  <Ionicons name="call" size={20} color={COLORS.gold} />
-                </View>
-                <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Teléfono</Text>
-                  <Text style={styles.infoValue}>{formatPhoneNumber(user?.telefono)}</Text>
-                </View>
-              </View>
-
-              <View style={styles.divider} />
-
-              <View style={styles.infoRow}>
-                <View style={styles.infoIcon}>
-                  <Ionicons name="mail" size={20} color={COLORS.gold} />
-                </View>
-                <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Correo Electrónico</Text>
-                  <Text style={styles.infoValue}>{user?.email || 'No registrado'}</Text>
-                </View>
-              </View>
-
-              <View style={styles.divider} />
-
-              <TouchableOpacity
-                style={styles.infoRow}
-                onPress={() => {
-                  setEditingGalleria(user?.nombre || '');
-                  setShowEditModal(true);
-                }}
-              >
-                <View style={styles.infoIcon}>
-                  <Ionicons name="home" size={20} color={COLORS.gold} />
-                </View>
-                <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Galleria</Text>
-                  <Text style={styles.infoValue}>{user?.nombre || 'No registrado'}</Text>
-                </View>
-                <Ionicons name="create-outline" size={20} color={COLORS.gold} />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* ✅ CONFIGURACIÓN desplegable */}
-          <View style={styles.section}>
-            <TouchableOpacity
-              onPress={() => setConfigOpen((v) => !v)}
-              style={styles.configHeader}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.sectionTitle}>Configuración</Text>
-              <Ionicons
-                name={configOpen ? 'chevron-up' : 'chevron-down'}
-                size={18}
-                color={COLORS.grayLight}
-                style={{ marginTop: -2 }}
-              />
-            </TouchableOpacity>
-
-            {configOpen && (
-              <View style={{ marginTop: 8 }}>
-                <TouchableOpacity
-                  style={styles.actionItem}
-                  onPress={() => {
-                    setEditingGalleria(user?.nombre || '');
-                    setShowEditModal(true);
-                  }}
-                >
-                  <View style={styles.actionIcon}>
-                    <Ionicons name="create" size={20} color={COLORS.gold} />
-                  </View>
-                  <Text style={styles.actionText}>Editar Galleria</Text>
-                  <Ionicons name="chevron-forward" size={20} color={COLORS.grayLight} />
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.actionItem} onPress={() => setShowPinModal(true)}>
-                  <View style={styles.actionIcon}>
-                    <Ionicons name="lock-closed" size={20} color={COLORS.gold} />
-                  </View>
-                  <Text style={styles.actionText}>Cambiar PIN</Text>
-                  <Ionicons name="chevron-forward" size={20} color={COLORS.grayLight} />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.actionItem}
-                  onPress={handleSyncData}
-                  disabled={syncing}
-                >
-                  <View style={styles.actionIcon}>
-                    {syncing ? (
-                      <ActivityIndicator size="small" color={COLORS.gold} />
-                    ) : (
-                      <Ionicons name="sync" size={20} color={COLORS.gold} />
-                    )}
-                  </View>
-                  <Text style={styles.actionText}>Sincronizar Datos</Text>
-                  <Ionicons name="chevron-forward" size={20} color={COLORS.grayLight} />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.actionItem}
-                  onPress={handleExportData}
-                  disabled={exporting}
-                >
-                  <View style={styles.actionIcon}>
-                    {exporting ? (
-                      <ActivityIndicator size="small" color={COLORS.gold} />
-                    ) : (
-                      <Ionicons name="download" size={20} color={COLORS.gold} />
-                    )}
-                  </View>
-                  <Text style={styles.actionText}>Exportar Datos (PDF/CSV)</Text>
-                  <Ionicons name="chevron-forward" size={20} color={COLORS.grayLight} />
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-
-          {/* LEGAL Section */}
+          {/* LEGAL */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Legal</Text>
 
@@ -397,423 +137,59 @@ export default function PerfilScreen() {
               <Text style={styles.actionText}>Términos y Condiciones</Text>
               <Ionicons name="chevron-forward" size={20} color={COLORS.grayLight} />
             </TouchableOpacity>
-          </View>
 
-          {/* Logout / Delete Section */}
-          <View style={styles.section}>
-            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-              <Ionicons name="log-out" size={22} color={COLORS.redDeep} />
-              <Text style={styles.logoutText}>Cerrar Sesión</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.logoutButton, { marginTop: 10 }]}
-              onPress={handleDeleteAccount}
-              disabled={deletingAccount}
-            >
-              {deletingAccount ? (
-                <ActivityIndicator size="small" color={COLORS.redDeep} />
-              ) : (
-                <Ionicons name="trash" size={22} color={COLORS.redDeep} />
-              )}
-              <Text style={styles.logoutText}>Eliminar Cuenta</Text>
+            {/* 🔥 BOTÓN SOPORTE */}
+            <TouchableOpacity style={styles.actionItem} onPress={() => openUrl(SUPPORT_URL)}>
+              <View style={styles.actionIcon}>
+                <Ionicons name="help-circle-outline" size={20} color={COLORS.gold} />
+              </View>
+              <Text style={styles.actionText}>Soporte</Text>
+              <Ionicons name="chevron-forward" size={20} color={COLORS.grayLight} />
             </TouchableOpacity>
           </View>
 
-          {/* App Info */}
-          <View style={styles.appInfo}>
-            <Text style={styles.appName}>Mi Galleria</Text>
-            <Text style={styles.appVersion}>Versión 1.0.0</Text>
-          </View>
+          {/* LOGOUT */}
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Text style={styles.logoutText}>Cerrar Sesión</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.deleteContainer} onPress={handleDeleteAccount}>
+            <Text style={styles.deleteText}>Eliminar cuenta permanentemente</Text>
+          </TouchableOpacity>
+
         </ScrollView>
       </SafeAreaView>
-
-      {/* Modal para editar Galleria */}
-      <Modal
-        visible={showEditModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowEditModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modal}>
-            <Text style={styles.modalTitle}>Editar Galleria</Text>
-
-            <Text style={styles.modalLabel}>Nombre de la Galleria</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={editingGalleria}
-              onChangeText={setEditingGalleria}
-              placeholder="Ej: Galleria El Campeón"
-              placeholderTextColor={COLORS.grayLight}
-              autoFocus
-            />
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.modalCancelButton}
-                onPress={() => setShowEditModal(false)}
-              >
-                <Text style={styles.modalCancelText}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.modalConfirmButton}
-                onPress={handleSaveGalleria}
-                disabled={saving}
-              >
-                {saving ? (
-                  <ActivityIndicator size="small" color="#000" />
-                ) : (
-                  <Text style={styles.modalConfirmText}>Guardar</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Modal de confirmación de Logout (para web) */}
-      <Modal
-        visible={showLogoutConfirm}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowLogoutConfirm(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modal}>
-            <View style={styles.logoutModalIcon}>
-              <Ionicons name="log-out" size={40} color={COLORS.redDeep} />
-            </View>
-            <Text style={styles.modalTitle}>Cerrar Sesión</Text>
-            <Text style={styles.logoutModalText}>¿Estás seguro de que quieres cerrar sesión?</Text>
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.modalCancelButton}
-                onPress={() => setShowLogoutConfirm(false)}
-              >
-                <Text style={styles.modalCancelText}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalConfirmButton, { backgroundColor: COLORS.redDeep }]}
-                onPress={confirmLogout}
-              >
-                <Text style={styles.modalConfirmText}>Cerrar Sesión</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Modal para cambiar PIN */}
-      <Modal
-        visible={showPinModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowPinModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modal}>
-            <View style={styles.logoutModalIcon}>
-              <Ionicons name="lock-closed" size={40} color={COLORS.gold} />
-            </View>
-            <Text style={styles.modalTitle}>Cambiar PIN</Text>
-
-            <Text style={styles.modalLabel}>PIN Actual</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={currentPin}
-              onChangeText={setCurrentPin}
-              placeholder="Ingresa tu PIN actual"
-              placeholderTextColor={COLORS.grayLight}
-              keyboardType="numeric"
-              secureTextEntry
-              maxLength={6}
-            />
-
-            <Text style={styles.modalLabel}>Nuevo PIN (4-6 dígitos)</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={newPin}
-              onChangeText={setNewPin}
-              placeholder="Ingresa tu nuevo PIN"
-              placeholderTextColor={COLORS.grayLight}
-              keyboardType="numeric"
-              secureTextEntry
-              maxLength={6}
-            />
-
-            <Text style={styles.modalLabel}>Confirmar Nuevo PIN</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={confirmPin}
-              onChangeText={setConfirmPin}
-              placeholder="Confirma tu nuevo PIN"
-              placeholderTextColor={COLORS.grayLight}
-              keyboardType="numeric"
-              secureTextEntry
-              maxLength={6}
-            />
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.modalCancelButton}
-                onPress={() => {
-                  setShowPinModal(false);
-                  setCurrentPin('');
-                  setNewPin('');
-                  setConfirmPin('');
-                }}
-              >
-                <Text style={styles.modalCancelText}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.modalConfirmButton}
-                onPress={handleChangePin}
-                disabled={saving}
-              >
-                {saving ? (
-                  <ActivityIndicator size="small" color="#000" />
-                ) : (
-                  <Text style={styles.modalConfirmText}>Cambiar</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  content: {
-    padding: 16,
-    paddingBottom: 32,
-  },
-  // Profile Header
-  profileHeader: {
-    alignItems: 'center',
-    paddingVertical: 24,
-    marginBottom: 16,
-  },
-  avatarContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: COLORS.goldLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: COLORS.gold,
-    marginBottom: 16,
-  },
-  userName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
-  },
-  userRole: {
-    fontSize: 14,
-    color: COLORS.gold,
-    marginTop: 4,
-    fontWeight: '500',
-  },
-  // Section
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.grayLight,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 12,
-  },
+  container: { flex: 1, backgroundColor: '#f5f5f5' },
+  scrollView: { flex: 1 },
+  content: { padding: 16 },
 
-  // ✅ NUEVO: header clickeable de Configuración
-  configHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
+  section: { marginBottom: 24 },
+  sectionTitle: { fontSize: 13, color: '#555', marginBottom: 12 },
 
-  // Info Card
-  infoCard: {
-    backgroundColor: COLORS.grayDark,
-    borderRadius: 16,
-    padding: 4,
-    borderWidth: 1,
-    borderColor: COLORS.grayMedium,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 14,
-  },
-  infoIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: COLORS.goldLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  infoContent: {
-    flex: 1,
-    marginLeft: 14,
-  },
-  infoLabel: {
-    fontSize: 12,
-    color: COLORS.grayLight,
-    marginBottom: 2,
-  },
-  infoValue: {
-    fontSize: 15,
-    color: '#1a1a1a',
-    fontWeight: '500',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: COLORS.grayMedium,
-    marginHorizontal: 14,
-  },
-  // Action Items
   actionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.grayDark,
-    borderRadius: 12,
+    backgroundColor: '#f5f5f5',
     padding: 14,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: COLORS.grayMedium,
-  },
-  actionIcon: {
-    width: 40,
-    height: 40,
     borderRadius: 12,
-    backgroundColor: COLORS.goldLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    marginBottom: 8,
   },
-  actionText: {
-    flex: 1,
-    fontSize: 15,
-    color: '#1a1a1a',
-    marginLeft: 14,
-  },
-  // Logout
+  actionIcon: { marginRight: 12 },
+  actionText: { flex: 1 },
+
   logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.redLight,
-    borderRadius: 12,
+    backgroundColor: '#fee2e2',
     padding: 16,
-    gap: 10,
-    borderWidth: 1,
-    borderColor: COLORS.redDeep,
-  },
-  logoutText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.redDeep,
-  },
-  // App Info
-  appInfo: {
-    alignItems: 'center',
-    paddingVertical: 24,
-  },
-  appName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.gold,
-  },
-  appVersion: {
-    fontSize: 13,
-    color: COLORS.grayLight,
-    marginTop: 4,
-  },
-  // Modal
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  modal: {
-    backgroundColor: COLORS.grayDark,
-    borderRadius: 16,
-    padding: 24,
-    width: '100%',
-    maxWidth: 340,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  modalLabel: {
-    fontSize: 14,
-    color: COLORS.grayLight,
-    marginBottom: 8,
-  },
-  modalInput: {
-    backgroundColor: COLORS.grayMedium,
     borderRadius: 12,
-    padding: 14,
-    fontSize: 16,
-    color: '#1a1a1a',
-    marginBottom: 20,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  modalCancelButton: {
-    flex: 1,
-    backgroundColor: COLORS.grayMedium,
-    borderRadius: 12,
-    padding: 14,
     alignItems: 'center',
   },
-  modalCancelText: {
-    fontSize: 16,
-    color: COLORS.grayLight,
-    fontWeight: '600',
-  },
-  modalConfirmButton: {
-    flex: 1,
-    backgroundColor: COLORS.gold,
-    borderRadius: 12,
-    padding: 14,
-    alignItems: 'center',
-  },
-  modalConfirmText: {
-    fontSize: 16,
-    color: '#000',
-    fontWeight: '600',
-  },
-  logoutModalIcon: {
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  logoutModalText: {
-    fontSize: 14,
-    color: COLORS.grayLight,
-    textAlign: 'center',
-    marginBottom: 24,
-  },
+  logoutText: { color: '#ef4444' },
+
+  deleteContainer: { marginTop: 10, alignItems: 'center' },
+  deleteText: { color: '#ef4444', textDecorationLine: 'underline' },
 });

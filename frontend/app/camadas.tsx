@@ -81,14 +81,14 @@ export default function CamadasScreen() {
     fetchData();
   };
 
-  const getCruceInfo = (cruceId: string) => {
-    return cruces.find(c => c.id === cruceId);
-  };
-
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '-';
     const date = new Date(dateStr);
-    return date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+    return date.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
   };
 
   const getEstadoCamada = (camada: Camada) => {
@@ -120,8 +120,10 @@ export default function CamadasScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#d4a017" />
         </TouchableOpacity>
+
         <Text style={styles.headerTitle}>Camadas</Text>
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.addButton}
           onPress={() => router.push('/camada/new')}
         >
@@ -141,12 +143,15 @@ export default function CamadasScreen() {
             <View style={styles.emptyIcon}>
               <CamadaLogo size={72} />
             </View>
+
             <Text style={styles.emptyTitle}>Sin camadas registradas</Text>
+
             <Text style={styles.emptySubtitle}>
               Organiza camadas facilmente desde un solo registro,
               ahorrando tiempo y teniendo un mejor control en tu galleria.
             </Text>
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={styles.emptyButton}
               onPress={() => router.push('/camada/new')}
             >
@@ -156,25 +161,27 @@ export default function CamadasScreen() {
           </View>
         ) : (
           <>
-            {/* Logo Header */}
             <View style={styles.logoHeader}>
               <CamadaLogo size={80} />
             </View>
 
-            {/* Resumen */}
             <View style={styles.summaryCard}>
               <View style={styles.summaryItem}>
                 <Text style={styles.summaryValue}>{camadas.length}</Text>
                 <Text style={styles.summaryLabel}>Total</Text>
               </View>
+
               <View style={styles.summaryDivider} />
+
               <View style={styles.summaryItem}>
                 <Text style={styles.summaryValue}>
                   {camadas.filter(c => c.fecha_incubacion_inicio && !c.cantidad_nacidos).length}
                 </Text>
                 <Text style={styles.summaryLabel}>Incubando</Text>
               </View>
+
               <View style={styles.summaryDivider} />
+
               <View style={styles.summaryItem}>
                 <Text style={styles.summaryValue}>
                   {camadas.reduce((acc, c) => acc + (c.cantidad_nacidos || 0), 0)}
@@ -183,22 +190,22 @@ export default function CamadasScreen() {
               </View>
             </View>
 
-            {/* Lista de Camadas */}
             <Text style={styles.sectionTitle}>Todas las Camadas</Text>
+
             {camadas.map((camada) => {
               const estado = getEstadoCamada(camada);
-              const cruce = getCruceInfo(camada.cruce_id);
-              
+
               return (
                 <TouchableOpacity
                   key={camada.id}
                   style={styles.camadaCard}
-                  onPress={() => router.push(`/camada/${camada.id}`)}
-                >
+                  onPress={() => router.push(`/camada/detail/${camada.id}`)}
+                                                    >
                   <View style={styles.camadaHeader}>
                     <View style={styles.camadaIconContainer}>
-                      <Ionicons name="egg" size={24} color={COLORS.gold} />
+                      <Ionicons name="egg" size={22} color={COLORS.gold} />
                     </View>
+
                     <View style={styles.camadaInfo}>
                       <Text style={styles.camadaTitle}>
                         Camada del {formatDate(camada.fecha_puesta_inicio || camada.created_at)}
@@ -207,6 +214,7 @@ export default function CamadasScreen() {
                         Método: {camada.metodo === 'gallina' ? 'Gallina' : 'Incubadora'}
                       </Text>
                     </View>
+
                     <View style={[styles.estadoBadge, { backgroundColor: estado.bg }]}>
                       <Text style={[styles.estadoText, { color: estado.color }]}>
                         {estado.label}
@@ -216,22 +224,24 @@ export default function CamadasScreen() {
 
                   <View style={styles.camadaDetails}>
                     <View style={styles.detailItem}>
-                      <Ionicons name="layers-outline" size={16} color={COLORS.grayLight} />
+                      <Ionicons name="layers-outline" size={15} color={COLORS.grayLight} />
                       <Text style={styles.detailText}>
                         {camada.cantidad_huevos || 0} huevos
                       </Text>
                     </View>
+
                     {camada.cantidad_nacidos !== undefined && camada.cantidad_nacidos > 0 && (
                       <View style={styles.detailItem}>
-                        <Ionicons name="happy-outline" size={16} color={COLORS.green} />
+                        <Ionicons name="happy-outline" size={15} color={COLORS.green} />
                         <Text style={[styles.detailText, { color: COLORS.green }]}>
                           {camada.cantidad_nacidos} nacidos
                         </Text>
                       </View>
                     )}
+
                     {camada.fecha_nacimiento && (
                       <View style={styles.detailItem}>
-                        <Ionicons name="calendar-outline" size={16} color={COLORS.grayLight} />
+                        <Ionicons name="calendar-outline" size={15} color={COLORS.grayLight} />
                         <Text style={styles.detailText}>
                           Nac: {formatDate(camada.fecha_nacimiento)}
                         </Text>
@@ -241,7 +251,7 @@ export default function CamadasScreen() {
 
                   {camada.notas && (
                     <View style={styles.camadaNotas}>
-                      <Ionicons name="document-text-outline" size={14} color={COLORS.grayLight} />
+                      <Ionicons name="document-text-outline" size={13} color={COLORS.grayLight} />
                       <Text style={styles.notasText} numberOfLines={1}>
                         {camada.notas}
                       </Text>
@@ -250,7 +260,7 @@ export default function CamadasScreen() {
 
                   <View style={styles.camadaFooter}>
                     <Text style={styles.footerText}>Ver detalles</Text>
-                    <Ionicons name="chevron-forward" size={16} color={COLORS.gold} />
+                    <Ionicons name="chevron-forward" size={15} color={COLORS.gold} />
                   </View>
                 </TouchableOpacity>
               );
@@ -313,7 +323,6 @@ const styles = StyleSheet.create({
   contentContainer: {
     padding: 16,
   },
-  // Empty State
   emptyState: {
     alignItems: 'center',
     paddingVertical: 60,
@@ -354,7 +363,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#000',
   },
-  // Summary Card
   summaryCard: {
     flexDirection: 'row',
     backgroundColor: COLORS.cardBg,
@@ -383,19 +391,17 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.border,
     marginHorizontal: 12,
   },
-  // Section
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#1a1a1a',
     marginBottom: 12,
   },
-  // Camada Card
   camadaCard: {
     backgroundColor: COLORS.cardBg,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
   },
@@ -404,9 +410,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   camadaIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: COLORS.goldLight,
     alignItems: 'center',
     justifyContent: 'center',
@@ -421,7 +427,7 @@ const styles = StyleSheet.create({
     color: '#1a1a1a',
   },
   camadaSubtitle: {
-    fontSize: 13,
+    fontSize: 12,
     color: COLORS.grayLight,
     marginTop: 2,
   },
@@ -437,9 +443,9 @@ const styles = StyleSheet.create({
   camadaDetails: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 16,
-    marginTop: 16,
-    paddingTop: 12,
+    gap: 12,
+    marginTop: 12,
+    paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
   },
@@ -449,21 +455,21 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   detailText: {
-    fontSize: 13,
+    fontSize: 12,
     color: COLORS.grayLight,
   },
   camadaNotas: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginTop: 12,
-    paddingTop: 12,
+    marginTop: 10,
+    paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
   },
   notasText: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 12,
     color: COLORS.grayLight,
     fontStyle: 'italic',
   },
@@ -471,7 +477,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    marginTop: 12,
+    marginTop: 8,
     gap: 4,
   },
   footerText: {

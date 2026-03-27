@@ -33,6 +33,7 @@ interface Cruce {
   marca_lado?: string;
   marca_color?: string;
   sin_marca?: boolean;
+  marcas_nacimiento?: string[];
 }
 
 interface Ave {
@@ -60,6 +61,15 @@ type FootPointKey =
   | 'superior_derecha';
 
 type NosePointKey = 'izquierda' | 'derecha' | 'centro' | 'arriba' | 'abajo';
+
+type MarcaKey =
+  | 'pie_izquierdo_izquierda'
+  | 'pie_izquierdo_derecha'
+  | 'pie_derecho_izquierda'
+  | 'pie_derecho_derecha'
+  | 'nariz_izquierda'
+  | 'nariz_derecha'
+  | 'marca_casera';
 
 /**
  * IMPORTANTE:
@@ -135,8 +145,56 @@ function getNormalizedMarcaLado(value?: string | null): string {
   return lado;
 }
 
+function getMarcaKeys(item: Cruce): MarcaKey[] {
+  if (Array.isArray(item.marcas_nacimiento) && item.marcas_nacimiento.length > 0) {
+    return item.marcas_nacimiento.filter(Boolean) as MarcaKey[];
+  }
+
+  const marca = normalizeText(item.marca_nacimiento);
+  const lado = getNormalizedMarcaLado(item.marca_lado);
+
+  if (marca === 'marca_casera') {
+    return ['marca_casera'];
+  }
+
+  if (
+    (marca === 'pie_izquierdo' || marca === 'pie_derecho' || marca === 'nariz') &&
+    lado
+  ) {
+    return [`${marca}_${lado}` as MarcaKey];
+  }
+
+  return [];
+}
+
 function getMarcaTexto(item: Cruce) {
   if (item.sin_marca) return 'Sin marca';
+
+  const marcaKeys = getMarcaKeys(item);
+
+  if (marcaKeys.length > 0) {
+    const textos = marcaKeys.map((key) => {
+      if (key === 'marca_casera') {
+        return item.marca_color ? `Marca casera (${item.marca_color})` : 'Marca casera';
+      }
+
+      const parts = key.split('_');
+      if (parts.length < 3) return key;
+
+      const tipo = `${parts[0]}_${parts[1]}`;
+      const lado = parts[2];
+
+      let base = tipo;
+      if (tipo === 'pie_izquierdo') base = 'Pie izquierdo';
+      else if (tipo === 'pie_derecho') base = 'Pie derecho';
+      else if (tipo === 'nariz') base = 'Nariz';
+
+      return `${base} - ${lado}`;
+    });
+
+    return textos.join(', ');
+  }
+
   if (!item.marca_nacimiento) return 'No registrada';
 
   let base = '';
@@ -183,22 +241,16 @@ function MarkDot({
 function FootMarkCard({
   title,
   imageSource,
-  active,
-  pointKey,
+  activePoints,
 }: {
   title: string;
   imageSource: any;
-  active: boolean;
-  pointKey?: string;
+  activePoints: string[];
 }) {
   const pointsMap =
     title === 'PIE IZQUIERDO'
       ? LEFT_FOOT_MARK_POINTS
       : RIGHT_FOOT_MARK_POINTS;
-
-  const point = pointKey
-    ? pointsMap[pointKey as FootPointKey]
-    : undefined;
 
   return (
     <View style={styles.markCard}>
@@ -215,28 +267,50 @@ function FootMarkCard({
           ]}
           resizeMode="contain"
         />
-        {active && point ? <MarkDot x={point.x} y={point.y} /> : null}
+
+        {activePoints.map((pointKey) => {
+          const point = pointsMap[pointKey as FootPointKey];
+          if (!point) return null;
+
+          return (
+            <MarkDot
+              key={`${title}-${pointKey}`}
+              x={point.x}
+              y={point.y}
+            />
+          );
+        })}
       </View>
+
       <Text style={styles.markCardLabel}>{title}</Text>
     </View>
   );
 }
 
 function NoseMarkCard({
-  active,
-  pointKey,
+  activePoints,
 }: {
-  active: boolean;
-  pointKey?: string;
+  activePoints: string[];
 }) {
-  const point = pointKey ? NOSE_MARK_POINTS[pointKey as NosePointKey] : undefined;
-
   return (
     <View style={styles.markCard}>
       <View style={styles.markImageBox}>
         <Image source={narizImg} style={styles.markImage} resizeMode="contain" />
-        {active && point ? <MarkDot x={point.x} y={point.y} /> : null}
+
+        {activePoints.map((pointKey) => {
+          const point = NOSE_MARK_POINTS[pointKey as NosePointKey];
+          if (!point) return null;
+
+          return (
+            <MarkDot
+              key={`nariz-${pointKey}`}
+              x={point.x}
+              y={point.y}
+            />
+          );
+        })}
       </View>
+
       <Text style={styles.markCardLabel}>Nariz</Text>
     </View>
   );
@@ -255,13 +329,27 @@ function MarcaVisualSection({ item }: { item: Cruce }) {
     );
   }
 
-  const marca = normalizeText(item.marca_nacimiento);
-  const lado = getNormalizedMarcaLado(item.marca_lado);
+  const marcaKeys = getMarcaKeys(item);
 
-  const isPieIzquierdo = marca === 'pie_izquierdo';
-  const isPieDerecho = marca === 'pie_derecho';
-  const isNariz = marca === 'nariz';
-  const isMarcaCasera = marca === 'marca_casera';
+  const pieIzquierdoPoints = marcaKeys
+    .filter((key) => key.startsWith('pie_izquierdo_'))
+    .map((key) => key.replace('pie_izquierdo_', ''));
+
+  const pieDerechoPoints = marcaKeys
+    .filter((key) => key.startsWith('pie_derecho_'))
+    .map((key) => key.replace('pie_derecho_', ''));
+
+  const narizPoints = marcaKeys
+    .filter((key) => key.startsWith('nariz_'))
+    .map((key) => key.replace('nariz_', ''));
+
+  const isMarcaCasera = marcaKeys.includes('marca_casera');
+
+  const hasAnyVisualMarks =
+    pieIzquierdoPoints.length > 0 ||
+    pieDerechoPoints.length > 0 ||
+    narizPoints.length > 0 ||
+    isMarcaCasera;
 
   return (
     <View style={styles.marcaSection}>
@@ -271,18 +359,16 @@ function MarcaVisualSection({ item }: { item: Cruce }) {
         <FootMarkCard
           title="PIE IZQUIERDO"
           imageSource={pieIzquierdoImg}
-          active={isPieIzquierdo}
-          pointKey={isPieIzquierdo ? lado : undefined}
+          activePoints={pieIzquierdoPoints}
         />
 
         <FootMarkCard
           title="PIE DERECHO"
           imageSource={pieDerechoImg}
-          active={isPieDerecho}
-          pointKey={isPieDerecho ? lado : undefined}
+          activePoints={pieDerechoPoints}
         />
 
-        <NoseMarkCard active={isNariz} pointKey={isNariz ? lado : undefined} />
+        <NoseMarkCard activePoints={narizPoints} />
       </View>
 
       {isMarcaCasera ? (
@@ -301,7 +387,7 @@ function MarcaVisualSection({ item }: { item: Cruce }) {
         </View>
       ) : null}
 
-      {!isPieIzquierdo && !isPieDerecho && !isNariz && !isMarcaCasera ? (
+      {!hasAnyVisualMarks ? (
         <Text style={styles.marcaFallbackText}>{getMarcaTexto(item)}</Text>
       ) : null}
     </View>
@@ -651,8 +737,9 @@ export default function CrucesScreen() {
             <View style={styles.emptyState}>
               <Ionicons name="git-merge-outline" size={64} color="#4b5563" />
               <Text style={styles.emptyTitle}>Sin cruces registrados</Text>
-              <Text style={styles.emptyText}>Controla el registro de pollitos 
-                desde su marca fisica inicial antes de emplacar. </Text>
+              <Text style={styles.emptyText}>
+                Controla el registro de pollitos desde su marca fisica inicial antes de emplacar.
+              </Text>
               <TouchableOpacity
                 style={styles.emptyButton}
                 onPress={() => router.push('/cruce/new')}
@@ -1019,6 +1106,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#555555',
     marginTop: 8,
+    textAlign: 'center',
   },
   emptyButton: {
     flexDirection: 'row',

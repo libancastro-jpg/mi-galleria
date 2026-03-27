@@ -18,7 +18,7 @@ interface RoosterLogoProps {
 
 export function RoosterLogo({ size = 72 }: RoosterLogoProps) {
   // Logo 115% del círculo para compensar transparencia del PNG
-  const imageSize = size * 1.15;
+  const imageSize = size * 1.5;
   
   return (
     <View style={{

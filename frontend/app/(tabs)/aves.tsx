@@ -41,11 +41,28 @@ interface Ave {
 const galloDefaultImg = require('../../assets/images/gallo.png');
 const gallinaDefaultImg = require('../../assets/images/gallina.png');
 
+const getOptimizedImage = (url?: string, width: number = 300) => {
+  if (!url) return undefined;
+
+  if (!url.includes('/image/upload/')) return url;
+
+  return url.replace(
+    '/image/upload/',
+    `/image/upload/f_auto,q_auto,w_${width}/`
+  );
+};
+
 const getAveImageSource = (ave: Ave) => {
-  if (ave.foto_principal) return { uri: ave.foto_principal };
-  if (ave.foto) return { uri: ave.foto };
-  if (ave.imagen) return { uri: ave.imagen };
-  if (ave.image_url) return { uri: ave.image_url };
+  const url =
+    ave.foto_principal ||
+    ave.foto ||
+    ave.imagen ||
+    ave.image_url;
+
+  if (url) {
+    return { uri: getOptimizedImage(url, 300) };
+  }
+
   return ave.tipo === 'gallo' ? galloDefaultImg : gallinaDefaultImg;
 };
 
@@ -175,8 +192,16 @@ export default function AvesScreen() {
         if (filterTipo) params.tipo = filterTipo;
         if (filterEstado) params.estado = filterEstado;
 
-        const result = await api.get('/aves', params);
+        const start = Date.now();
+console.log('⏱️ INICIO fetch /aves');
 
+        const result = await api.get('/aves', {
+          ...params,
+          limit: '50',
+        });
+
+        console.log('⏱️ FIN fetch /aves:', Date.now() - start, 'ms');
+        
         const avesData: Ave[] = Array.isArray(result?.data)
           ? result.data
           : Array.isArray(result)
