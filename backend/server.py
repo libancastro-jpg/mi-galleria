@@ -199,9 +199,10 @@ class CamadaBase(BaseModel):
     fecha_puesta_inicio: Optional[str] = None
     cantidad_huevos: Optional[int] = None
     fecha_incubacion_inicio: Optional[str] = None
-    metodo: str = "gallina"
+    metodo: Optional[str] = None
     fecha_nacimiento: Optional[str] = None
     pollitos_nacidos: Optional[int] = None
+    criador_nombre: Optional[str] = None
     notas: Optional[str] = None
 
 class CamadaCreate(CamadaBase):
@@ -215,6 +216,7 @@ class CamadaUpdate(BaseModel):
     metodo: Optional[str] = None
     fecha_nacimiento: Optional[str] = None
     pollitos_nacidos: Optional[int] = None
+    criador_nombre: Optional[str] = None
     notas: Optional[str] = None
 
 class CamadaResponse(CamadaBase):
@@ -1174,12 +1176,6 @@ async def get_camadas(current_user: dict = Depends(get_current_user)):
     camadas = await db.camadas.find({"user_id": current_user["id"]}).sort("created_at", -1).to_list(1000)
     return [CamadaResponse(**serialize_doc(c)) for c in camadas]
 
-@api_router.get("/camadas/{camada_id}", response_model=CamadaResponse)
-async def get_camada(camada_id: str, current_user: dict = Depends(get_current_user)):
-    camada = await db.camadas.find_one({"_id": ObjectId(camada_id), "user_id": current_user["id"]})
-    if not camada:
-        raise HTTPException(status_code=404, detail="Camada no encontrada")
-    return CamadaResponse(**serialize_doc(camada))
 
 @api_router.put("/camadas/{camada_id}", response_model=CamadaResponse)
 async def update_camada(camada_id: str, camada_update: CamadaUpdate, current_user: dict = Depends(get_current_user)):
