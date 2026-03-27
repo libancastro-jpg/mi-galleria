@@ -1196,6 +1196,14 @@ async def get_camada(camada_id: str, current_user: dict = Depends(get_current_us
         "criador": camada_data.get("criador_nombre")
     }
 
+@api_router.get("/camadas", response_model=List[CamadaResponse])
+async def get_camadas(current_user: dict = Depends(get_current_user)):
+    camadas = await db.camadas.find({
+        "user_id": current_user["id"]
+    }).sort("created_at", -1).to_list(1000)
+
+    return [CamadaResponse(**serialize_doc(c)) for c in camadas]
+
 @api_router.put("/camadas/{camada_id}", response_model=CamadaResponse)
 async def update_camada(camada_id: str, camada_update: CamadaUpdate, current_user: dict = Depends(get_current_user)):
     existing = await db.camadas.find_one({"_id": ObjectId(camada_id), "user_id": current_user["id"]})
