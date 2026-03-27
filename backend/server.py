@@ -1171,11 +1171,31 @@ async def create_camada(camada: CamadaCreate, current_user: dict = Depends(get_c
     
     return CamadaResponse(**serialize_doc(camada_doc))
 
-@api_router.get("/camadas", response_model=List[CamadaResponse])
-async def get_camadas(current_user: dict = Depends(get_current_user)):
-    camadas = await db.camadas.find({"user_id": current_user["id"]}).sort("created_at", -1).to_list(1000)
-    return [CamadaResponse(**serialize_doc(c)) for c in camadas]
+@api_router.get("/camadas/{camada_id}")
+async def get_camada(camada_id: str, current_user: dict = Depends(get_current_user)):
+    camada = await db.camadas.find_one({
+        "_id": ObjectId(camada_id),
+        "user_id": current_user["id"]
+    })
+    if not camada:
+        raise HTTPException(status_code=404, detail="Camada no encontrada")
 
+    camada_data = serialize_doc(camada)
+
+    cruce_data = None
+    if camada_data.get("cruce_id"):
+        cruce = await db.cruces.find_one({
+            "_id": ObjectId(camada_data["cruce_id"]),
+            "user_id": current_user["id"]
+        })
+        if cruce:
+            cruce_data = serialize_doc(cruce)
+
+    return {
+        **camada_data,
+        "cruce": cruce_data,
+        "criador": camada_data.get("criador_nombre")
+    }
 
 @api_router.put("/camadas/{camada_id}", response_model=CamadaResponse)
 async def update_camada(camada_id: str, camada_update: CamadaUpdate, current_user: dict = Depends(get_current_user)):
