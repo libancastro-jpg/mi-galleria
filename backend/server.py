@@ -1752,6 +1752,9 @@ async def registrar_trabajo(
     trabajo_numero: int,
     tiempo_minutos: int,
     notas: Optional[str] = None,
+    peso: Optional[str] = None,
+    marcaje_mes: Optional[str] = None,
+    marcaje_anio: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
     if trabajo_numero < 1 or trabajo_numero > 5:
@@ -1762,12 +1765,16 @@ async def registrar_trabajo(
         raise HTTPException(status_code=404, detail="Cuido no encontrado")
     
     trabajos = cuido.get("trabajos", [])
+
     for t in trabajos:
         if t["numero"] == trabajo_numero:
             t["tiempo_minutos"] = tiempo_minutos
             t["completado"] = True
             t["fecha_completado"] = datetime.utcnow().strftime("%Y-%m-%d")
             t["notas"] = notas
+            t["peso"] = peso
+            t["marcaje_mes"] = marcaje_mes
+            t["marcaje_anio"] = marcaje_anio
             break
     
     await db.cuido.update_one(
@@ -1775,7 +1782,42 @@ async def registrar_trabajo(
         {"$set": {"trabajos": trabajos, "updated_at": datetime.utcnow()}}
     )
     
-    return {"message": f"Trabajo {trabajo_numero} registrado con {tiempo_minutos} minutos"}
+    return {"message": f"Trabajo {trabajo_numero} registrado correctamente"}
+
+@api_router.delete("/cuido/{cuido_id}/trabajo/{trabajo_numero}")
+async def delete_trabajo(
+    cuido_id: str,
+    trabajo_numero: int,
+    current_user: dict = Depends(get_current_user)
+):
+    cuido = await db.cuido.find_one({"_id": ObjectId(cuido_id), "user_id": current_user["id"]})
+    if not cuido:
+        raise HTTPException(status_code=404, detail="Cuido no encontrado")
+    
+    trabajos = cuido.get("trabajos", [])
+
+    nuevo_trabajos = []
+    eliminado = False
+
+    for t in trabajos:
+        if t["numero"] == trabajo_numero:
+            eliminado = True
+            continue
+
+        if t["numero"] > trabajo_numero:
+            t["numero"] -= 1
+
+        nuevo_trabajos.append(t)
+
+    if not eliminado:
+        raise HTTPException(status_code=404, detail="Trabajo no encontrado")
+
+    await db.cuido.update_one(
+        {"_id": ObjectId(cuido_id)},
+        {"$set": {"trabajos": nuevo_trabajos, "updated_at": datetime.utcnow()}}
+    )
+
+    return {"message": "Trabajo eliminado correctamente"}
 
 @api_router.post("/cuido/{cuido_id}/descanso")
 async def iniciar_descanso(
