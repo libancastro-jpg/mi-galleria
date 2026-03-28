@@ -73,6 +73,11 @@ class UserResponse(BaseModel):
     email: Optional[str] = None
     nombre: Optional[str] = None
     created_at: datetime
+    plan: str = "gratis"
+    records_used: int = 0
+    premium_expires_at: Optional[datetime] = None
+    premium_active: bool = False
+    records_limit: Optional[int] = 20
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -432,6 +437,82 @@ def normalize_pelea_doc(doc: dict) -> dict:
 
     return doc
 
+
+def parse_datetime_safe(value):
+    if not value:
+        return None
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value)
+        except Exception:
+            return None
+    return None
+
+
+def is_premium_active_for_user(user_doc: dict) -> bool:
+    if not user_doc:
+        return False
+
+    if user_doc.get("plan") != "premium":
+        return False
+
+    premium_expires_at = parse_datetime_safe(user_doc.get("premium_expires_at"))
+    if not premium_expires_at:
+        return False
+
+    return premium_expires_at > datetime.utcnow()
+
+
+def get_records_limit_for_user(user_doc: dict):
+    if is_premium_active_for_user(user_doc):
+        return None
+    return 20
+
+
+def build_user_response(user_doc: dict) -> UserResponse:
+    return UserResponse(
+        id=str(user_doc["_id"]),
+        telefono=user_doc["telefono"],
+        email=user_doc.get("email"),
+        nombre=user_doc.get("nombre"),
+        created_at=user_doc["created_at"],
+        plan=user_doc.get("plan", "gratis"),
+        records_used=int(user_doc.get("records_used", 0) or 0),
+        premium_expires_at=parse_datetime_safe(user_doc.get("premium_expires_at")),
+        premium_active=is_premium_active_for_user(user_doc),
+        records_limit=get_records_limit_for_user(user_doc),
+    )
+
+
+async def ensure_user_can_create_records(user_id: str, amount: int = 1):
+    user = await db.users.find_one({"_id": ObjectId(user_id)})
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    if is_premium_active_for_user(user):
+        return
+
+    records_used = int(user.get("records_used", 0) or 0)
+    free_limit = 20
+
+    if records_used + amount > free_limit:
+        raise HTTPException(
+            status_code=403,
+            detail="Has alcanzado el límite del plan gratis. Hazte Premium para seguir registrando."
+        )
+
+
+async def increment_user_records_used(user_id: str, amount: int = 1):
+    await db.users.update_one(
+        {"_id": ObjectId(user_id)},
+        {
+            "$inc": {"records_used": amount},
+            "$set": {"updated_at": datetime.utcnow()}
+        }
+    )
+
 # ============== AUTH ROUTES ==============
 
 @api_router.post("/auth/register", response_model=TokenResponse)
@@ -481,18 +562,29 @@ async def login(credentials: UserLogin):
     
     return TokenResponse(
         access_token=token,
-        user=UserResponse(
-            id=user_id,
-            telefono=user["telefono"],
-            email=user.get("email"),
-            nombre=user.get("nombre"),
-            created_at=user["created_at"]
-        )
+        user=build_user_response(user)
     )
 
 @api_router.get("/auth/me", response_model=UserResponse)
 async def get_me(current_user: dict = Depends(get_current_user)):
-    return UserResponse(**current_user)
+    user = await db.users.find_one({"_id": ObjectId(current_user["id"])})
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    return build_user_response(user)
+
+@api_router.get("/auth/subscription-status")
+async def get_subscription_status(current_user: dict = Depends(get_current_user)):
+    user = await db.users.find_one({"_id": ObjectId(current_user["id"])})
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    return {
+        "plan": user.get("plan", "gratis"),
+        "records_used": int(user.get("records_used", 0) or 0),
+        "premium_expires_at": parse_datetime_safe(user.get("premium_expires_at")),
+        "premium_active": is_premium_active_for_user(user),
+        "records_limit": get_records_limit_for_user(user),
+    }
 
 class ProfileUpdate(BaseModel):
     email: Optional[str] = None
@@ -517,13 +609,7 @@ async def update_profile(
     updated_user = await db.users.find_one({"_id": ObjectId(current_user["id"])})
     return {
         "message": "Perfil actualizado",
-        "user": {
-            "id": str(updated_user["_id"]),
-            "telefono": updated_user["telefono"],
-            "email": updated_user.get("email"),
-            "nombre": updated_user.get("nombre"),
-            "created_at": updated_user["created_at"]
-        }
+        "user": build_user_response(updated_user)
     }
 
 class ChangePinRequest(BaseModel):
@@ -551,6 +637,53 @@ async def change_pin(
     )
     
     return {"message": "PIN actualizado correctamente"}
+
+class ActivatePremiumRequest(BaseModel):
+    plan_type: str  # mensual | anual
+
+@api_router.post("/auth/activate-premium")
+async def activate_premium(
+    data: ActivatePremiumRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    user = await db.users.find_one({"_id": ObjectId(current_user["id"])})
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    plan_type = (data.plan_type or "").strip().lower()
+    if plan_type not in ["mensual", "anual"]:
+        raise HTTPException(status_code=400, detail="plan_type debe ser mensual o anual")
+
+    now = datetime.utcnow()
+    current_exp = parse_datetime_safe(user.get("premium_expires_at"))
+
+    if current_exp and current_exp > now:
+        base_date = current_exp
+    else:
+        base_date = now
+
+    if plan_type == "mensual":
+        new_exp = base_date + timedelta(days=30)
+    else:
+        new_exp = base_date + timedelta(days=365)
+
+    await db.users.update_one(
+        {"_id": ObjectId(current_user["id"])},
+        {
+            "$set": {
+                "plan": "premium",
+                "premium_expires_at": new_exp,
+                "updated_at": datetime.utcnow()
+            }
+        }
+    )
+
+    updated_user = await db.users.find_one({"_id": ObjectId(current_user["id"])})
+
+    return {
+        "message": "Premium activado correctamente",
+        "user": build_user_response(updated_user)
+    }
 
 @api_router.delete("/auth/delete-account")
 async def delete_account(current_user: dict = Depends(get_current_user)):
@@ -591,6 +724,7 @@ async def export_data(current_user: dict = Depends(get_current_user)):
 
 @api_router.post("/aves", response_model=AveResponse)
 async def create_ave(ave: AveCreate, current_user: dict = Depends(get_current_user)):
+    await ensure_user_can_create_records(current_user["id"], 1)
     if ave.padre_id:
         padre = await db.aves.find_one({"_id": ObjectId(ave.padre_id), "user_id": current_user["id"]})
         if padre and padre.get("tipo") != "gallo":
@@ -610,6 +744,8 @@ async def create_ave(ave: AveCreate, current_user: dict = Depends(get_current_us
     
     result = await db.aves.insert_one(ave_doc)
     ave_doc["_id"] = result.inserted_id
+    
+    await increment_user_records_used(current_user["id"], 1)
     
     return AveResponse(**serialize_doc(ave_doc))
 
@@ -1004,6 +1140,7 @@ def normalize_marcas_payload(data: dict, existing: Optional[dict] = None) -> dic
 
 @api_router.post("/cruces", response_model=CruceResponse)
 async def create_cruce(cruce: CruceCreate, current_user: dict = Depends(get_current_user)):
+    await ensure_user_can_create_records(current_user["id"], 1)
     if cruce.padre_id:
         padre = await db.aves.find_one({
             "_id": ObjectId(cruce.padre_id),
@@ -1050,6 +1187,8 @@ async def create_cruce(cruce: CruceCreate, current_user: dict = Depends(get_curr
 
     result = await db.cruces.insert_one(cruce_doc)
     created = await db.cruces.find_one({"_id": result.inserted_id})
+
+    await increment_user_records_used(current_user["id"], 1)
 
     return CruceResponse(**serialize_doc(created))
 
@@ -1152,6 +1291,7 @@ async def delete_cruce(cruce_id: str, current_user: dict = Depends(get_current_u
 
 @api_router.post("/camadas", response_model=CamadaResponse)
 async def create_camada(camada: CamadaCreate, current_user: dict = Depends(get_current_user)):
+    await ensure_user_can_create_records(current_user["id"], 1)
     cruce = await db.cruces.find_one({"_id": ObjectId(camada.cruce_id), "user_id": current_user["id"]})
     if not cruce:
         raise HTTPException(status_code=404, detail="Cruce no encontrado")
@@ -1167,6 +1307,7 @@ async def create_camada(camada: CamadaCreate, current_user: dict = Depends(get_c
     camada_doc["_id"] = result.inserted_id
     
     await db.cruces.update_one({"_id": ObjectId(camada.cruce_id)}, {"$set": {"estado": "hecho"}})
+    await increment_user_records_used(current_user["id"], 1)
     
     return CamadaResponse(**serialize_doc(camada_doc))
 
@@ -1224,6 +1365,10 @@ async def crear_pollitos(
     cantidad: int,
     current_user: dict = Depends(get_current_user)
 ):
+    if cantidad < 1:
+        raise HTTPException(status_code=400, detail="La cantidad debe ser mayor que 0")
+
+    await ensure_user_can_create_records(current_user["id"], cantidad)
     camada = await db.camadas.find_one({"_id": ObjectId(camada_id), "user_id": current_user["id"]})
     if not camada:
         raise HTTPException(status_code=404, detail="Camada no encontrada")
@@ -1260,6 +1405,8 @@ async def crear_pollitos(
         {"$set": {"pollitos_nacidos": cantidad, "updated_at": datetime.utcnow()}}
     )
     
+    await increment_user_records_used(current_user["id"], cantidad)
+    
     return {
         "message": f"{cantidad} pollitos creados",
         "aves": created_aves
@@ -1278,6 +1425,7 @@ async def delete_camada(camada_id: str, current_user: dict = Depends(get_current
 
 @api_router.post("/peleas", response_model=PeleaResponse)
 async def create_pelea(pelea: PeleaCreate, current_user: dict = Depends(get_current_user)):
+    await ensure_user_can_create_records(current_user["id"], 1)
     ave = await db.aves.find_one({"_id": ObjectId(pelea.ave_id), "user_id": current_user["id"]})
     if not ave:
         raise HTTPException(status_code=404, detail="Ave no encontrada")
@@ -1291,6 +1439,8 @@ async def create_pelea(pelea: PeleaCreate, current_user: dict = Depends(get_curr
     
     result = await db.peleas.insert_one(pelea_doc)
     pelea_doc["_id"] = result.inserted_id
+    
+    await increment_user_records_used(current_user["id"], 1)
     
     return PeleaResponse(**normalize_pelea_doc(pelea_doc))
 
@@ -1527,6 +1677,7 @@ async def delete_pelea(pelea_id: str, current_user: dict = Depends(get_current_u
 
 @api_router.post("/salud", response_model=SaludResponse)
 async def create_salud(salud: SaludCreate, current_user: dict = Depends(get_current_user)):
+    await ensure_user_can_create_records(current_user["id"], 1)
     ave = await db.aves.find_one({"_id": ObjectId(salud.ave_id), "user_id": current_user["id"]})
     if not ave:
         raise HTTPException(status_code=404, detail="Ave no encontrada")
@@ -1540,6 +1691,8 @@ async def create_salud(salud: SaludCreate, current_user: dict = Depends(get_curr
     
     result = await db.salud.insert_one(salud_doc)
     salud_doc["_id"] = result.inserted_id
+    
+    await increment_user_records_used(current_user["id"], 1)
     
     return SaludResponse(**serialize_doc(salud_doc))
 
@@ -1611,6 +1764,7 @@ async def delete_salud(salud_id: str, current_user: dict = Depends(get_current_u
 
 @api_router.post("/cuido")
 async def create_cuido(cuido: CuidoCreate, current_user: dict = Depends(get_current_user)):
+    await ensure_user_can_create_records(current_user["id"], 1)
     ave = await db.aves.find_one({"_id": ObjectId(cuido.ave_id), "user_id": current_user["id"]})
     if not ave:
         raise HTTPException(status_code=404, detail="Ave no encontrada")
@@ -1653,6 +1807,8 @@ async def create_cuido(cuido: CuidoCreate, current_user: dict = Depends(get_curr
     
     result = await db.cuido.insert_one(cuido_doc)
     cuido_doc["_id"] = result.inserted_id
+    
+    await increment_user_records_used(current_user["id"], 1)
     
     return serialize_doc(cuido_doc)
 
