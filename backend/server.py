@@ -1757,15 +1757,11 @@ async def registrar_trabajo(
     marcaje_anio: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
-    if trabajo_numero < 1 or trabajo_numero > 5:
-        raise HTTPException(status_code=400, detail="Trabajo debe ser entre 1 y 5")
-
     cuido = await db.cuido.find_one({"_id": ObjectId(cuido_id), "user_id": current_user["id"]})
     if not cuido:
         raise HTTPException(status_code=404, detail="Cuido no encontrado")
 
     trabajos = cuido.get("trabajos", [])
-    encontrado = False
 
     for t in trabajos:
         if t["numero"] == trabajo_numero:
@@ -1776,18 +1772,14 @@ async def registrar_trabajo(
             t["peso"] = peso
             t["marcaje_mes"] = marcaje_mes
             t["marcaje_anio"] = marcaje_anio
-            encontrado = True
             break
-
-    if not encontrado:
-        raise HTTPException(status_code=404, detail="Trabajo no encontrado")
 
     await db.cuido.update_one(
         {"_id": ObjectId(cuido_id)},
-        {"$set": {"trabajos": trabajos, "updated_at": datetime.utcnow()}}
+        {"$set": {"trabajos": trabajos}}
     )
 
-    return {"message": f"Trabajo {trabajo_numero} registrado correctamente"}
+    return {"message": "ok"}
 
 @api_router.delete("/cuido/{cuido_id}/trabajo/{trabajo_numero}")
 async def delete_trabajo(
