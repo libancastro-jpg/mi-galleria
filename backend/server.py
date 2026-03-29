@@ -451,11 +451,19 @@ def parse_datetime_safe(value):
     return None
 
 
+def clean_nullable_string(value):
+    if value is None:
+        return None
+    if isinstance(value, str):
+        cleaned = value.strip()
+        if cleaned == "" or cleaned.lower() == "null":
+            return None
+        return cleaned
+    return value
+
+
 def is_premium_active_for_user(user_doc: dict) -> bool:
     if not user_doc:
-        return False
-
-    if user_doc.get("plan") != "premium":
         return False
 
     premium_expires_at = parse_datetime_safe(user_doc.get("premium_expires_at"))
@@ -473,6 +481,57 @@ def get_records_limit_for_user(user_doc: dict):
 
 def get_effective_plan(user_doc: dict) -> str:
     return "premium" if is_premium_active_for_user(user_doc) else "gratis"
+
+
+async def normalize_user_subscription_state(user_doc: dict):
+    if not user_doc:
+        return None
+
+    effective_plan = get_effective_plan(user_doc)
+    update_fields = {}
+    changed = False
+
+    if user_doc.get("plan") != effective_plan:
+        update_fields["plan"] = effective_plan
+        changed = True
+        user_doc["plan"] = effective_plan
+
+    if effective_plan == "gratis":
+        # Si ya no es premium, limpia cualquier residuo
+        if user_doc.get("premium_expires_at") is not None:
+            update_fields["premium_expires_at"] = None
+            changed = True
+            user_doc["premium_expires_at"] = None
+
+        for field in [
+            "subscription_platform",
+            "subscription_product_id",
+            "subscription_last_transaction_id",
+            "subscription_purchase_token",
+        ]:
+            current = clean_nullable_string(user_doc.get(field))
+            if current is not None:
+                update_fields[field] = None
+                changed = True
+            user_doc[field] = None
+    else:
+        # Si sigue premium, normaliza strings basura tipo "null"
+        for field in [
+            "subscription_platform",
+            "subscription_product_id",
+            "subscription_last_transaction_id",
+            "subscription_purchase_token",
+        ]:
+            user_doc[field] = clean_nullable_string(user_doc.get(field))
+
+    if changed:
+        update_fields["updated_at"] = datetime.utcnow()
+        await db.users.update_one(
+            {"_id": user_doc["_id"]},
+            {"$set": update_fields}
+        )
+
+    return user_doc
 
 
 def build_user_response(user_doc: dict) -> UserResponse:
@@ -582,6 +641,8 @@ async def get_me(current_user: dict = Depends(get_current_user)):
     user = await db.users.find_one({"_id": ObjectId(current_user["id"])})
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    user = await normalize_user_subscription_state(user)
     return build_user_response(user)
 
 @api_router.get("/auth/subscription-status")
@@ -590,15 +651,9 @@ async def get_subscription_status(current_user: dict = Depends(get_current_user)
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
+    user = await normalize_user_subscription_state(user)
     premium_active = is_premium_active_for_user(user)
-    effective_plan = "premium" if premium_active else "gratis"
-
-    if user.get("plan") != effective_plan:
-        await db.users.update_one(
-            {"_id": ObjectId(current_user["id"])},
-            {"$set": {"plan": effective_plan, "updated_at": datetime.utcnow()}}
-        )
-        user["plan"] = effective_plan
+    effective_plan = get_effective_plan(user)
 
     return {
         "plan": effective_plan,
@@ -607,9 +662,9 @@ async def get_subscription_status(current_user: dict = Depends(get_current_user)
         "premium_active": premium_active,
         "records_limit": get_records_limit_for_user(user),
         "premium_started_at": parse_datetime_safe(user.get("premium_started_at")),
-        "subscription_platform": user.get("subscription_platform"),
-        "subscription_product_id": user.get("subscription_product_id"),
-        "subscription_last_transaction_id": user.get("subscription_last_transaction_id"),
+        "subscription_platform": clean_nullable_string(user.get("subscription_platform")),
+        "subscription_product_id": clean_nullable_string(user.get("subscription_product_id")),
+        "subscription_last_transaction_id": clean_nullable_string(user.get("subscription_last_transaction_id")),
     }
 
 class ProfileUpdate(BaseModel):
