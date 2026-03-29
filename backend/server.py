@@ -942,7 +942,7 @@ async def get_aves(
     estado: Optional[str] = None,
     color: Optional[str] = None,
     linea: Optional[str] = None,
-    limit: int = 50,
+    limit: int = 1000,
     current_user: dict = Depends(get_current_user)
 ):
     import time
@@ -951,10 +951,11 @@ async def get_aves(
 
     query = {"user_id": current_user["id"]}
 
-    if tipo:
+    if tipo and tipo != "todos":
         query["tipo"] = tipo
-    if estado:
-        query["estado"] = estado
+
+    # Temporalmente ignoramos estado para no ocultar aves existentes
+    # a usuarios con la app vieja que todavía abre filtrando por "activo".
     if color:
         query["color"] = {"$regex": color, "$options": "i"}
     if linea:
@@ -962,15 +963,24 @@ async def get_aves(
 
     if limit < 1:
         limit = 1
-    if limit > 200:
-        limit = 200
+    if limit > 1000:
+        limit = 1000
 
-    cursor = db.aves.find(query).sort("created_at", -1).limit(limit)
-    cursor = cursor.hint([("user_id", 1), ("estado", 1), ("created_at", -1)])
-    aves = await cursor.to_list(length=limit)
+    aves = await db.aves.find(query).sort("created_at", -1).limit(limit).to_list(length=limit)
+
+    normalized = []
+    now = datetime.utcnow()
+
+    for ave in aves:
+        if "created_at" not in ave or ave.get("created_at") is None:
+            ave["created_at"] = now
+        if "updated_at" not in ave or ave.get("updated_at") is None:
+            ave["updated_at"] = ave["created_at"]
+
+        normalized.append(AveResponse(**serialize_doc(ave)))
 
     print(f"FIN /aves: {(time.time() - start_time):.2f} segundos")
-    return [AveResponse(**serialize_doc(ave)) for ave in aves]
+    return normalized
 
 @api_router.get("/aves/{ave_id}", response_model=AveResponse)
 async def get_ave(ave_id: str, current_user: dict = Depends(get_current_user)):
