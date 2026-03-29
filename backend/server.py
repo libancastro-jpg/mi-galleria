@@ -471,6 +471,10 @@ def get_records_limit_for_user(user_doc: dict):
     return 20
 
 
+def get_effective_plan(user_doc: dict) -> str:
+    return "premium" if is_premium_active_for_user(user_doc) else "gratis"
+
+
 def build_user_response(user_doc: dict) -> UserResponse:
     return UserResponse(
         id=str(user_doc["_id"]),
@@ -478,7 +482,7 @@ def build_user_response(user_doc: dict) -> UserResponse:
         email=user_doc.get("email"),
         nombre=user_doc.get("nombre"),
         created_at=user_doc["created_at"],
-        plan=user_doc.get("plan", "gratis"),
+        plan=get_effective_plan(user_doc),
         records_used=int(user_doc.get("records_used", 0) or 0),
         premium_expires_at=parse_datetime_safe(user_doc.get("premium_expires_at")),
         premium_active=is_premium_active_for_user(user_doc),
@@ -529,6 +533,14 @@ async def register(user_data: UserCreate):
         "email": user_data.email,
         "nombre": user_data.nombre,
         "pin": hash_pin(user_data.pin),
+        "plan": "gratis",
+        "records_used": 0,
+        "premium_expires_at": None,
+        "premium_started_at": None,
+        "subscription_platform": None,
+        "subscription_product_id": None,
+        "subscription_last_transaction_id": None,
+        "subscription_purchase_token": None,
         "created_at": datetime.utcnow(),
         "updated_at": datetime.utcnow()
     }
@@ -578,12 +590,26 @@ async def get_subscription_status(current_user: dict = Depends(get_current_user)
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
+    premium_active = is_premium_active_for_user(user)
+    effective_plan = "premium" if premium_active else "gratis"
+
+    if user.get("plan") != effective_plan:
+        await db.users.update_one(
+            {"_id": ObjectId(current_user["id"])},
+            {"$set": {"plan": effective_plan, "updated_at": datetime.utcnow()}}
+        )
+        user["plan"] = effective_plan
+
     return {
-        "plan": user.get("plan", "gratis"),
+        "plan": effective_plan,
         "records_used": int(user.get("records_used", 0) or 0),
         "premium_expires_at": parse_datetime_safe(user.get("premium_expires_at")),
-        "premium_active": is_premium_active_for_user(user),
+        "premium_active": premium_active,
         "records_limit": get_records_limit_for_user(user),
+        "premium_started_at": parse_datetime_safe(user.get("premium_started_at")),
+        "subscription_platform": user.get("subscription_platform"),
+        "subscription_product_id": user.get("subscription_product_id"),
+        "subscription_last_transaction_id": user.get("subscription_last_transaction_id"),
     }
 
 class ProfileUpdate(BaseModel):
@@ -640,10 +666,82 @@ async def change_pin(
 
 class ActivatePremiumRequest(BaseModel):
     plan_type: str  # mensual | anual
+    platform: Optional[str] = None
+    product_id: Optional[str] = None
+    transaction_id: Optional[str] = None
+    purchase_token: Optional[str] = None
+    restore: bool = False
+
+
+class RestorePremiumRequest(BaseModel):
+    plan_type: str  # mensual | anual
+    platform: Optional[str] = None
+    product_id: Optional[str] = None
+    transaction_id: Optional[str] = None
+    purchase_token: Optional[str] = None
+
 
 @api_router.post("/auth/activate-premium")
 async def activate_premium(
     data: ActivatePremiumRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    user = await db.users.find_one({"_id": ObjectId(current_user["id"])})
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    plan_type = (data.plan_type or "").strip().lower()
+    if plan_type not in ["mensual", "anual"]:
+        raise HTTPException(status_code=400, detail="plan_type debe ser mensual o anual")
+
+    now = datetime.utcnow()
+    current_exp = parse_datetime_safe(user.get("premium_expires_at"))
+    premium_active = bool(current_exp and current_exp > now)
+
+    if premium_active:
+        base_date = current_exp
+    else:
+        base_date = now
+
+    if plan_type == "mensual":
+        new_exp = base_date + timedelta(days=30)
+    else:
+        new_exp = base_date + timedelta(days=365)
+
+    update_fields = {
+        "plan": "premium",
+        "premium_expires_at": new_exp,
+        "updated_at": now,
+    }
+
+    if not premium_active:
+        update_fields["premium_started_at"] = now
+
+    if data.platform:
+        update_fields["subscription_platform"] = data.platform
+    if data.product_id:
+        update_fields["subscription_product_id"] = data.product_id
+    if data.transaction_id:
+        update_fields["subscription_last_transaction_id"] = data.transaction_id
+    if data.purchase_token:
+        update_fields["subscription_purchase_token"] = data.purchase_token
+
+    await db.users.update_one(
+        {"_id": ObjectId(current_user["id"])},
+        {"$set": update_fields}
+    )
+
+    updated_user = await db.users.find_one({"_id": ObjectId(current_user["id"])})
+
+    return {
+        "message": "Premium activado correctamente" if not data.restore else "Premium restaurado correctamente",
+        "user": build_user_response(updated_user)
+    }
+
+
+@api_router.post("/auth/restore-premium")
+async def restore_premium(
+    data: RestorePremiumRequest,
     current_user: dict = Depends(get_current_user)
 ):
     user = await db.users.find_one({"_id": ObjectId(current_user["id"])})
@@ -662,26 +760,33 @@ async def activate_premium(
     else:
         base_date = now
 
-    if plan_type == "mensual":
-        new_exp = base_date + timedelta(days=30)
-    else:
-        new_exp = base_date + timedelta(days=365)
+    new_exp = base_date + (timedelta(days=365) if plan_type == "anual" else timedelta(days=30))
+
+    update_fields = {
+        "plan": "premium",
+        "premium_expires_at": new_exp,
+        "updated_at": now,
+        "premium_started_at": user.get("premium_started_at") or now,
+    }
+
+    if data.platform:
+        update_fields["subscription_platform"] = data.platform
+    if data.product_id:
+        update_fields["subscription_product_id"] = data.product_id
+    if data.transaction_id:
+        update_fields["subscription_last_transaction_id"] = data.transaction_id
+    if data.purchase_token:
+        update_fields["subscription_purchase_token"] = data.purchase_token
 
     await db.users.update_one(
         {"_id": ObjectId(current_user["id"])},
-        {
-            "$set": {
-                "plan": "premium",
-                "premium_expires_at": new_exp,
-                "updated_at": datetime.utcnow()
-            }
-        }
+        {"$set": update_fields}
     )
 
     updated_user = await db.users.find_one({"_id": ObjectId(current_user["id"])})
 
     return {
-        "message": "Premium activado correctamente",
+        "message": "Premium restaurado correctamente",
         "user": build_user_response(updated_user)
     }
 
