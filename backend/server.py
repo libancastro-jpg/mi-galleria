@@ -405,6 +405,15 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 def serialize_doc(doc: dict) -> dict:
     if doc is None:
         return None
+
+    now = datetime.utcnow()
+
+    # Protege respuestas de documentos viejos o sincronizados sin timestamps.
+    if "created_at" not in doc or doc.get("created_at") is None:
+        doc["created_at"] = now
+    if "updated_at" not in doc or doc.get("updated_at") is None:
+        doc["updated_at"] = doc["created_at"]
+
     result = {"id": str(doc["_id"])}
     for k, v in doc.items():
         if k != "_id":
@@ -1369,7 +1378,9 @@ async def get_cruces(
     current_user: dict = Depends(get_current_user)
 ):
     query = {"user_id": current_user["id"]}
-    if estado:
+
+    # Mostrar todo por defecto. Solo filtra si realmente se envía un estado válido.
+    if estado and estado not in ["todos", "all"]:
         query["estado"] = estado
 
     cruces = await db.cruces.find(query).sort("created_at", -1).to_list(1000)
@@ -1621,12 +1632,12 @@ async def get_peleas(
     current_user: dict = Depends(get_current_user)
 ):
     query = {"user_id": current_user["id"]}
-    
+
     if ave_id:
         query["ave_id"] = ave_id
-    
+
     peleas = await db.peleas.find(query).sort("fecha", -1).to_list(1000)
-    return [PeleaResponse(**normalize_pelea_doc(p)) for p in peleas]
+    return [PeleaResponse(**normalize_pelea_doc(serialize_doc(p))) for p in peleas]
 
 
 @api_router.get("/peleas/estadisticas")
@@ -1988,11 +1999,13 @@ async def get_cuidos(
     current_user: dict = Depends(get_current_user)
 ):
     query = {"user_id": current_user["id"]}
-    if estado:
+
+    # Mostrar todo por defecto. Solo filtra si realmente se envía un estado válido.
+    if estado and estado not in ["todos", "all"]:
         query["estado"] = estado
-    
+
     cuidos = await db.cuido.find(query).sort("created_at", -1).to_list(1000)
-    
+
     result = []
     for c in cuidos:
         ave = await db.aves.find_one({"_id": ObjectId(c["ave_id"])})
@@ -2004,7 +2017,7 @@ async def get_cuidos(
             cuido_data["ave_color"] = ave.get("color")
             cuido_data["ave_linea"] = ave.get("linea")
         result.append(cuido_data)
-    
+
     return result
 
 @api_router.get("/cuido/{cuido_id}")
@@ -2288,6 +2301,7 @@ async def sync_upload(data: SyncData, current_user: dict = Depends(get_current_u
     
     for ave in data.aves:
         ave["user_id"] = user_id
+        ave["created_at"] = ave.get("created_at") or datetime.utcnow()
         ave["updated_at"] = datetime.utcnow()
         if "id" in ave and ave["id"]:
             try:
@@ -2306,6 +2320,7 @@ async def sync_upload(data: SyncData, current_user: dict = Depends(get_current_u
     
     for cruce in data.cruces:
         cruce["user_id"] = user_id
+        cruce["created_at"] = cruce.get("created_at") or datetime.utcnow()
         cruce["updated_at"] = datetime.utcnow()
         if "id" in cruce and cruce["id"]:
             try:
