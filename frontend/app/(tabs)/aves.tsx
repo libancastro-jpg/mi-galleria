@@ -23,6 +23,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../src/services/api';
 import { AvesIcon } from '../../src/components/BirdIcons';
+import { useAuth } from '../../src/context/AuthContext';
 
 interface Ave {
   id: string;
@@ -40,6 +41,8 @@ interface Ave {
 
 const galloDefaultImg = require('../../assets/images/gallo.png');
 const gallinaDefaultImg = require('../../assets/images/gallina.png');
+
+const FREE_RECORDS_LIMIT = 20;
 
 const getOptimizedImage = (url?: string, width: number = 300) => {
   if (!url) return undefined;
@@ -122,6 +125,7 @@ const AveCard = memo(function AveCard({
 
 export default function AvesScreen() {
   const router = useRouter();
+  const { user } = useAuth();
 
   const [aves, setAves] = useState<Ave[]>([]);
   const [loading, setLoading] = useState(true);
@@ -129,7 +133,7 @@ export default function AvesScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [filterTipo, setFilterTipo] = useState<string | null>(null);
-  const [filterEstado, setFilterEstado] = useState<string | null>('activo');
+  const [filterEstado, setFilterEstado] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
 
   const isFetchingRef = useRef(false);
@@ -158,6 +162,27 @@ export default function AvesScreen() {
 
     return () => clearTimeout(timeout);
   }, [searchQuery]);
+
+  const handleAddAve = useCallback(() => {
+    const isPremium = user?.plan === 'premium';
+
+    if (!isPremium && aves.length >= FREE_RECORDS_LIMIT) {
+      Alert.alert(
+        'Límite alcanzado',
+        'Has alcanzado el límite del plan gratis. Hazte Premium para seguir registrando.',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Ir a Premium',
+            onPress: () => router.push('/premium' as any),
+          },
+        ]
+      );
+      return;
+    }
+
+    router.push('/ave/new' as any);
+  }, [aves.length, router, user?.plan]);
 
   const fetchAves = useCallback(
     async (isManualRefresh = false, silent = false) => {
@@ -193,17 +218,16 @@ export default function AvesScreen() {
         if (filterEstado) params.estado = filterEstado;
 
         const start = Date.now();
-console.log('⏱️ INICIO fetch /aves');
+        console.log('⏱️ INICIO fetch /aves');
 
         const result = await api.get('/aves', {
           ...params,
-          limit: '50',
         });
 
         console.log('⏱️ FIN fetch /aves:', Date.now() - start, 'ms');
-        
-        const avesData: Ave[] = Array.isArray(result?.data)
-          ? result.data
+
+        const avesData: Ave[] = Array.isArray((result as any)?.data)
+          ? (result as any).data
           : Array.isArray(result)
             ? result
             : [];
@@ -213,6 +237,7 @@ console.log('⏱️ INICIO fetch /aves');
         cacheRef.current[cacheKey] = avesData;
         lastFetchAtRef.current[cacheKey] = Date.now();
         setAves(avesData);
+        setErrorMessage('');
         firstLoadDoneRef.current = true;
       } catch (error) {
         if (!mountedRef.current || requestId !== lastRequestIdRef.current) return;
@@ -267,7 +292,7 @@ console.log('⏱️ INICIO fetch /aves');
 
   const handleOpenAve = useCallback(
     (id: string) => {
-      router.push(`/ave/detail/${id}`);
+      router.push(`/ave/detail/${id}` as any);
     },
     [router]
   );
@@ -290,31 +315,41 @@ console.log('⏱️ INICIO fetch /aves');
     );
   }, [errorMessage]);
 
+  const listEmptyTitle = errorMessage
+    ? 'No se pudieron mostrar las aves'
+    : 'Sin aves';
+
+  const listEmptyText = errorMessage
+    ? 'Intenta nuevamente o desliza hacia abajo para refrescar.'
+    : 'Agrega tu primera ave para comenzar a llevar el control de tu galleria.';
+
+  const showEmptyButton = !errorMessage;
+
   const listEmpty = useMemo(
     () => (
       <View style={styles.emptyState}>
         <Ionicons name="fitness-outline" size={64} color="#4b5563" />
-        <Text style={styles.emptyTitle}>Sin aves</Text>
-        <Text style={styles.emptyText}>
-          Agrega tu primera ave para comenzar a llevar el control de tu galleria.
-        </Text>
-        <TouchableOpacity
-          style={styles.emptyButton}
-          onPress={() => router.push('/ave/new')}
-        >
-          <Ionicons name="add" size={20} color="#000" />
-          <Text style={styles.emptyButtonText}>Agregar Ave</Text>
-        </TouchableOpacity>
+        <Text style={styles.emptyTitle}>{listEmptyTitle}</Text>
+        <Text style={styles.emptyText}>{listEmptyText}</Text>
+        {showEmptyButton ? (
+          <TouchableOpacity
+            style={styles.emptyButton}
+            onPress={handleAddAve}
+          >
+            <Ionicons name="add" size={20} color="#000" />
+            <Text style={styles.emptyButtonText}>Agregar Ave</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
     ),
-    [router]
+    [handleAddAve, listEmptyText, listEmptyTitle, showEmptyButton]
   );
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Mis Aves</Text>
-        <TouchableOpacity style={styles.addButton} onPress={() => router.push('/ave/new')}>
+        <TouchableOpacity style={styles.addButton} onPress={handleAddAve}>
           <Ionicons name="add" size={24} color="#000" />
         </TouchableOpacity>
       </View>

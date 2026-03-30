@@ -1,38 +1,33 @@
-import type { Purchase, PurchaseError, ProductSubscription } from 'react-native-iap';
-
 export function getPremiumSkus() {
   return {
-    ios: [],
-    android: [],
+    ios: [
+      'com.migalleria.app.premium.mensual',
+      'com.migalleria.app.premium.anual',
+    ],
+    android: [
+      'com.migalleria.app.premium.mensual',
+      'com.migalleria.app.premium.anual',
+    ],
   };
 }
 
 export async function initializeIAP(): Promise<boolean> {
-  console.log('IAP desactivado temporalmente');
   return false;
 }
 
-export async function loadSubscriptions(): Promise<ProductSubscription[]> {
-  console.log('Carga de suscripciones desactivada temporalmente');
+export async function loadSubscriptions(): Promise<any[]> {
   return [];
 }
 
 export async function buyPremiumSubscription(_productId: string) {
-  console.log('Compra premium desactivada temporalmente');
-  throw new Error('Las suscripciones premium están desactivadas temporalmente.');
+  throw new Error('IAP ahora se maneja directamente desde premium.tsx');
 }
 
 export function startPurchaseListeners(
-  _onSuccess?: (purchase: Purchase) => void,
-  _onError?: (error: PurchaseError) => void
-) {
-  console.log('Listeners de compra desactivados temporalmente');
-}
+  _onSuccess?: (purchase: any) => void,
+  _onError?: (error: any) => void
+) {}
 
-export function stopPurchaseListeners() {
-  console.log('Listeners de compra detenidos');
-}
+export function stopPurchaseListeners() {}
 
-export async function disconnectIAP() {
-  console.log('IAP desactivado temporalmente');
-}
+export async function disconnectIAP() {}

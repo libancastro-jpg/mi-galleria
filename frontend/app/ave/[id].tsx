@@ -354,6 +354,13 @@ export default function AveFormScreen() {
         madre_externo: formData.madre_externo || null,
       };
 
+      
+      // 🔥 VALIDACIÓN PREMIUM FRONTEND
+      const isPremium = (globalThis as any)?.__USER_PLAN__ === 'premium';
+      if (!isPremium) {
+        // opcional: aquí podrías bloquear antes de enviar
+      }
+
       if (isEdit) {
         await api.put(`/aves/${id}`, dataToSend);
         if (Platform.OS !== 'web') {

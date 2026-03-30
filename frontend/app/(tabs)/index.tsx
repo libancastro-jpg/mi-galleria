@@ -226,11 +226,18 @@ export default function DashboardScreen() {
     </View>
 
     <TouchableOpacity
-      style={styles.profileButton}
-      onPress={() => router.push('/perfil' as any)}
-    >
-      <UserIcon size={30} color={COLORS.gold} />
-    </TouchableOpacity>
+  style={styles.profileButtonPremium}
+  onPress={() => router.push('/perfil' as any)}
+  activeOpacity={0.85}
+>
+  <View style={styles.profileInner}>
+  <UserIcon size={24} color="#fff" />
+  </View>
+
+  <View style={styles.premiumBadge}>
+  <Text style={styles.premiumBadgeText}>👑 PRO</Text>
+</View>
+</TouchableOpacity>
   </View>
 </View>
 
@@ -528,13 +535,13 @@ const styles = StyleSheet.create({
   },
 
   welcomeText: {
-    fontSize: 15,
-    color: COLORS.grayMedium,
+    fontSize: 18,
+    color: 'rgba(38, 37, 37, 0.72)',
     marginBottom: 2,
   },
 
   userName: {
-    fontSize: 18,
+    fontSize: 23,
     fontWeight: '800',
     color: COLORS.black,
   },
@@ -838,7 +845,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(212, 160, 23, 0.15)',
+    backgroundColor: 'rgba(206, 151, 13, 0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -859,5 +866,53 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.grayMedium,
     marginTop: 3,
+  },
+  profileButtonPremium: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: COLORS.gold,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.55)',
+  },
+  
+  profileInner: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(197, 17, 17, 0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  
+  premiumBadge: {
+    position: 'absolute',
+    top: -9,
+    right: -6,
+    backgroundColor: 'rgba(18, 129, 49, 0.68)',
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.68)',
+  },
+  
+  premiumBadgeText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.4,
   },
 });

@@ -6,6 +6,7 @@ import React, {
   ReactNode,
   useCallback,
   useMemo,
+  useRef,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '../services/api';
@@ -18,6 +19,7 @@ interface User {
   nombre?: string;
   created_at: string;
   plan?: string;
+  premium_expires_at?: string;
 }
 
 interface AuthContextType {
@@ -26,10 +28,16 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (telefono: string, pin: string) => Promise<void>;
-  register: (telefono: string, pin: string, email?: string, nombre?: string) => Promise<void>;
+  register: (
+    telefono: string,
+    pin: string,
+    email?: string,
+    nombre?: string
+  ) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (data: { email?: string; nombre?: string }) => Promise<void>;
   refreshUser: () => Promise<void>;
+  syncUserFromBackend: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -41,6 +49,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const refreshingRef = useRef(false);
+  const tokenRef = useRef<string | null>(null);
 
   const clearStoredAuth = useCallback(async () => {
     try {
@@ -57,10 +68,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const applyAuthState = useCallback((nextToken: string | null, nextUser: User | null) => {
-    api.setToken(nextToken);
-    setToken(nextToken);
-    setUser(nextUser);
+  const applyAuthState = useCallback(
+    (nextToken: string | null, nextUser: User | null) => {
+      tokenRef.current = nextToken;
+      api.setToken(nextToken);
+      setToken(nextToken);
+      setUser(nextUser);
+    },
+    []
+  );
+
+  const persistUser = useCallback(async (nextUser: User) => {
+    await AsyncStorage.setItem(AUTH_USER_KEY, JSON.stringify(nextUser));
+  }, []);
+
+  const persistAuth = useCallback(async (nextToken: string, nextUser: User) => {
+    await AsyncStorage.multiSet([
+      [AUTH_TOKEN_KEY, nextToken],
+      [AUTH_USER_KEY, JSON.stringify(nextUser)],
+    ]);
   }, []);
 
   const forceLogout = useCallback(async () => {
@@ -71,12 +97,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [applyAuthState, clearStoredAuth]);
 
-  const persistAuth = useCallback(async (nextToken: string, nextUser: User) => {
-    await AsyncStorage.multiSet([
-      [AUTH_TOKEN_KEY, nextToken],
-      [AUTH_USER_KEY, JSON.stringify(nextUser)],
-    ]);
-  }, []);
+  const syncUserFromBackend = useCallback(async () => {
+    if (refreshingRef.current) return;
+
+    try {
+      refreshingRef.current = true;
+
+      const currentToken = tokenRef.current;
+      if (!currentToken) return;
+
+      api.setToken(currentToken);
+
+      const freshUser = await api.get('/auth/me');
+
+      if (freshUser) {
+        applyAuthState(currentToken, freshUser);
+        await persistUser(freshUser);
+      }
+    } catch (error: any) {
+      if (
+        String(error?.message || '').includes('401') ||
+        String(error?.message || '').toLowerCase().includes('token') ||
+        String(error?.message || '').toLowerCase().includes('autoriz')
+      ) {
+        await forceLogout();
+      }
+    } finally {
+      refreshingRef.current = false;
+    }
+  }, [applyAuthState, forceLogout, persistUser]);
 
   const loadStoredAuth = useCallback(async () => {
     try {
@@ -91,6 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       let parsedUser: User | null = null;
+
       try {
         parsedUser = JSON.parse(storedUser);
       } catch {
@@ -99,38 +149,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       applyAuthState(storedToken, parsedUser);
-
-      try {
-        const freshUser = await api.get('/auth/me', undefined, false);
-        if (freshUser) {
-          setUser(freshUser);
-          await AsyncStorage.setItem(AUTH_USER_KEY, JSON.stringify(freshUser));
-        }
-      } catch (error: any) {
-        if (
-          String(error?.message || '').includes('401') ||
-          String(error?.message || '').toLowerCase().includes('token') ||
-          String(error?.message || '').toLowerCase().includes('autoriz')
-        ) {
-          await forceLogout();
-        }
-      }
+      await syncUserFromBackend();
     } catch (error) {
       console.error('Error loading auth:', error);
       await forceLogout();
     } finally {
       setIsLoading(false);
     }
-  }, [applyAuthState, forceLogout]);
+  }, [applyAuthState, forceLogout, syncUserFromBackend]);
 
   useEffect(() => {
     api.setOnUnauthorized(forceLogout);
     loadStoredAuth();
   }, [forceLogout, loadStoredAuth]);
 
-  const login = useCallback(async (telefono: string, pin: string) => {
-    try {
+  const login = useCallback(
+    async (telefono: string, pin: string) => {
       const response = await api.post('/auth/login', { telefono, pin });
+
       const accessToken = response?.access_token;
       const userData = response?.user;
 
@@ -140,29 +176,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       await persistAuth(accessToken, userData);
       applyAuthState(accessToken, userData);
-    } catch (error: any) {
-      throw new Error(error.message || 'Error al iniciar sesión');
-    }
-  }, [applyAuthState, persistAuth]);
+      await syncUserFromBackend();
+    },
+    [applyAuthState, persistAuth, syncUserFromBackend]
+  );
 
   const register = useCallback(
     async (telefono: string, pin: string, email?: string, nombre?: string) => {
-      try {
-        const response = await api.post('/auth/register', { telefono, pin, email, nombre });
-        const accessToken = response?.access_token;
-        const userData = response?.user;
+      const response = await api.post('/auth/register', {
+        telefono,
+        pin,
+        email,
+        nombre,
+      });
 
-        if (!accessToken || !userData) {
-          throw new Error('Respuesta inválida del servidor');
-        }
+      const accessToken = response?.access_token;
+      const userData = response?.user;
 
-        await persistAuth(accessToken, userData);
-        applyAuthState(accessToken, userData);
-      } catch (error: any) {
-        throw new Error(error.message || 'Error al registrarse');
+      if (!accessToken || !userData) {
+        throw new Error('Respuesta inválida del servidor');
       }
+
+      await persistAuth(accessToken, userData);
+      applyAuthState(accessToken, userData);
+      await syncUserFromBackend();
     },
-    [applyAuthState, persistAuth]
+    [applyAuthState, persistAuth, syncUserFromBackend]
   );
 
   const logout = useCallback(async () => {
@@ -171,38 +210,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateProfile = useCallback(
     async (data: { email?: string; nombre?: string }) => {
-      try {
-        const response = await api.put('/auth/profile', data);
+      const response = await api.put('/auth/profile', data);
 
-        if (response?.user) {
-          setUser(response.user);
-          await AsyncStorage.setItem(AUTH_USER_KEY, JSON.stringify(response.user));
-          return;
-        }
+      if (response?.user) {
+        setUser(response.user);
+        await persistUser(response.user);
+        return;
+      }
 
-        if (user) {
-          const updatedUser = { ...user, ...data };
-          setUser(updatedUser);
-          await AsyncStorage.setItem(AUTH_USER_KEY, JSON.stringify(updatedUser));
-        }
-      } catch (error: any) {
-        throw new Error(error.message || 'Error al actualizar perfil');
+      if (user) {
+        const updatedUser = { ...user, ...data };
+        setUser(updatedUser);
+        await persistUser(updatedUser);
       }
     },
-    [user]
+    [user, persistUser]
   );
 
   const refreshUser = useCallback(async () => {
-    try {
-      const response = await api.get('/auth/me', undefined, false);
-      if (response) {
-        setUser(response);
-        await AsyncStorage.setItem(AUTH_USER_KEY, JSON.stringify(response));
-      }
-    } catch (error) {
-      console.error('Error refreshing user:', error);
-    }
-  }, []);
+    await syncUserFromBackend();
+  }, [syncUserFromBackend]);
 
   const value = useMemo(
     () => ({
@@ -215,8 +242,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       updateProfile,
       refreshUser,
+      syncUserFromBackend,
     }),
-    [user, token, isLoading, login, register, logout, updateProfile, refreshUser]
+    [
+      user,
+      token,
+      isLoading,
+      login,
+      register,
+      logout,
+      updateProfile,
+      refreshUser,
+      syncUserFromBackend,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

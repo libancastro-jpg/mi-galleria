@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Notifications from 'expo-notifications';
 import { api } from '../../src/services/api';
 import { RoosterIcon } from '../../src/components/BirdIcons';
 import { DatePickerField } from '../../src/components/DatePickerField';
@@ -36,6 +37,9 @@ interface Actividad {
   tiempo_minutos?: number;
   fecha: string;
   notas?: string;
+  peso?: string;
+  marcaje_mes?: string;
+  marcaje_anio?: string;
 }
 
 interface Cuido {
@@ -58,30 +62,52 @@ interface Cuido {
 
 const COLORS = {
   gold: '#d4a017',
-  goldLight: 'rgba(212, 160, 23, 0.15)',
-  greenDark: '#1a5d3a',
-  greenLight: 'rgba(26, 93, 58, 0.15)',
-  redDeep: '#8b1a1a',
-  redLight: 'rgba(139, 26, 26, 0.15)',
+  goldLight: 'rgba(212, 160, 23, 0.14)',
+  goldBorder: 'rgba(212, 160, 23, 0.35)',
+  green: '#22c55e',
+  greenDark: '#166534',
+  greenLight: 'rgba(34, 197, 94, 0.12)',
+  red: '#8b1a1a',
+  redLight: 'rgba(139, 26, 26, 0.12)',
   blue: '#3b82f6',
-  blueLight: 'rgba(59, 130, 246, 0.15)',
-  grayDark: '#f5f5f5',
-  grayMedium: '#e0e0e0',
-  grayLight: '#555555',
+  blueLight: 'rgba(59, 130, 246, 0.12)',
+  black: '#171717',
   white: '#ffffff',
   background: '#f5f5f5',
-  green: '#22c55e',
+  border: '#e6e6e6',
+  textMuted: '#6b7280',
+  soft: '#f3f4f6',
+  soft2: '#fafafa',
+  overlay: 'rgba(0,0,0,0.55)',
 };
 
 export default function CuidoDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const isNew = id === 'new';
-  const MEMBERSHIP_PLANS_ROUTE = '/planes';
+
+  const now = new Date();
+  const defaultMonth = String(now.getMonth() + 1).padStart(2, '0');
+  const defaultYear = String(now.getFullYear());
+
+  const availableMonths = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, i) => {
+        const num = i + 1;
+        return num < 10 ? `0${num}` : String(num);
+      }),
+    []
+  );
+
+  const availableYears = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    return Array.from({ length: 10 }, (_, i) => String(currentYear - 2 + i));
+  }, []);
 
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
   const [cuido, setCuido] = useState<Cuido | null>(null);
   const [gallos, setGallos] = useState<Ave[]>([]);
   const [showGalloList, setShowGalloList] = useState(false);
@@ -92,18 +118,17 @@ export default function CuidoDetailScreen() {
   const [actividadTiempo, setActividadTiempo] = useState('');
   const [actividadFecha, setActividadFecha] = useState(new Date().toISOString().split('T')[0]);
   const [actividadNotas, setActividadNotas] = useState('');
+  const [actividadPeso, setActividadPeso] = useState('');
+  const [marcajeMes, setMarcajeMes] = useState(defaultMonth);
+  const [marcajeAnio, setMarcajeAnio] = useState(defaultYear);
+
+  const [openPicker, setOpenPicker] = useState<'mes' | 'anio' | null>(null);
 
   const [showDescansoModal, setShowDescansoModal] = useState(false);
   const [diasDescanso, setDiasDescanso] = useState('');
 
   const [selectedActividad, setSelectedActividad] = useState<Actividad | null>(null);
   const [showDetalleModal, setShowDetalleModal] = useState(false);
-
-  const [showPremiumModal, setShowPremiumModal] = useState(false);
-  const [premiumModalTitle, setPremiumModalTitle] = useState('Límite alcanzado');
-  const [premiumModalMessage, setPremiumModalMessage] = useState(
-    'Has alcanzado el límite de tu plan. Ve a Planes de membresía para continuar.'
-  );
 
   useEffect(() => {
     if (!isNew) {
@@ -122,97 +147,200 @@ export default function CuidoDetailScreen() {
     );
   };
 
-  const isPremiumLimitError = (error: any) => {
-    const code =
-      error?.response?.data?.detail?.code ||
-      error?.response?.data?.code ||
-      error?.code;
+  const formatPesoInput = (value: string) => {
+    const onlyNumbers = value.replace(/\D/g, '').slice(0, 5);
 
-    const message = String(
-      error?.response?.data?.detail?.message ||
-        error?.response?.data?.detail ||
-        error?.response?.data?.message ||
-        error?.message ||
-        ''
-    ).toLowerCase();
+    if (!onlyNumbers) return '';
+    if (onlyNumbers.length === 1) return onlyNumbers;
+    if (onlyNumbers.length <= 3) {
+      return `${onlyNumbers.slice(0, 1)}.${onlyNumbers.slice(1)}`;
+    }
 
-    return (
-      code === 'PREMIUM_REQUIRED' ||
-      code === 'FREE_PLAN_LIMIT_REACHED' ||
-      code === 'TRIAL_EXPIRED' ||
-      code === 'PLAN_REQUIRED' ||
-      message.includes('premium') ||
-      message.includes('membres') ||
-      message.includes('trial') ||
-      message.includes('prueba gratis') ||
-      message.includes('límite') ||
-      message.includes('limite') ||
-      message.includes('plan requerido')
+    return `${onlyNumbers.slice(0, 1)}.${onlyNumbers.slice(1, 3)}.${onlyNumbers.slice(3)}`;
+  };
+
+  const ensureNotificationPermissions = async () => {
+    try {
+      const current = await Notifications.getPermissionsAsync();
+      let status = current.status;
+
+      if (status !== 'granted') {
+        const requested = await Notifications.requestPermissionsAsync();
+        status = requested.status;
+      }
+
+      return status === 'granted';
+    } catch {
+      return false;
+    }
+  };
+
+  const scheduleRestNotifications = async (dias: number) => {
+    const permissionGranted = await ensureNotificationPermissions();
+    if (!permissionGranted) return;
+
+    const currentDate = new Date();
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + dias);
+
+    const oneDayBefore = new Date(endDate.getTime() - 24 * 60 * 60 * 1000);
+    const twelveHoursBefore = new Date(endDate.getTime() - 12 * 60 * 60 * 1000);
+
+    const aveLabel = cuido?.ave_codigo || cuido?.ave_nombre || 'Tu gallo';
+
+    try {
+      if (oneDayBefore > currentDate) {
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: '⏳ Descanso casi terminado',
+            body: `${aveLabel} termina su descanso en 24 horas.`,
+            sound: true,
+          },
+          trigger: oneDayBefore as any,
+        });
+      }
+
+      if (twelveHoursBefore > currentDate) {
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: '🔥 Descanso por finalizar',
+            body: `${aveLabel} termina su descanso en 12 horas.`,
+            sound: true,
+          },
+          trigger: twelveHoursBefore as any,
+        });
+      }
+    } catch {
+      // no rompemos el flujo si falla la programación local
+    }
+  };
+
+  const isTrabajoRegistrado = (t: any) => {
+    return Boolean(
+      t?.completado === true ||
+      t?.fecha_completado ||
+      t?.fecha ||
+      t?.peso ||
+      t?.marcaje_mes ||
+      t?.marcaje_anio ||
+      t?.notas
     );
   };
 
-  const openPremiumModalFromError = (error: any) => {
-    const title =
-      error?.response?.data?.detail?.title ||
-      error?.response?.data?.title ||
-      'Límite alcanzado';
+  const normalizeTrabajo = (t: any, index: number): Actividad | null => {
+    const numero = Number(t?.numero ?? t?.trabajo_numero ?? index + 1);
+    if (!numero || numero < 1) return null;
+    if (!isTrabajoRegistrado(t)) return null;
 
-    const message =
-      error?.response?.data?.detail?.message ||
-      error?.response?.data?.detail ||
-      error?.response?.data?.message ||
-      'Has alcanzado el límite de tu plan. Ve a Planes de membresía para continuar.';
-
-    setPremiumModalTitle(title);
-    setPremiumModalMessage(message);
-    setShowPremiumModal(true);
-  };
-
-  const goToMembershipPlans = () => {
-    setShowPremiumModal(false);
-    router.push(MEMBERSHIP_PLANS_ROUTE as any);
+    return {
+      id: String(t?.id || t?._id || `trabajo${numero}`),
+      tipo: 'trabajo',
+      numero,
+      tiempo_minutos:
+        t?.tiempo_minutos !== undefined && t?.tiempo_minutos !== null
+          ? Number(t.tiempo_minutos)
+          : undefined,
+      fecha:
+        t?.fecha_completado ||
+        t?.fecha ||
+        t?.created_at ||
+        t?.updated_at ||
+        new Date().toISOString().split('T')[0],
+      notas: t?.notas ? String(t.notas) : undefined,
+      peso:
+        t?.peso !== undefined && t?.peso !== null && t?.peso !== ''
+          ? String(t.peso)
+          : undefined,
+      marcaje_mes:
+        t?.marcaje_mes !== undefined && t?.marcaje_mes !== null && t?.marcaje_mes !== ''
+          ? String(t.marcaje_mes).padStart(2, '0')
+          : undefined,
+      marcaje_anio:
+        t?.marcaje_anio !== undefined && t?.marcaje_anio !== null && t?.marcaje_anio !== ''
+          ? String(t.marcaje_anio)
+          : undefined,
+    };
   };
 
   const fetchCuido = async () => {
     try {
       const data = await api.get(`/cuido/${id}`);
-      const actividades: Actividad[] = data.actividades || [];
+      const actividadesMap = new Map<string, Actividad>();
 
-      if (data.tope1_completado && !actividades.find((a) => a.tipo === 'tope' && a.numero === 1)) {
-        actividades.push({
+      if (Array.isArray(data?.actividades)) {
+        data.actividades.forEach((a: any) => {
+          if (!a?.tipo || !a?.numero) return;
+
+          const actividad: Actividad = {
+            id: String(a?.id || a?._id || `${a.tipo}${a.numero}`),
+            tipo: a.tipo,
+            numero: Number(a.numero),
+            tiempo_minutos:
+              a?.tiempo_minutos !== undefined && a?.tiempo_minutos !== null
+                ? Number(a.tiempo_minutos)
+                : undefined,
+            fecha:
+              a?.fecha ||
+              a?.fecha_completado ||
+              a?.created_at ||
+              data?.fecha_inicio ||
+              new Date().toISOString().split('T')[0],
+            notas: a?.notas ? String(a.notas) : undefined,
+            peso:
+              a?.peso !== undefined && a?.peso !== null && a?.peso !== ''
+                ? String(a.peso)
+                : undefined,
+            marcaje_mes:
+              a?.marcaje_mes !== undefined && a?.marcaje_mes !== null && a?.marcaje_mes !== ''
+                ? String(a.marcaje_mes).padStart(2, '0')
+                : undefined,
+            marcaje_anio:
+              a?.marcaje_anio !== undefined && a?.marcaje_anio !== null && a?.marcaje_anio !== ''
+                ? String(a.marcaje_anio)
+                : undefined,
+          };
+
+          actividadesMap.set(`${actividad.tipo}-${actividad.numero}`, actividad);
+        });
+      }
+
+      if (data?.tope1_completado) {
+        actividadesMap.set('tope-1', {
           id: 'tope1',
           tipo: 'tope',
           numero: 1,
-          fecha: data.tope1_fecha || data.fecha_inicio,
-          notas: data.tope1_notas,
+          fecha: data?.tope1_fecha || data?.fecha_inicio || new Date().toISOString().split('T')[0],
+          notas: data?.tope1_notas || undefined,
         });
       }
-      if (data.tope2_completado && !actividades.find((a) => a.tipo === 'tope' && a.numero === 2)) {
-        actividades.push({
+
+      if (data?.tope2_completado) {
+        actividadesMap.set('tope-2', {
           id: 'tope2',
           tipo: 'tope',
           numero: 2,
-          fecha: data.tope2_fecha || data.fecha_inicio,
-          notas: data.tope2_notas,
+          fecha: data?.tope2_fecha || data?.fecha_inicio || new Date().toISOString().split('T')[0],
+          notas: data?.tope2_notas || undefined,
         });
       }
 
-      if (data.trabajos && Array.isArray(data.trabajos)) {
-        data.trabajos.forEach((t: any) => {
-          if (t.completado && !actividades.find((a) => a.tipo === 'trabajo' && a.numero === t.numero)) {
-            actividades.push({
-              id: `trabajo${t.numero}`,
-              tipo: 'trabajo',
-              numero: t.numero,
-              tiempo_minutos: t.tiempo_minutos,
-              fecha: t.fecha_completado || data.fecha_inicio,
-              notas: t.notas,
-            });
-          }
+      if (Array.isArray(data?.trabajos)) {
+        data.trabajos.forEach((t: any, index: number) => {
+          const trabajo = normalizeTrabajo(t, index);
+          if (!trabajo) return;
+          actividadesMap.set(`trabajo-${trabajo.numero}`, trabajo);
         });
       }
 
-      setCuido({ ...data, actividades });
+      const actividades = Array.from(actividadesMap.values()).sort((a, b) => {
+        if (a.tipo !== b.tipo) return a.tipo === 'tope' ? -1 : 1;
+        return a.numero - b.numero;
+      });
+
+      setCuido({
+        ...data,
+        actividades,
+      });
     } catch (error: any) {
       Alert.alert('Error', extractErrorMessage(error));
     } finally {
@@ -247,11 +375,7 @@ export default function CuidoDetailScreen() {
       Alert.alert('Éxito', 'Cuido creado correctamente');
       router.back();
     } catch (error: any) {
-      if (isPremiumLimitError(error)) {
-        openPremiumModalFromError(error);
-      } else {
-        Alert.alert('Error', extractErrorMessage(error));
-      }
+      Alert.alert('Error', extractErrorMessage(error));
     } finally {
       setSaving(false);
     }
@@ -285,58 +409,59 @@ export default function CuidoDetailScreen() {
     );
   };
 
-  const handleAddActividad = async () => {
-    if (!cuido || !actividadTipo) return;
+  const handleDeleteTrabajo = (trabajo: Actividad) => {
+    if (!cuido) return;
 
-    const topeCount = cuido.actividades.filter((a) => a.tipo === 'tope').length;
-    const trabajoCount = cuido.actividades.filter((a) => a.tipo === 'trabajo').length;
-    const numero = actividadTipo === 'tope' ? topeCount + 1 : trabajoCount + 1;
+    Alert.alert(
+      'Eliminar trabajo',
+      `¿Seguro que quieres eliminar el Trabajo ${trabajo.numero}?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const endpoints = [
+                `/cuido/${cuido.id}/trabajo/${trabajo.numero}`,
+                `/cuido/${cuido.id}/trabajo?trabajo_numero=${trabajo.numero}`,
+              ];
 
-    if (actividadTipo === 'trabajo' && !actividadTiempo) {
-      Alert.alert('Error', 'Ingresa el tiempo del trabajo');
-      return;
-    }
+              let deleted = false;
+              let lastError: any = null;
 
-    try {
-      if (actividadTipo === 'tope') {
-        let url = `/cuido/${cuido.id}/tope?tope_numero=${numero}`;
-        if (actividadNotas) {
-          url += `&notas=${encodeURIComponent(actividadNotas)}`;
-        }
-        await api.post(url);
-      } else {
-        const tiempo = parseInt(actividadTiempo);
-        let url = `/cuido/${cuido.id}/trabajo?trabajo_numero=${numero}&tiempo_minutos=${tiempo}`;
-        if (actividadNotas) {
-          url += `&notas=${encodeURIComponent(actividadNotas)}`;
-        }
-        await api.post(url);
-      }
+              for (const endpoint of endpoints) {
+                try {
+                  await api.delete(endpoint);
+                  deleted = true;
+                  break;
+                } catch (err) {
+                  lastError = err;
+                }
+              }
 
-      const newActividad: Actividad = {
-        id: `${actividadTipo}${numero}`,
-        tipo: actividadTipo,
-        numero,
-        tiempo_minutos: actividadTipo === 'trabajo' ? parseInt(actividadTiempo) : undefined,
-        fecha: actividadFecha,
-        notas: actividadNotas || undefined,
-      };
+              if (!deleted) {
+                throw lastError || new Error('No se pudo eliminar el trabajo');
+              }
 
-      setCuido({
-        ...cuido,
-        actividades: [...cuido.actividades, newActividad],
-      });
+              setCuido((prev) => {
+                if (!prev) return prev;
+                return {
+                  ...prev,
+                  actividades: prev.actividades.filter(
+                    (a) => !(a.tipo === 'trabajo' && a.numero === trabajo.numero)
+                  ),
+                };
+              });
 
-      resetAddModal();
-      Alert.alert('Éxito', `${actividadTipo === 'tope' ? 'Tope' : 'Trabajo'} ${numero} registrado`);
-    } catch (error: any) {
-      if (isPremiumLimitError(error)) {
-        resetAddModal();
-        openPremiumModalFromError(error);
-      } else {
-        Alert.alert('Error', extractErrorMessage(error));
-      }
-    }
+              Alert.alert('Éxito', 'Trabajo eliminado correctamente');
+            } catch (error: any) {
+              Alert.alert('Error', extractErrorMessage(error));
+            }
+          },
+        },
+      ]
+    );
   };
 
   const resetAddModal = () => {
@@ -346,12 +471,137 @@ export default function CuidoDetailScreen() {
     setActividadTiempo('');
     setActividadFecha(new Date().toISOString().split('T')[0]);
     setActividadNotas('');
+    setActividadPeso('');
+    setMarcajeMes(defaultMonth);
+    setMarcajeAnio(defaultYear);
+    setOpenPicker(null);
+  };
+
+  const handleAddActividad = async () => {
+    if (!cuido || !actividadTipo) return;
+
+    const topeCount = cuido.actividades.filter((a) => a.tipo === 'tope').length;
+    const trabajoCount = cuido.actividades.filter((a) => a.tipo === 'trabajo').length;
+    const numero = actividadTipo === 'tope' ? topeCount + 1 : trabajoCount + 1;
+
+    if (actividadTipo === 'trabajo' && !actividadTiempo.trim()) {
+      Alert.alert('Error', 'Ingresa el tiempo del trabajo');
+      return;
+    }
+
+    if (actividadTipo === 'trabajo' && !actividadPeso.trim()) {
+      Alert.alert('Error', 'Ingresa el peso del gallo');
+      return;
+    }
+
+    try {
+      if (actividadTipo === 'tope') {
+        let url = `/cuido/${cuido.id}/tope?tope_numero=${numero}`;
+
+        if (actividadNotas.trim()) {
+          url += `&notas=${encodeURIComponent(actividadNotas.trim())}`;
+        }
+
+        if (actividadFecha) {
+          url += `&fecha=${encodeURIComponent(actividadFecha)}`;
+        }
+
+        await api.post(url);
+
+        const nuevoTope: Actividad = {
+          id: `tope${numero}-${Date.now()}`,
+          tipo: 'tope',
+          numero,
+          fecha: actividadFecha || new Date().toISOString().split('T')[0],
+          notas: actividadNotas.trim() || undefined,
+        };
+
+        setCuido((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            actividades: [...prev.actividades, nuevoTope].sort((a, b) => {
+              if (a.tipo !== b.tipo) return a.tipo === 'tope' ? -1 : 1;
+              return a.numero - b.numero;
+            }),
+          };
+        });
+      } else {
+        const tiempo = parseInt(actividadTiempo, 10);
+
+        if (isNaN(tiempo) || tiempo <= 0) {
+          Alert.alert('Error', 'Ingresa un tiempo válido');
+          return;
+        }
+
+        let url = `/cuido/${cuido.id}/trabajo?trabajo_numero=${numero}&tiempo_minutos=${tiempo}`;
+
+        if (actividadNotas.trim()) {
+          url += `&notas=${encodeURIComponent(actividadNotas.trim())}`;
+        }
+
+        if (actividadPeso.trim()) {
+          url += `&peso=${encodeURIComponent(actividadPeso.trim())}`;
+        }
+
+        if (marcajeMes) {
+          url += `&marcaje_mes=${encodeURIComponent(String(marcajeMes).padStart(2, '0'))}`;
+        }
+
+        if (marcajeAnio) {
+          url += `&marcaje_anio=${encodeURIComponent(marcajeAnio)}`;
+        }
+
+        if (actividadFecha) {
+          url += `&fecha=${encodeURIComponent(actividadFecha)}`;
+        }
+
+        await api.post(url);
+
+        const nuevoTrabajo: Actividad = {
+          id: `trabajo${numero}-${Date.now()}`,
+          tipo: 'trabajo',
+          numero,
+          tiempo_minutos: tiempo,
+          fecha: actividadFecha || new Date().toISOString().split('T')[0],
+          notas: actividadNotas.trim() || undefined,
+          peso: actividadPeso.trim() || undefined,
+          marcaje_mes: String(marcajeMes).padStart(2, '0'),
+          marcaje_anio: marcajeAnio || undefined,
+        };
+
+        setCuido((prev) => {
+          if (!prev) return prev;
+
+          const filtradas = prev.actividades.filter(
+            (a) => !(a.tipo === 'trabajo' && a.numero === numero)
+          );
+
+          return {
+            ...prev,
+            actividades: [...filtradas, nuevoTrabajo].sort((a, b) => {
+              if (a.tipo !== b.tipo) return a.tipo === 'tope' ? -1 : 1;
+              return a.numero - b.numero;
+            }),
+          };
+        });
+      }
+
+      resetAddModal();
+
+      Alert.alert(
+        'Éxito',
+        `${actividadTipo === 'tope' ? 'Tope' : 'Trabajo'} ${numero} registrado`
+      );
+    } catch (error: any) {
+      Alert.alert('Error', extractErrorMessage(error));
+    }
   };
 
   const handleDescanso = async () => {
     if (!cuido || !diasDescanso) return;
 
-    const dias = parseInt(diasDescanso);
+    const dias = parseInt(diasDescanso, 10);
     if (isNaN(dias) || dias < 1 || dias > 30) {
       Alert.alert('Error', 'Los días deben ser entre 1 y 30');
       return;
@@ -359,20 +609,29 @@ export default function CuidoDetailScreen() {
 
     try {
       await api.post(`/cuido/${cuido.id}/descanso?dias=${dias}`);
+      await scheduleRestNotifications(dias);
+
+      const fechaInicio = new Date();
+      const fechaFin = new Date();
+      fechaFin.setDate(fechaFin.getDate() + dias);
+
+      setCuido((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          en_descanso: true,
+          dias_descanso: dias,
+          fecha_inicio_descanso: fechaInicio.toISOString(),
+          fecha_fin_descanso: fechaFin.toISOString(),
+        };
+      });
+
       Keyboard.dismiss();
       setShowDescansoModal(false);
       setDiasDescanso('');
-      fetchCuido();
       Alert.alert('Éxito', `Descanso de ${dias} días iniciado`);
     } catch (error: any) {
-      if (isPremiumLimitError(error)) {
-        Keyboard.dismiss();
-        setShowDescansoModal(false);
-        setDiasDescanso('');
-        openPremiumModalFromError(error);
-      } else {
-        Alert.alert('Error', extractErrorMessage(error));
-      }
+      Alert.alert('Error', extractErrorMessage(error));
     }
   };
 
@@ -381,7 +640,16 @@ export default function CuidoDetailScreen() {
 
     try {
       await api.post(`/cuido/${cuido.id}/finalizar-descanso`);
-      fetchCuido();
+      setCuido((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          en_descanso: false,
+          dias_descanso: undefined,
+          fecha_inicio_descanso: undefined,
+          fecha_fin_descanso: undefined,
+        };
+      });
       Alert.alert('Éxito', 'Descanso finalizado');
     } catch (error: any) {
       Alert.alert('Error', extractErrorMessage(error));
@@ -412,8 +680,58 @@ export default function CuidoDetailScreen() {
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+    if (isNaN(date.getTime())) return dateStr;
+
+    return date.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: 'short',
+    });
   };
+
+  const formatDateLong = (dateStr?: string) => {
+    if (!dateStr) return 'N/D';
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return dateStr;
+
+    return date.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    });
+  };
+
+  const topes = useMemo(
+    () =>
+      (cuido?.actividades || [])
+        .filter((a) => a.tipo === 'tope')
+        .sort((a, b) => a.numero - b.numero),
+    [cuido]
+  );
+
+  const trabajos = useMemo(
+    () =>
+      (cuido?.actividades || [])
+        .filter((a) => a.tipo === 'trabajo')
+        .sort((a, b) => a.numero - b.numero),
+    [cuido]
+  );
+
+  const latestTrabajo = useMemo(() => {
+    if (!trabajos.length) return null;
+
+    return [...trabajos].sort((a, b) => {
+      const dateA = new Date(a.fecha).getTime();
+      const dateB = new Date(b.fecha).getTime();
+      if (dateA !== dateB) return dateB - dateA;
+      return b.numero - a.numero;
+    })[0];
+  }, [trabajos]);
+
+  const latestPeso = latestTrabajo?.peso ? `${latestTrabajo.peso} Lb` : 'N/D';
+  const latestMarcaje =
+  latestTrabajo?.marcaje_mes && latestTrabajo?.marcaje_anio
+    ? `M-${String(latestTrabajo.marcaje_mes).padStart(2, '0')}/${latestTrabajo.marcaje_anio}`
+    : 'N/D';
 
   if (loading) {
     return (
@@ -430,9 +748,11 @@ export default function CuidoDetailScreen() {
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#d4a017" />
+            <Ionicons name="arrow-back" size={24} color={COLORS.gold} />
           </TouchableOpacity>
+
           <Text style={styles.headerTitle}>Nuevo Cuido</Text>
+
           <TouchableOpacity
             onPress={handleCreateCuido}
             disabled={saving}
@@ -448,6 +768,7 @@ export default function CuidoDetailScreen() {
 
         <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
           <Text style={styles.sectionTitle}>Seleccionar Gallo</Text>
+
           <TouchableOpacity
             style={styles.selectButton}
             onPress={() => setShowGalloList(!showGalloList)}
@@ -460,10 +781,11 @@ export default function CuidoDetailScreen() {
                   : 'Seleccionar gallo'}
               </Text>
             </View>
+
             <Ionicons
               name={showGalloList ? 'chevron-up' : 'chevron-down'}
               size={20}
-              color={COLORS.grayLight}
+              color={COLORS.textMuted}
             />
           </TouchableOpacity>
 
@@ -489,14 +811,16 @@ export default function CuidoDetailScreen() {
                         <Image source={{ uri: gallo.foto_principal }} style={styles.galloPhoto} />
                       ) : (
                         <View style={styles.galloPhotoPlaceholder}>
-                          <RoosterIcon size={20} color={COLORS.grayLight} />
+                          <RoosterIcon size={20} color={COLORS.textMuted} />
                         </View>
                       )}
+
                       <View style={styles.galloInfo}>
                         <Text style={styles.galloCodigo}>{gallo.codigo}</Text>
-                        {gallo.nombre && <Text style={styles.galloNombre}>{gallo.nombre}</Text>}
+                        {gallo.nombre ? <Text style={styles.galloNombre}>{gallo.nombre}</Text> : null}
                       </View>
                     </View>
+
                     {selectedGallo === gallo.id && (
                       <Ionicons name="checkmark" size={20} color={COLORS.gold} />
                     )}
@@ -509,56 +833,24 @@ export default function CuidoDetailScreen() {
           <View style={styles.infoCard}>
             <Ionicons name="information-circle" size={24} color={COLORS.blue} />
             <Text style={styles.infoText}>
-              Al crear un cuido podrás agregar topes, trabajos y periodos de descanso según las necesidades del gallo.
+              Al crear un cuido podrás agregar topes, trabajos y períodos de descanso según las
+              necesidades del gallo.
             </Text>
           </View>
         </ScrollView>
-
-        <Modal
-          visible={showPremiumModal}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowPremiumModal(false)}
-        >
-          <View style={styles.premiumModalOverlay}>
-            <View style={styles.premiumModal}>
-              <View style={styles.premiumIconWrap}>
-                <Ionicons name="lock-closed" size={30} color={COLORS.gold} />
-              </View>
-
-              <Text style={styles.premiumTitle}>{premiumModalTitle}</Text>
-              <Text style={styles.premiumMessage}>{premiumModalMessage}</Text>
-
-              <TouchableOpacity
-                style={styles.premiumPrimaryButton}
-                onPress={goToMembershipPlans}
-              >
-                <Text style={styles.premiumPrimaryButtonText}>Ver planes de membresía</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.premiumSecondaryButton}
-                onPress={() => setShowPremiumModal(false)}
-              >
-                <Text style={styles.premiumSecondaryButtonText}>Cerrar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
       </SafeAreaView>
     );
   }
-
-  const topes = cuido?.actividades.filter((a) => a.tipo === 'tope') || [];
-  const trabajos = cuido?.actividades.filter((a) => a.tipo === 'trabajo') || [];
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#d4a017" />
+          <Ionicons name="arrow-back" size={24} color={COLORS.gold} />
         </TouchableOpacity>
+
         <Text style={styles.headerTitle}>Cuido</Text>
+
         <View style={styles.headerActions}>
           <TouchableOpacity
             onPress={handleDeleteCuido}
@@ -566,11 +858,12 @@ export default function CuidoDetailScreen() {
             style={styles.deleteButton}
           >
             {deleting ? (
-              <ActivityIndicator size="small" color={COLORS.redDeep} />
+              <ActivityIndicator size="small" color={COLORS.red} />
             ) : (
-              <Ionicons name="trash-outline" size={20} color={COLORS.redDeep} />
+              <Ionicons name="trash-outline" size={20} color={COLORS.red} />
             )}
           </TouchableOpacity>
+
           <TouchableOpacity onPress={handleFinalizar} style={styles.finalizarButton}>
             <Text style={styles.finalizarText}>Finalizar</Text>
           </TouchableOpacity>
@@ -586,30 +879,47 @@ export default function CuidoDetailScreen() {
               <RoosterIcon size={40} color={COLORS.gold} />
             </View>
           )}
+
           <View style={styles.galloDetailInfo}>
             <Text style={styles.galloDetailCodigo}>{cuido?.ave_codigo}</Text>
-            {cuido?.ave_nombre && <Text style={styles.galloDetailNombre}>{cuido.ave_nombre}</Text>}
+            {cuido?.ave_nombre ? <Text style={styles.galloDetailNombre}>{cuido.ave_nombre}</Text> : null}
+
             <View style={styles.galloDetailTags}>
-              {cuido?.ave_color && <Text style={styles.galloDetailTag}>{cuido.ave_color}</Text>}
-              {cuido?.ave_linea && <Text style={styles.galloDetailTag}>{cuido.ave_linea}</Text>}
+              {cuido?.ave_color ? <Text style={styles.galloDetailTag}>{cuido.ave_color}</Text> : null}
+              {cuido?.ave_linea ? <Text style={styles.galloDetailTag}>{cuido.ave_linea}</Text> : null}
+            </View>
+
+            <View style={styles.resumenMetricRow}>
+              <View style={styles.resumenMetricBox}>
+                <Text style={styles.resumenMetricLabel}>Peso actual</Text>
+                <Text style={styles.resumenMetricValue}>{latestPeso}</Text>
+              </View>
+
+              <View style={styles.resumenMetricBox}>
+                <Text style={styles.resumenMetricLabel}>M</Text>
+                <Text style={styles.resumenMetricValue}>{latestMarcaje}</Text>
+              </View>
             </View>
           </View>
-          {cuido?.en_descanso && (
+
+          {cuido?.en_descanso ? (
             <View style={styles.descansoIndicator}>
               <Ionicons name="bed" size={20} color={COLORS.blue} />
               <Text style={styles.descansoIndicatorText}>Descansando</Text>
             </View>
-          )}
+          ) : null}
         </View>
 
-        {cuido?.en_descanso && (
+        {cuido?.en_descanso ? (
           <View style={styles.descansoCard}>
             <View style={styles.descansoHeader}>
               <Ionicons name="bed" size={24} color={COLORS.blue} />
               <Text style={styles.descansoTitle}>Período de Descanso</Text>
             </View>
-            <Text style={styles.descansoInfo}>{cuido.dias_descanso} días de descanso</Text>
-            <Text style={styles.descansoFecha}>Finaliza: {cuido.fecha_fin_descanso}</Text>
+
+            <Text style={styles.descansoInfo}>{cuido.dias_descanso || 0} días de descanso</Text>
+            <Text style={styles.descansoFecha}>Finaliza: {formatDateLong(cuido.fecha_fin_descanso)}</Text>
+
             <TouchableOpacity
               style={styles.finalizarDescansoButton}
               onPress={handleFinalizarDescanso}
@@ -617,11 +927,12 @@ export default function CuidoDetailScreen() {
               <Text style={styles.finalizarDescansoText}>Terminar Descanso</Text>
             </TouchableOpacity>
           </View>
-        )}
+        ) : null}
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Topes ({topes.length})</Text>
-          {!cuido?.en_descanso && (
+
+          {!cuido?.en_descanso ? (
             <TouchableOpacity
               style={styles.addButton}
               onPress={() => {
@@ -631,18 +942,18 @@ export default function CuidoDetailScreen() {
             >
               <Ionicons name="add" size={22} color={COLORS.gold} />
             </TouchableOpacity>
-          )}
+          ) : null}
         </View>
 
         {topes.length === 0 ? (
           <View style={styles.emptyActividad}>
-            <Ionicons name="flash-outline" size={32} color={COLORS.grayLight} />
+            <Ionicons name="flash-outline" size={32} color={COLORS.textMuted} />
             <Text style={styles.emptyActividadText}>Sin topes registrados</Text>
             <Text style={styles.emptyActividadHint}>Presiona + para agregar</Text>
           </View>
         ) : (
           <View style={styles.actividadesGrid}>
-            {topes.sort((a, b) => a.numero - b.numero).map((tope) => (
+            {topes.map((tope) => (
               <TouchableOpacity
                 key={tope.id}
                 style={styles.actividadCard}
@@ -652,15 +963,17 @@ export default function CuidoDetailScreen() {
                 }}
               >
                 <View style={styles.actividadIconCompleted}>
-                  <Ionicons name="flash" size={20} color="#000" />
+                  <Ionicons name="flash" size={18} color="#000" />
                 </View>
+
                 <Text style={styles.actividadLabel}>Tope {tope.numero}</Text>
                 <Text style={styles.actividadFecha}>{formatDate(tope.fecha)}</Text>
-                {tope.notas && (
+
+                {tope.notas ? (
                   <View style={styles.actividadNotasIndicator}>
-                    <Ionicons name="document-text" size={12} color={COLORS.green} />
+                    <Ionicons name="document-text" size={12} color={COLORS.greenDark} />
                   </View>
-                )}
+                ) : null}
               </TouchableOpacity>
             ))}
           </View>
@@ -668,7 +981,8 @@ export default function CuidoDetailScreen() {
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Trabajos ({trabajos.length})</Text>
-          {!cuido?.en_descanso && (
+
+          {!cuido?.en_descanso ? (
             <TouchableOpacity
               style={styles.addButton}
               onPress={() => {
@@ -678,47 +992,79 @@ export default function CuidoDetailScreen() {
             >
               <Ionicons name="add" size={22} color={COLORS.gold} />
             </TouchableOpacity>
-          )}
+          ) : null}
         </View>
 
         {trabajos.length === 0 ? (
           <View style={styles.emptyActividad}>
-            <Ionicons name="barbell-outline" size={32} color={COLORS.grayLight} />
+            <Ionicons name="barbell-outline" size={32} color={COLORS.textMuted} />
             <Text style={styles.emptyActividadText}>Sin trabajos registrados</Text>
             <Text style={styles.emptyActividadHint}>Presiona + para agregar</Text>
           </View>
         ) : (
           <View style={styles.actividadesGrid}>
-            {trabajos.sort((a, b) => a.numero - b.numero).map((trabajo) => (
-              <TouchableOpacity
-                key={trabajo.id}
-                style={styles.actividadCard}
-                onPress={() => {
-                  setSelectedActividad(trabajo);
-                  setShowDetalleModal(true);
-                }}
-              >
-                <View style={styles.actividadIconCompleted}>
-                  <Ionicons name="barbell" size={20} color="#000" />
-                </View>
-                <Text style={styles.actividadLabel}>Trabajo {trabajo.numero}</Text>
-                {trabajo.tiempo_minutos && (
-                  <Text style={styles.actividadTiempo}>{trabajo.tiempo_minutos} min</Text>
-                )}
-                <Text style={styles.actividadFecha}>{formatDate(trabajo.fecha)}</Text>
-                {trabajo.notas && (
-                  <View style={styles.actividadNotasIndicator}>
-                    <Ionicons name="document-text" size={12} color={COLORS.green} />
+            {trabajos.map((trabajo) => (
+              <View key={trabajo.id} style={styles.actividadCardWide}>
+                <TouchableOpacity
+                  style={styles.trabajoDeleteButton}
+                  onPress={() => handleDeleteTrabajo(trabajo)}
+                >
+                  <Ionicons name="trash-outline" size={16} color={COLORS.red} />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.trabajoPressArea}
+                  activeOpacity={0.9}
+                  onPress={() => {
+                    setSelectedActividad(trabajo);
+                    setShowDetalleModal(true);
+                  }}
+                >
+                  <View style={styles.actividadIconCompleted}>
+                    <Ionicons name="barbell" size={18} color="#000" />
                   </View>
-                )}
-              </TouchableOpacity>
+
+                  <Text style={styles.actividadLabel}>Trabajo {trabajo.numero}</Text>
+
+                  {trabajo.tiempo_minutos ? (
+                    <Text style={styles.actividadTiempo}>{trabajo.tiempo_minutos} min</Text>
+                  ) : null}
+
+                  <View style={styles.trabajoCompactInfoRow}>
+                    <View style={styles.trabajoCompactPill}>
+                      <Text style={styles.trabajoCompactLabel}>Peso</Text>
+                      <Text style={styles.trabajoCompactValue}>
+                        {trabajo.peso ? `${trabajo.peso} Lb` : 'N/D'}
+                      </Text>
+                    </View>
+
+                    <View style={styles.trabajoCompactPill}>
+  <Text style={styles.trabajoCompactLabel}>M</Text>
+  <Text style={styles.trabajoCompactValue}>
+    {trabajo.marcaje_mes && trabajo.marcaje_anio
+      ? `M-${String(trabajo.marcaje_mes).padStart(2, '0')}/${trabajo.marcaje_anio}`
+      : 'N/D'}
+  </Text>
+</View>
+                  </View>
+
+                  <Text style={styles.actividadFecha}>{formatDate(trabajo.fecha)}</Text>
+
+                  {trabajo.notas ? (
+                    <View style={styles.actividadNotasIndicator}>
+                      <Ionicons name="document-text" size={12} color={COLORS.greenDark} />
+                    </View>
+                  ) : null}
+                </TouchableOpacity>
+              </View>
             ))}
           </View>
         )}
 
-        {!cuido?.en_descanso && (
+        {!cuido?.en_descanso ? (
           <>
-            <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Descanso</Text>
+            <Text style={[styles.sectionTitle, styles.descansoSectionTitle]}>Descanso</Text>
+
             <TouchableOpacity
               style={styles.descansoButton}
               onPress={() => setShowDescansoModal(true)}
@@ -727,9 +1073,9 @@ export default function CuidoDetailScreen() {
               <Text style={styles.descansoButtonText}>Iniciar Período de Descanso</Text>
             </TouchableOpacity>
           </>
-        )}
+        ) : null}
 
-        <View style={{ height: 40 }} />
+        <View style={styles.bottomSpace} />
       </ScrollView>
 
       <Modal
@@ -738,79 +1084,194 @@ export default function CuidoDetailScreen() {
         animationType="fade"
         onRequestClose={resetAddModal}
       >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <TouchableWithoutFeedback
+          onPress={() => {
+            Keyboard.dismiss();
+            setOpenPicker(null);
+          }}
+        >
           <View style={styles.modalOverlay}>
             <TouchableWithoutFeedback onPress={() => {}}>
-              <View style={styles.modal}>
+              <View style={styles.modalCompact}>
                 <ScrollView
                   keyboardShouldPersistTaps="handled"
                   showsVerticalScrollIndicator={false}
+                  contentContainerStyle={styles.modalScrollContent}
                 >
-                  <Text style={styles.modalTitle}>
-                    Agregar {actividadTipo === 'tope' ? 'Tope' : 'Trabajo'}
-                  </Text>
+                  <View style={styles.modalTopRow}>
+                    <Text style={styles.modalTitle}>
+                      Agregar {actividadTipo === 'tope' ? 'Tope' : 'Trabajo'}
+                    </Text>
 
-                  {actividadTipo === null && (
-                    <>
-                      <Text style={styles.modalLabel}>Tipo de actividad</Text>
-                      <View style={styles.tipoButtons}>
-                        <TouchableOpacity
-                          style={[styles.tipoButton, actividadTipo === 'tope' && styles.tipoButtonActive]}
-                          onPress={() => setActividadTipo('tope')}
-                        >
-                          <Ionicons name="flash" size={24} color={COLORS.gold} />
-                          <Text style={styles.tipoButtonText}>Tope</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[styles.tipoButton, actividadTipo === 'trabajo' && styles.tipoButtonActive]}
-                          onPress={() => setActividadTipo('trabajo')}
-                        >
-                          <Ionicons name="barbell" size={24} color={COLORS.gold} />
-                          <Text style={styles.tipoButtonText}>Trabajo</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </>
-                  )}
+                    <TouchableOpacity onPress={resetAddModal} style={styles.modalCloseIcon}>
+                      <Ionicons name="close" size={20} color={COLORS.black} />
+                    </TouchableOpacity>
+                  </View>
 
-                  {actividadTipo === 'trabajo' && (
+                  {actividadTipo === 'trabajo' ? (
                     <>
                       <Text style={styles.modalLabel}>Tiempo (minutos)</Text>
+
                       <TextInput
                         style={styles.modalInput}
                         value={actividadTiempo}
                         onChangeText={setActividadTiempo}
                         keyboardType="numeric"
-                        placeholder="Ej: 15, 30, 45"
-                        placeholderTextColor={COLORS.grayLight}
+                        placeholder="Ej: 05, 10, 15"
+                        placeholderTextColor={COLORS.textMuted}
                         returnKeyType="done"
                         blurOnSubmit
                       />
-                      <View style={styles.tiempoButtons}>
-                        {[10, 15, 20, 30, 45].map((min) => (
-                          <TouchableOpacity
-                            key={min}
-                            style={[
-                              styles.tiempoButton,
-                              actividadTiempo === min.toString() && styles.tiempoButtonActive,
-                            ]}
-                            onPress={() => {
-                              Keyboard.dismiss();
-                              setActividadTiempo(min.toString());
-                            }}
-                          >
-                            <Text
-                              style={[
-                                styles.tiempoButtonText,
-                                actividadTiempo === min.toString() && styles.tiempoButtonTextActive,
-                              ]}
+
+                      <View style={styles.quickButtonsRow}>
+                        {[10, 15, 20, 30, 45].map((min) => {
+                          const active = actividadTiempo === String(min);
+
+                          return (
+                            <TouchableOpacity
+                              key={min}
+                              style={[styles.quickButton, active && styles.quickButtonActive]}
+                              onPress={() => {
+                                Keyboard.dismiss();
+                                setActividadTiempo(String(min));
+                              }}
                             >
-                              {min}m
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
+                              <Text
+                                style={[
+                                  styles.quickButtonText,
+                                  active && styles.quickButtonTextActive,
+                                ]}
+                              >
+                                {min}m
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+
+                      <View style={styles.compactStatsRow}>
+                        <View style={styles.compactPesoBox}>
+                          <Text style={styles.inlineFieldLabel}>Peso</Text>
+
+                          <View style={styles.compactInputValueRow}>
+                            <TextInput
+                              style={styles.compactInput}
+                              value={actividadPeso}
+                              onChangeText={(text) => setActividadPeso(formatPesoInput(text))}
+                              placeholder="3.1.7"
+                              placeholderTextColor={COLORS.textMuted}
+                              keyboardType="numeric"
+                              returnKeyType="done"
+                              blurOnSubmit
+                            />
+                            <Text style={styles.compactSuffix}>Lb</Text>
+                          </View>
+                        </View>
+
+                        <View style={styles.compactMarcajeBox}>
+                          <Text style={styles.inlineFieldLabel}>M</Text>
+
+                          <View style={styles.marcajeCompactRow}>
+                            <View style={styles.marcajeFieldWrap}>
+                              <TouchableOpacity
+                                style={styles.selectorFieldMonth}
+                                onPress={() => {
+                                  Keyboard.dismiss();
+                                  setOpenPicker(openPicker === 'mes' ? null : 'mes');
+                                }}
+                                activeOpacity={0.85}
+                              >
+                                <Text style={styles.selectorFieldText}>M-{marcajeMes}</Text>
+                                <Ionicons name="chevron-down" size={15} color={COLORS.textMuted} />
+                              </TouchableOpacity>
+
+                              {openPicker === 'mes' ? (
+                                <View style={styles.dropdownListMonth}>
+                                  <ScrollView
+                                    nestedScrollEnabled
+                                    keyboardShouldPersistTaps="handled"
+                                    showsVerticalScrollIndicator={false}
+                                  >
+                                    {availableMonths.map((value) => (
+                                      <TouchableOpacity
+                                        key={value}
+                                        style={[
+                                          styles.dropdownItem,
+                                          marcajeMes === value && styles.dropdownItemActive,
+                                        ]}
+                                        onPress={() => {
+                                          setMarcajeMes(value);
+                                          setOpenPicker(null);
+                                        }}
+                                      >
+                                        <Text
+                                          style={[
+                                            styles.dropdownItemText,
+                                            marcajeMes === value && styles.dropdownItemTextActive,
+                                          ]}
+                                        >
+                                          M-{value}
+                                        </Text>
+                                      </TouchableOpacity>
+                                    ))}
+                                  </ScrollView>
+                                </View>
+                              ) : null}
+                            </View>
+
+                            <Text style={styles.marcajeSlash}>/</Text>
+
+                            <View style={styles.marcajeFieldWrapYear}>
+                              <TouchableOpacity
+                                style={styles.selectorFieldYear}
+                                onPress={() => {
+                                  Keyboard.dismiss();
+                                  setOpenPicker(openPicker === 'anio' ? null : 'anio');
+                                }}
+                                activeOpacity={0.85}
+                              >
+                                <Text style={styles.selectorFieldText}>{marcajeAnio}</Text>
+                                <Ionicons name="chevron-down" size={16} color={COLORS.textMuted} />
+                              </TouchableOpacity>
+
+                              {openPicker === 'anio' ? (
+                                <View style={styles.dropdownListYear}>
+                                  <ScrollView
+                                    nestedScrollEnabled
+                                    keyboardShouldPersistTaps="handled"
+                                    showsVerticalScrollIndicator={false}
+                                  >
+                                    {availableYears.map((value) => (
+                                      <TouchableOpacity
+                                        key={value}
+                                        style={[
+                                          styles.dropdownItem,
+                                          marcajeAnio === value && styles.dropdownItemActive,
+                                        ]}
+                                        onPress={() => {
+                                          setMarcajeAnio(value);
+                                          setOpenPicker(null);
+                                        }}
+                                      >
+                                        <Text
+                                          style={[
+                                            styles.dropdownItemText,
+                                            marcajeAnio === value && styles.dropdownItemTextActive,
+                                          ]}
+                                        >
+                                          {value}
+                                        </Text>
+                                      </TouchableOpacity>
+                                    ))}
+                                  </ScrollView>
+                                </View>
+                              ) : null}
+                            </View>
+                          </View>
+                        </View>
                       </View>
                     </>
-                  )}
+                  ) : null}
 
                   <DatePickerField
                     label="Fecha"
@@ -821,13 +1282,13 @@ export default function CuidoDetailScreen() {
 
                   <Text style={styles.modalLabel}>Notas (opcional)</Text>
                   <TextInput
-                    style={[styles.modalInput, styles.modalInputMultiline]}
+                    style={[styles.modalInput, styles.modalInputMultilineCompact]}
                     value={actividadNotas}
                     onChangeText={setActividadNotas}
                     placeholder="Observaciones..."
-                    placeholderTextColor={COLORS.grayLight}
+                    placeholderTextColor={COLORS.textMuted}
                     multiline
-                    numberOfLines={2}
+                    numberOfLines={3}
                     textAlignVertical="top"
                   />
 
@@ -835,6 +1296,7 @@ export default function CuidoDetailScreen() {
                     <TouchableOpacity style={styles.modalCancelButton} onPress={resetAddModal}>
                       <Text style={styles.modalCancelText}>Cancelar</Text>
                     </TouchableOpacity>
+
                     <TouchableOpacity style={styles.modalConfirmButton} onPress={handleAddActividad}>
                       <Text style={styles.modalConfirmText}>Agregar</Text>
                     </TouchableOpacity>
@@ -858,47 +1320,71 @@ export default function CuidoDetailScreen() {
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={styles.modalOverlay}>
             <TouchableWithoutFeedback onPress={() => {}}>
-              <View style={styles.modal}>
+              <View style={styles.modalCompact}>
                 <ScrollView
                   keyboardShouldPersistTaps="handled"
                   showsVerticalScrollIndicator={false}
+                  contentContainerStyle={styles.modalScrollContent}
                 >
-                  <Text style={styles.modalTitle}>Iniciar Descanso</Text>
+                  <View style={styles.modalTopRow}>
+                    <Text style={styles.modalTitle}>Iniciar Descanso</Text>
+
+                    <TouchableOpacity
+                      onPress={() => {
+                        Keyboard.dismiss();
+                        setShowDescansoModal(false);
+                        setDiasDescanso('');
+                      }}
+                      style={styles.modalCloseIcon}
+                    >
+                      <Ionicons name="close" size={20} color={COLORS.black} />
+                    </TouchableOpacity>
+                  </View>
+
                   <Text style={styles.modalLabel}>Días de descanso (1-30)</Text>
+
                   <TextInput
                     style={styles.modalInput}
                     value={diasDescanso}
                     onChangeText={setDiasDescanso}
                     keyboardType="numeric"
                     placeholder="Ej: 5, 10, 15"
-                    placeholderTextColor={COLORS.grayLight}
+                    placeholderTextColor={COLORS.textMuted}
                     returnKeyType="done"
                     blurOnSubmit
                   />
-                  <View style={styles.diasButtons}>
-                    {[5, 7, 10, 14, 21].map((dias) => (
-                      <TouchableOpacity
-                        key={dias}
-                        style={[
-                          styles.diasButton,
-                          diasDescanso === dias.toString() && styles.diasButtonActive,
-                        ]}
-                        onPress={() => {
-                          Keyboard.dismiss();
-                          setDiasDescanso(dias.toString());
-                        }}
-                      >
-                        <Text
-                          style={[
-                            styles.diasButtonText,
-                            diasDescanso === dias.toString() && styles.diasButtonTextActive,
-                          ]}
+
+                  <View style={styles.quickButtonsRow}>
+                    {[5, 7, 10, 14, 21].map((dias) => {
+                      const active = diasDescanso === String(dias);
+
+                      return (
+                        <TouchableOpacity
+                          key={dias}
+                          style={[styles.quickButton, active && styles.quickButtonActive]}
+                          onPress={() => {
+                            Keyboard.dismiss();
+                            setDiasDescanso(String(dias));
+                          }}
                         >
-                          {dias}d
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
+                          <Text
+                            style={[
+                              styles.quickButtonText,
+                              active && styles.quickButtonTextActive,
+                            ]}
+                          >
+                            {dias}d
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
+
+                  <Text style={styles.notificacionHint}>
+                    Se enviará una notificación 24 horas antes y otra 12 horas antes de finalizar
+                    el descanso.
+                  </Text>
+
                   <View style={styles.modalButtons}>
                     <TouchableOpacity
                       style={styles.modalCancelButton}
@@ -910,6 +1396,7 @@ export default function CuidoDetailScreen() {
                     >
                       <Text style={styles.modalCancelText}>Cancelar</Text>
                     </TouchableOpacity>
+
                     <TouchableOpacity style={styles.modalConfirmButton} onPress={handleDescanso}>
                       <Text style={styles.modalConfirmText}>Iniciar</Text>
                     </TouchableOpacity>
@@ -931,8 +1418,8 @@ export default function CuidoDetailScreen() {
         }}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modal}>
-            {selectedActividad && (
+          <View style={styles.detalleModal}>
+            {selectedActividad ? (
               <>
                 <View style={styles.detalleHeader}>
                   <View
@@ -945,10 +1432,11 @@ export default function CuidoDetailScreen() {
                   >
                     <Ionicons
                       name={selectedActividad.tipo === 'tope' ? 'flash' : 'barbell'}
-                      size={32}
-                      color={selectedActividad.tipo === 'tope' ? COLORS.gold : COLORS.green}
+                      size={30}
+                      color={selectedActividad.tipo === 'tope' ? COLORS.gold : COLORS.greenDark}
                     />
                   </View>
+
                   <Text style={styles.detalleTitle}>
                     {selectedActividad.tipo === 'tope' ? 'Tope' : 'Trabajo'} {selectedActividad.numero}
                   </Text>
@@ -956,27 +1444,41 @@ export default function CuidoDetailScreen() {
 
                 <View style={styles.detalleInfoRow}>
                   <View style={styles.detalleInfoItem}>
-                    <Ionicons name="calendar" size={18} color={COLORS.grayLight} />
+                    <Ionicons name="calendar" size={18} color={COLORS.textMuted} />
                     <Text style={styles.detalleInfoLabel}>Fecha</Text>
-                    <Text style={styles.detalleInfoValue}>
-                      {new Date(selectedActividad.fecha).toLocaleDateString('es-ES', {
-                        day: '2-digit',
-                        month: 'long',
-                        year: 'numeric',
-                      })}
-                    </Text>
+                    <Text style={styles.detalleInfoValue}>{formatDateLong(selectedActividad.fecha)}</Text>
                   </View>
 
-                  {selectedActividad.tiempo_minutos && (
+                  {selectedActividad.tiempo_minutos ? (
                     <View style={styles.detalleInfoItem}>
-                      <Ionicons name="time" size={18} color={COLORS.grayLight} />
+                      <Ionicons name="time" size={18} color={COLORS.textMuted} />
                       <Text style={styles.detalleInfoLabel}>Duración</Text>
                       <Text style={styles.detalleInfoValue}>
                         {selectedActividad.tiempo_minutos} minutos
                       </Text>
                     </View>
-                  )}
+                  ) : null}
                 </View>
+
+                {selectedActividad.tipo === 'trabajo' ? (
+                  <View style={styles.detalleMetricRow}>
+                    <View style={styles.detalleMetricCard}>
+                      <Text style={styles.detalleMetricTitle}>Peso</Text>
+                      <Text style={styles.detalleMetricValue}>
+                        {selectedActividad.peso ? `${selectedActividad.peso} Lb` : 'N/D'}
+                      </Text>
+                    </View>
+
+                    <View style={styles.detalleMetricCard}>
+                      <Text style={styles.detalleMetricTitle}>M</Text>
+                      <Text style={styles.detalleMetricValue}>
+                      {selectedActividad.marcaje_mes && selectedActividad.marcaje_anio
+                    ? `M-${String(selectedActividad.marcaje_mes).padStart(2, '0')}/${selectedActividad.marcaje_anio}`
+                     : 'N/D'}
+                      </Text>
+                    </View>
+                  </View>
+                ) : null}
 
                 {selectedActividad.notas ? (
                   <View style={styles.detalleNotasContainer}>
@@ -988,7 +1490,7 @@ export default function CuidoDetailScreen() {
                   </View>
                 ) : (
                   <View style={styles.detalleNotasEmpty}>
-                    <Ionicons name="document-text-outline" size={24} color={COLORS.grayLight} />
+                    <Ionicons name="document-text-outline" size={24} color={COLORS.textMuted} />
                     <Text style={styles.detalleNotasEmptyText}>Sin notas registradas</Text>
                   </View>
                 )}
@@ -1003,39 +1505,7 @@ export default function CuidoDetailScreen() {
                   <Text style={styles.detalleCerrarText}>Cerrar</Text>
                 </TouchableOpacity>
               </>
-            )}
-          </View>
-        </View>
-      </Modal>
-
-      <Modal
-        visible={showPremiumModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowPremiumModal(false)}
-      >
-        <View style={styles.premiumModalOverlay}>
-          <View style={styles.premiumModal}>
-            <View style={styles.premiumIconWrap}>
-              <Ionicons name="lock-closed" size={30} color={COLORS.gold} />
-            </View>
-
-            <Text style={styles.premiumTitle}>{premiumModalTitle}</Text>
-            <Text style={styles.premiumMessage}>{premiumModalMessage}</Text>
-
-            <TouchableOpacity
-              style={styles.premiumPrimaryButton}
-              onPress={goToMembershipPlans}
-            >
-              <Text style={styles.premiumPrimaryButtonText}>Ver planes de membresía</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.premiumSecondaryButton}
-              onPress={() => setShowPremiumModal(false)}
-            >
-              <Text style={styles.premiumSecondaryButtonText}>Cerrar</Text>
-            </TouchableOpacity>
+            ) : null}
           </View>
         </View>
       </Modal>
@@ -1048,11 +1518,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
+
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1060,58 +1532,69 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.grayMedium,
+    borderBottomColor: COLORS.border,
+    backgroundColor: COLORS.white,
   },
+
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
   },
+
   backButton: {
     width: 40,
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },
+
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#1a1a1a',
+    fontWeight: '700',
+    color: COLORS.black,
   },
+
   saveButton: {
     backgroundColor: COLORS.gold,
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingVertical: 9,
+    borderRadius: 10,
   },
+
   saveButtonText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#000',
   },
+
   deleteButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     backgroundColor: COLORS.redLight,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(139, 26, 26, 0.2)',
+    borderColor: 'rgba(139, 26, 26, 0.18)',
+    marginRight: 6,
   },
+
   finalizarButton: {
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
+
   finalizarText: {
     fontSize: 14,
-    color: COLORS.redDeep,
-    fontWeight: '600',
+    color: COLORS.red,
+    fontWeight: '700',
   },
+
   content: {
     flex: 1,
     padding: 16,
   },
+
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1119,577 +1602,886 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginBottom: 12,
   },
+
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1a1a1a',
+    fontWeight: '700',
+    color: COLORS.black,
   },
+
+  descansoSectionTitle: {
+    marginTop: 24,
+    marginBottom: 12,
+  },
+
   addButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: COLORS.goldLight,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: COLORS.gold,
   },
+
   selectButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: COLORS.grayDark,
-    borderRadius: 12,
+    backgroundColor: COLORS.white,
+    borderRadius: 14,
     padding: 16,
     borderWidth: 1,
-    borderColor: COLORS.grayMedium,
+    borderColor: COLORS.border,
   },
+
   selectButtonContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
   },
+
   selectButtonText: {
     fontSize: 16,
-    color: '#1a1a1a',
+    color: COLORS.black,
+    marginLeft: 12,
   },
+
   selectList: {
-    backgroundColor: COLORS.grayDark,
-    borderRadius: 12,
+    backgroundColor: COLORS.white,
+    borderRadius: 14,
     marginTop: 8,
     borderWidth: 1,
-    borderColor: COLORS.grayMedium,
+    borderColor: COLORS.border,
     maxHeight: 300,
+    overflow: 'hidden',
   },
+
   selectItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.grayMedium,
+    borderBottomColor: COLORS.border,
   },
+
   selectItemActive: {
     backgroundColor: COLORS.goldLight,
   },
+
   galloItemContent: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
   },
+
   galloPhoto: {
     width: 44,
     height: 44,
     borderRadius: 22,
   },
+
   galloPhotoPlaceholder: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: COLORS.grayMedium,
+    backgroundColor: COLORS.soft,
     alignItems: 'center',
     justifyContent: 'center',
   },
+
   galloInfo: {
     marginLeft: 12,
   },
+
   galloCodigo: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1a1a1a',
+    fontWeight: '700',
+    color: COLORS.black,
   },
+
   galloNombre: {
     fontSize: 13,
-    color: COLORS.grayLight,
+    color: COLORS.textMuted,
+    marginTop: 2,
   },
+
   noDataText: {
     fontSize: 14,
-    color: COLORS.grayLight,
+    color: COLORS.textMuted,
     textAlign: 'center',
     padding: 16,
   },
+
   infoCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     backgroundColor: COLORS.blueLight,
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 16,
     marginTop: 24,
-    gap: 12,
   },
+
   infoText: {
     flex: 1,
     fontSize: 14,
-    color: COLORS.grayLight,
+    color: COLORS.textMuted,
     lineHeight: 20,
+    marginLeft: 12,
   },
+
   galloCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.grayDark,
-    borderRadius: 16,
+    backgroundColor: COLORS.white,
+    borderRadius: 18,
     padding: 16,
     borderWidth: 1,
-    borderColor: COLORS.grayMedium,
+    borderColor: COLORS.border,
   },
+
   galloDetailPhoto: {
     width: 72,
     height: 72,
     borderRadius: 36,
   },
+
   galloDetailPhotoPlaceholder: {
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: COLORS.grayMedium,
+    backgroundColor: COLORS.soft,
     alignItems: 'center',
     justifyContent: 'center',
   },
+
   galloDetailInfo: {
     flex: 1,
-    marginLeft: 16,
+    marginLeft: 14,
   },
+
   galloDetailCodigo: {
     fontSize: 22,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
+    fontWeight: '800',
+    color: COLORS.black,
   },
+
   galloDetailNombre: {
-    fontSize: 15,
-    color: COLORS.grayLight,
+    fontSize: 14,
+    color: COLORS.textMuted,
     marginTop: 2,
   },
+
   galloDetailTags: {
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 8,
     flexWrap: 'wrap',
+    marginTop: 8,
   },
+
   galloDetailTag: {
     fontSize: 12,
-    color: COLORS.grayLight,
-    backgroundColor: COLORS.grayMedium,
+    color: COLORS.textMuted,
+    backgroundColor: COLORS.soft,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 6,
+    borderRadius: 8,
+    marginRight: 8,
+    marginBottom: 6,
   },
+
+  resumenMetricRow: {
+    flexDirection: 'row',
+    marginTop: 10,
+  },
+
+  resumenMetricBox: {
+    flex: 1,
+    backgroundColor: COLORS.soft2,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    marginRight: 8,
+  },
+
+  resumenMetricLabel: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    marginBottom: 4,
+  },
+
+  resumenMetricValue: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: COLORS.black,
+  },
+
   descansoIndicator: {
     alignItems: 'center',
     backgroundColor: COLORS.blueLight,
-    padding: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
     borderRadius: 12,
   },
+
   descansoIndicatorText: {
     fontSize: 11,
     color: COLORS.blue,
     marginTop: 4,
+    fontWeight: '600',
   },
+
   descansoCard: {
     backgroundColor: COLORS.blueLight,
     borderRadius: 16,
     padding: 16,
     marginTop: 16,
     borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.3)',
+    borderColor: 'rgba(59, 130, 246, 0.2)',
   },
+
   descansoHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
     marginBottom: 8,
   },
+
   descansoTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     color: COLORS.blue,
+    marginLeft: 8,
   },
+
   descansoInfo: {
     fontSize: 14,
-    color: '#1a1a1a',
+    color: COLORS.black,
     marginBottom: 4,
   },
+
   descansoFecha: {
     fontSize: 13,
-    color: COLORS.grayLight,
+    color: COLORS.textMuted,
   },
+
   finalizarDescansoButton: {
     backgroundColor: COLORS.blue,
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: 10,
+    paddingVertical: 12,
     alignItems: 'center',
     marginTop: 12,
   },
+
   finalizarDescansoText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#1a1a1a',
+    fontWeight: '700',
+    color: COLORS.white,
   },
+
   actividadesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    justifyContent: 'space-between',
   },
+
   actividadCard: {
     width: '31%',
     backgroundColor: COLORS.greenLight,
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: COLORS.green,
+    borderColor: 'rgba(34, 197, 94, 0.28)',
+    marginBottom: 10,
+    position: 'relative',
   },
+
+  actividadCardWide: {
+    width: '48%',
+    backgroundColor: COLORS.greenLight,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(34, 197, 94, 0.28)',
+    marginBottom: 8,
+    position: 'relative',
+    overflow: 'visible',
+  },
+
+  trabajoPressArea: {
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+  },
+
+  trabajoDeleteButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 26, 26, 0.12)',
+    zIndex: 10,
+  },
+
   actividadIconCompleted: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: COLORS.green,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
   },
+
   actividadLabel: {
-    fontSize: 12,
-    color: COLORS.green,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.black,
     textAlign: 'center',
   },
+
   actividadTiempo: {
-    fontSize: 11,
-    color: COLORS.green,
-    marginTop: 2,
-  },
-  actividadFecha: {
-    fontSize: 10,
-    color: COLORS.grayLight,
+    fontSize: 12,
+    color: COLORS.textMuted,
     marginTop: 4,
+    marginBottom: 6,
   },
-  emptyActividad: {
-    alignItems: 'center',
-    paddingVertical: 24,
-    backgroundColor: COLORS.grayDark,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.grayMedium,
-    borderStyle: 'dashed',
-  },
-  emptyActividadText: {
-    fontSize: 14,
-    color: COLORS.grayLight,
+
+  actividadFecha: {
+    fontSize: 12,
+    color: COLORS.textMuted,
     marginTop: 8,
   },
+
+  actividadNotasIndicator: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+  },
+
+  emptyActividad: {
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+
+  emptyActividadText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.black,
+    marginTop: 10,
+  },
+
   emptyActividadHint: {
-    fontSize: 12,
-    color: COLORS.gold,
+    fontSize: 13,
+    color: COLORS.textMuted,
     marginTop: 4,
   },
+
+  trabajoCompactInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    width: '100%',
+  },
+
+  trabajoCompactPill: {
+    flex: 1,
+    backgroundColor: COLORS.white,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    marginHorizontal: 3,
+    alignItems: 'center',
+  },
+
+  trabajoCompactLabel: {
+    fontSize: 10,
+    color: COLORS.textMuted,
+    marginBottom: 2,
+    fontWeight: '600',
+  },
+
+  trabajoCompactValue: {
+    fontSize: 12,
+    color: COLORS.black,
+    fontWeight: '800',
+  },
+
   descansoButton: {
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.25)',
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.blueLight,
-    borderRadius: 12,
-    padding: 16,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.3)',
   },
+
   descansoButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
     color: COLORS.blue,
+    marginLeft: 10,
   },
+
+  bottomSpace: {
+    height: 30,
+  },
+
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    backgroundColor: COLORS.overlay,
     justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+
+  modalCompact: {
+    backgroundColor: COLORS.white,
+    borderRadius: 18,
+    maxHeight: '88%',
+    overflow: 'hidden',
+  },
+
+  modalScrollContent: {
+    padding: 16,
+  },
+
+  modalTopRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    padding: 24,
+    justifyContent: 'space-between',
+    marginBottom: 12,
   },
-  modal: {
-    backgroundColor: COLORS.grayDark,
-    borderRadius: 16,
-    padding: 24,
-    width: '100%',
-    maxWidth: 340,
-    maxHeight: '85%',
-  },
+
   modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
-    marginBottom: 20,
-    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: '800',
+    color: COLORS.black,
   },
+
+  modalCloseIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.soft,
+  },
+
   modalLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.black,
+    marginBottom: 8,
+    marginTop: 6,
+  },
+
+  modalInput: {
+    backgroundColor: COLORS.soft2,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     fontSize: 14,
-    color: COLORS.grayLight,
+    color: COLORS.black,
+  },
+
+  modalInputMultilineCompact: {
+    minHeight: 84,
+    paddingTop: 12,
+  },
+
+  quickButtonsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 10,
+    marginBottom: 6,
+  },
+
+  quickButton: {
+    backgroundColor: COLORS.soft,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginRight: 8,
     marginBottom: 8,
   },
-  modalInput: {
-    backgroundColor: COLORS.grayMedium,
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 16,
-    color: '#1a1a1a',
-    marginBottom: 16,
-  },
-  modalInputMultiline: {
-    height: 80,
-    textAlignVertical: 'top',
-  },
-  tipoButtons: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 20,
-  },
-  tipoButton: {
-    flex: 1,
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: COLORS.grayMedium,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: COLORS.grayMedium,
-  },
-  tipoButtonActive: {
+
+  quickButtonActive: {
+    backgroundColor: COLORS.goldLight,
     borderColor: COLORS.gold,
+  },
+
+  quickButtonText: {
+    fontSize: 13,
+    color: COLORS.black,
+    fontWeight: '600',
+  },
+
+  quickButtonTextActive: {
+    color: COLORS.black,
+    fontWeight: '800',
+  },
+
+  compactStatsRow: {
+    flexDirection: 'row',
+    marginTop: 10,
+    marginBottom: 8,
+  },
+
+  compactPesoBox: {
+    flex: 1,
+    marginRight: 8,
+  },
+
+  compactMarcajeBox: {
+    flex: 1.15,
+  },
+
+  inlineFieldLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.black,
+    marginBottom: 8,
+  },
+
+  compactInputValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.soft2,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    minHeight: 48,
+  },
+
+  compactInput: {
+    flex: 1,
+    fontSize: 14,
+    color: COLORS.black,
+    paddingVertical: 10,
+  },
+
+  compactSuffix: {
+    fontSize: 13,
+    color: COLORS.textMuted,
+    fontWeight: '700',
+    marginLeft: 6,
+  },
+
+  marcajeCompactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  marcajeFieldWrap: {
+    flex: 1,
+    position: 'relative',
+    zIndex: 20,
+  },
+
+  marcajeFieldWrapYear: {
+    flex: 1,
+    position: 'relative',
+    zIndex: 20,
+  },
+
+  selectorFieldMonth: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.soft2,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    minHeight: 48,
+  },
+
+  selectorFieldYear: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.soft2,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    minHeight: 48,
+  },
+
+  selectorFieldText: {
+    fontSize: 13,
+    color: COLORS.black,
+    fontWeight: '700',
+  },
+
+  marcajeSlash: {
+    marginHorizontal: 8,
+    fontSize: 18,
+    fontWeight: '800',
+    color: COLORS.textMuted,
+  },
+
+  dropdownListMonth: {
+    position: 'absolute',
+    top: 52,
+    left: 0,
+    right: 0,
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    maxHeight: 180,
+    overflow: 'hidden',
+    zIndex: 30,
+    elevation: 6,
+  },
+
+  dropdownListYear: {
+    position: 'absolute',
+    top: 52,
+    left: 0,
+    right: 0,
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    maxHeight: 180,
+    overflow: 'hidden',
+    zIndex: 30,
+    elevation: 6,
+  },
+
+  dropdownItem: {
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+
+  dropdownItemActive: {
     backgroundColor: COLORS.goldLight,
   },
-  tipoButtonText: {
-    fontSize: 14,
-    color: '#1a1a1a',
-    marginTop: 8,
+
+  dropdownItemText: {
+    fontSize: 13,
+    color: COLORS.black,
     fontWeight: '600',
   },
-  tiempoButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-    gap: 8,
-    flexWrap: 'wrap',
+
+  dropdownItemTextActive: {
+    fontWeight: '800',
   },
-  tiempoButton: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: COLORS.grayMedium,
-  },
-  tiempoButtonActive: {
-    backgroundColor: COLORS.gold,
-  },
-  tiempoButtonText: {
-    fontSize: 14,
-    color: COLORS.grayLight,
-    fontWeight: '600',
-  },
-  tiempoButtonTextActive: {
-    color: '#000',
-  },
-  diasButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-    gap: 8,
-    flexWrap: 'wrap',
-  },
-  diasButton: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: COLORS.grayMedium,
-  },
-  diasButtonActive: {
-    backgroundColor: COLORS.blue,
-  },
-  diasButtonText: {
-    fontSize: 14,
-    color: COLORS.grayLight,
-    fontWeight: '600',
-  },
-  diasButtonTextActive: {
-    color: '#1a1a1a',
-  },
+
   modalButtons: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
+    marginTop: 18,
   },
+
   modalCancelButton: {
     flex: 1,
-    backgroundColor: COLORS.grayMedium,
+    backgroundColor: COLORS.soft,
     borderRadius: 12,
-    padding: 14,
+    paddingVertical: 13,
     alignItems: 'center',
+    marginRight: 8,
   },
+
   modalCancelText: {
-    fontSize: 16,
-    color: COLORS.grayLight,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.black,
   },
+
   modalConfirmButton: {
     flex: 1,
     backgroundColor: COLORS.gold,
     borderRadius: 12,
-    padding: 14,
+    paddingVertical: 13,
     alignItems: 'center',
+    marginLeft: 8,
   },
+
   modalConfirmText: {
-    fontSize: 16,
+    fontSize: 14,
+    fontWeight: '800',
     color: '#000',
-    fontWeight: '600',
   },
-  actividadNotasIndicator: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-  },
-  detalleHeader: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  detalleIconContainer: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  detalleTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
-  },
-  detalleInfoRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 20,
-  },
-  detalleInfoItem: {
-    flex: 1,
-    backgroundColor: COLORS.grayMedium,
-    borderRadius: 12,
-    padding: 14,
-    alignItems: 'center',
-  },
-  detalleInfoLabel: {
+
+  notificacionHint: {
     fontSize: 12,
-    color: COLORS.grayLight,
+    lineHeight: 18,
+    color: COLORS.textMuted,
     marginTop: 6,
   },
-  detalleInfoValue: {
-    fontSize: 14,
-    color: '#1a1a1a',
-    fontWeight: '600',
-    marginTop: 4,
+
+  detalleModal: {
+    backgroundColor: COLORS.white,
+    borderRadius: 18,
+    marginHorizontal: 16,
+    padding: 18,
+  },
+
+  detalleHeader: {
+    alignItems: 'center',
+    marginBottom: 18,
+  },
+
+  detalleIconContainer: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+
+  detalleTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: COLORS.black,
     textAlign: 'center',
   },
-  detalleNotasContainer: {
-    backgroundColor: COLORS.goldLight,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(212, 160, 23, 0.3)',
+
+  detalleInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 14,
   },
+
+  detalleInfoItem: {
+    flex: 1,
+    backgroundColor: COLORS.soft2,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 14,
+    padding: 12,
+    marginHorizontal: 4,
+  },
+
+  detalleInfoLabel: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    marginTop: 4,
+    marginBottom: 4,
+    fontWeight: '700',
+  },
+
+  detalleInfoValue: {
+    fontSize: 13,
+    color: COLORS.black,
+    fontWeight: '700',
+  },
+
+  detalleMetricRow: {
+    flexDirection: 'row',
+    marginBottom: 14,
+  },
+
+  detalleMetricCard: {
+    flex: 1,
+    backgroundColor: COLORS.soft2,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 14,
+    padding: 14,
+    marginHorizontal: 4,
+    alignItems: 'center',
+  },
+
+  detalleMetricTitle: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    marginBottom: 6,
+    fontWeight: '700',
+  },
+
+  detalleMetricValue: {
+    fontSize: 16,
+    color: COLORS.black,
+    fontWeight: '800',
+  },
+
+  detalleNotasContainer: {
+    backgroundColor: COLORS.soft2,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 16,
+  },
+
   detalleNotasHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 10,
+    marginBottom: 8,
   },
+
   detalleNotasLabel: {
     fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.gold,
+    fontWeight: '800',
+    color: COLORS.black,
+    marginLeft: 8,
   },
+
   detalleNotasText: {
-    fontSize: 15,
-    color: '#1a1a1a',
-    lineHeight: 22,
+    fontSize: 14,
+    color: COLORS.black,
+    lineHeight: 21,
   },
+
   detalleNotasEmpty: {
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.soft2,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 14,
     paddingVertical: 20,
-    marginBottom: 20,
+    paddingHorizontal: 16,
+    marginBottom: 16,
   },
+
   detalleNotasEmptyText: {
-    fontSize: 14,
-    color: COLORS.grayLight,
+    fontSize: 13,
+    color: COLORS.textMuted,
     marginTop: 8,
+    fontWeight: '600',
   },
+
   detalleCerrarButton: {
-    backgroundColor: COLORS.grayMedium,
-    borderRadius: 12,
-    padding: 14,
-    alignItems: 'center',
-  },
-  detalleCerrarText: {
-    fontSize: 16,
-    color: '#1a1a1a',
-    fontWeight: '600',
-  },
-  premiumModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  premiumModal: {
-    width: '100%',
-    maxWidth: 360,
-    backgroundColor: '#ffffff',
-    borderRadius: 18,
-    padding: 24,
-    alignItems: 'center',
-  },
-  premiumIconWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(212, 160, 23, 0.14)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-  },
-  premiumTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1a1a1a',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  premiumMessage: {
-    fontSize: 14,
-    lineHeight: 21,
-    color: '#555555',
-    textAlign: 'center',
-    marginBottom: 22,
-  },
-  premiumPrimaryButton: {
-    width: '100%',
     backgroundColor: COLORS.gold,
-    paddingVertical: 14,
     borderRadius: 12,
+    paddingVertical: 13,
     alignItems: 'center',
-    marginBottom: 10,
   },
-  premiumPrimaryButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#000',
-  },
-  premiumSecondaryButton: {
-    width: '100%',
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-  },
-  premiumSecondaryButtonText: {
+
+  detalleCerrarText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#555555',
+    fontWeight: '800',
+    color: '#000',
   },
 });
