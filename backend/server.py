@@ -415,19 +415,26 @@ def serialize_doc(doc: dict) -> dict:
 
     now = datetime.utcnow()
 
-    # Protege respuestas de documentos viejos o sincronizados sin timestamps.
     if "created_at" not in doc or doc.get("created_at") is None:
         doc["created_at"] = now
     if "updated_at" not in doc or doc.get("updated_at") is None:
         doc["updated_at"] = doc["created_at"]
 
-    result = {"id": str(doc["_id"])}
+    result = {}
+
+    # 🔥 FIX IMPORTANTE
+    if "_id" in doc:
+        result["id"] = str(doc["_id"])
+    else:
+        result["id"] = str(doc.get("id", ""))
+
     for k, v in doc.items():
         if k != "_id":
             if isinstance(v, ObjectId):
                 result[k] = str(v)
             else:
                 result[k] = v
+
     return result
 
 def normalize_pelea_doc(doc: dict) -> dict:
