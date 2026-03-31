@@ -13,6 +13,8 @@ from datetime import datetime, timedelta
 import jwt
 import bcrypt
 from bson import ObjectId
+import time
+import requests
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -36,6 +38,11 @@ if not JWT_SECRET:
     logger.warning("JWT_SECRET not set, using development default. Set JWT_SECRET in production!")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
+
+APPLE_ISSUER_ID = os.environ.get("APPLE_ISSUER_ID")
+APPLE_KEY_ID = os.environ.get("APPLE_KEY_ID")
+APPLE_BUNDLE_ID = os.environ.get("APPLE_BUNDLE_ID")
+APPLE_PRIVATE_KEY_PATH = os.environ.get("APPLE_PRIVATE_KEY_PATH")
 
 app = FastAPI(title="Castador Pro API")
 api_router = APIRouter(prefix="/api")
@@ -572,7 +579,11 @@ async def ensure_user_can_create_records(user_id: str, amount: int = 1):
     if records_used + amount > free_limit:
         raise HTTPException(
             status_code=403,
-            detail="Has alcanzado el límite del plan gratis. Hazte Premium para seguir registrando."
+            detail={
+                "code": "FREE_PLAN_LIMIT_REACHED",
+                "title": "Límite alcanzado",
+                "message": "Has alcanzado el límite del plan gratis. Hazte Premium para seguir registrando."
+            }
         )
 
 
@@ -584,6 +595,129 @@ async def increment_user_records_used(user_id: str, amount: int = 1):
             "$set": {"updated_at": datetime.utcnow()}
         }
     )
+
+
+def _apple_config_ready() -> bool:
+    return bool(
+        APPLE_ISSUER_ID and
+        APPLE_KEY_ID and
+        APPLE_BUNDLE_ID and
+        APPLE_PRIVATE_KEY_PATH and
+        Path(APPLE_PRIVATE_KEY_PATH).exists()
+    )
+
+
+def generate_apple_api_token() -> str:
+    if not _apple_config_ready():
+        raise HTTPException(
+            status_code=500,
+            detail="Configuración Apple incompleta en el backend"
+        )
+
+    with open(APPLE_PRIVATE_KEY_PATH, "r", encoding="utf-8") as f:
+        private_key = f.read()
+
+    now = int(time.time())
+    headers = {
+        "alg": "ES256",
+        "kid": APPLE_KEY_ID,
+        "typ": "JWT",
+    }
+    payload = {
+        "iss": APPLE_ISSUER_ID,
+        "iat": now,
+        "exp": now + 1200,
+        "aud": "appstoreconnect-v1",
+    }
+
+    return jwt.encode(payload, private_key, algorithm="ES256", headers=headers)
+
+
+def parse_apple_timestamp_ms(value) -> Optional[datetime]:
+    if value in (None, ""):
+        return None
+    try:
+        return datetime.utcfromtimestamp(int(value) / 1000)
+    except Exception:
+        return None
+
+
+def extract_apple_transaction_payload(raw: dict) -> dict:
+    if not raw:
+        return {}
+
+    signed_info = raw.get("signedTransactionInfo")
+    if signed_info:
+        try:
+            payload = jwt.decode(
+                signed_info,
+                options={"verify_signature": False, "verify_exp": False, "verify_aud": False},
+                algorithms=["ES256", "HS256", "RS256"],
+            )
+            if isinstance(payload, dict):
+                return payload
+        except Exception:
+            pass
+
+    return raw
+
+
+def verify_apple_transaction_live(transaction_id: str) -> dict:
+    if not transaction_id:
+        raise HTTPException(status_code=400, detail="transaction_id requerido")
+
+    token = generate_apple_api_token()
+    url = f"https://api.storekit.itunes.apple.com/inApps/v1/transactions/{transaction_id}"
+
+    try:
+        response = requests.get(
+            url,
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=25,
+        )
+    except requests.RequestException as e:
+        logger.exception("Error conectando con Apple")
+        raise HTTPException(
+            status_code=502,
+            detail=f"No se pudo validar la compra con Apple: {str(e)}"
+        )
+
+    if response.status_code == 404:
+        raise HTTPException(status_code=400, detail="Transacción de Apple no encontrada")
+
+    if response.status_code >= 400:
+        try:
+            error_payload = response.json()
+        except Exception:
+            error_payload = response.text
+        raise HTTPException(
+            status_code=400,
+            detail=f"Apple rechazó la validación: {error_payload}"
+        )
+
+    try:
+        raw_data = response.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Respuesta inválida de Apple")
+
+    tx = extract_apple_transaction_payload(raw_data)
+    product_id = tx.get("productId")
+    bundle_id = tx.get("bundleId")
+    expires_at = parse_apple_timestamp_ms(tx.get("expiresDate"))
+
+    if not product_id:
+        raise HTTPException(status_code=400, detail="Apple no devolvió productId")
+
+    if bundle_id and APPLE_BUNDLE_ID and bundle_id != APPLE_BUNDLE_ID:
+        raise HTTPException(status_code=400, detail="La compra no pertenece a esta app")
+
+    return {
+        "product_id": product_id,
+        "bundle_id": bundle_id,
+        "expires_at": expires_at,
+        "raw": tx,
+    }
+
 
 # ============== AUTH ROUTES ==============
 
@@ -758,37 +892,70 @@ async def activate_premium(
     if plan_type not in ["mensual", "anual"]:
         raise HTTPException(status_code=400, detail="plan_type debe ser mensual o anual")
 
+    platform = (data.platform or "ios").strip().lower()
+
     now = datetime.utcnow()
     current_exp = parse_datetime_safe(user.get("premium_expires_at"))
     premium_active = bool(current_exp and current_exp > now)
 
-    if premium_active:
-        base_date = current_exp
+    if platform == "ios":
+        if not data.transaction_id:
+            raise HTTPException(status_code=400, detail="transaction_id requerido para iOS")
+
+        apple_result = verify_apple_transaction_live(data.transaction_id)
+        product_id = apple_result["product_id"]
+        expires_at = apple_result["expires_at"]
+
+        allowed_products = {
+            "com.migalleria.app.premium.mensual": "mensual",
+            "com.migalleria.app.premium.anual": "anual",
+        }
+
+        if product_id not in allowed_products:
+            raise HTTPException(status_code=400, detail="Producto de Apple no válido para premium")
+
+        detected_plan = allowed_products[product_id]
+        if detected_plan != plan_type:
+            plan_type = detected_plan
+
+        if expires_at and expires_at > now:
+            new_exp = expires_at
+            premium_started_at = user.get("premium_started_at") or now
+        else:
+            base_date = current_exp if premium_active else now
+            new_exp = base_date + (timedelta(days=365) if plan_type == "anual" else timedelta(days=30))
+            premium_started_at = user.get("premium_started_at") or now
+
+        update_fields = {
+            "plan": "premium",
+            "premium_expires_at": new_exp,
+            "premium_started_at": premium_started_at,
+            "updated_at": now,
+            "subscription_platform": "ios",
+            "subscription_product_id": product_id,
+            "subscription_last_transaction_id": data.transaction_id,
+            "subscription_purchase_token": data.purchase_token,
+        }
     else:
-        base_date = now
+        # Fallback temporal para otras plataformas
+        base_date = current_exp if premium_active else now
+        new_exp = base_date + (timedelta(days=365) if plan_type == "anual" else timedelta(days=30))
 
-    if plan_type == "mensual":
-        new_exp = base_date + timedelta(days=30)
-    else:
-        new_exp = base_date + timedelta(days=365)
+        update_fields = {
+            "plan": "premium",
+            "premium_expires_at": new_exp,
+            "updated_at": now,
+            "premium_started_at": user.get("premium_started_at") or now,
+        }
 
-    update_fields = {
-        "plan": "premium",
-        "premium_expires_at": new_exp,
-        "updated_at": now,
-    }
-
-    if not premium_active:
-        update_fields["premium_started_at"] = now
-
-    if data.platform:
-        update_fields["subscription_platform"] = data.platform
-    if data.product_id:
-        update_fields["subscription_product_id"] = data.product_id
-    if data.transaction_id:
-        update_fields["subscription_last_transaction_id"] = data.transaction_id
-    if data.purchase_token:
-        update_fields["subscription_purchase_token"] = data.purchase_token
+        if data.platform:
+            update_fields["subscription_platform"] = data.platform
+        if data.product_id:
+            update_fields["subscription_product_id"] = data.product_id
+        if data.transaction_id:
+            update_fields["subscription_last_transaction_id"] = data.transaction_id
+        if data.purchase_token:
+            update_fields["subscription_purchase_token"] = data.purchase_token
 
     await db.users.update_one(
         {"_id": ObjectId(current_user["id"])},
@@ -816,31 +983,68 @@ async def restore_premium(
     if plan_type not in ["mensual", "anual"]:
         raise HTTPException(status_code=400, detail="plan_type debe ser mensual o anual")
 
+    platform = (data.platform or "ios").strip().lower()
     now = datetime.utcnow()
     current_exp = parse_datetime_safe(user.get("premium_expires_at"))
+    premium_active = bool(current_exp and current_exp > now)
 
-    if current_exp and current_exp > now:
-        base_date = current_exp
+    if platform == "ios":
+        if not data.transaction_id:
+            raise HTTPException(status_code=400, detail="transaction_id requerido para iOS")
+
+        apple_result = verify_apple_transaction_live(data.transaction_id)
+        product_id = apple_result["product_id"]
+        expires_at = apple_result["expires_at"]
+
+        allowed_products = {
+            "com.migalleria.app.premium.mensual": "mensual",
+            "com.migalleria.app.premium.anual": "anual",
+        }
+
+        if product_id not in allowed_products:
+            raise HTTPException(status_code=400, detail="Producto de Apple no válido para premium")
+
+        detected_plan = allowed_products[product_id]
+        if detected_plan != plan_type:
+            plan_type = detected_plan
+
+        if expires_at and expires_at > now:
+            new_exp = expires_at
+            premium_started_at = user.get("premium_started_at") or now
+        else:
+            base_date = current_exp if premium_active else now
+            new_exp = base_date + (timedelta(days=365) if plan_type == "anual" else timedelta(days=30))
+            premium_started_at = user.get("premium_started_at") or now
+
+        update_fields = {
+            "plan": "premium",
+            "premium_expires_at": new_exp,
+            "updated_at": now,
+            "premium_started_at": premium_started_at,
+            "subscription_platform": "ios",
+            "subscription_product_id": product_id,
+            "subscription_last_transaction_id": data.transaction_id,
+            "subscription_purchase_token": data.purchase_token,
+        }
     else:
-        base_date = now
+        base_date = current_exp if premium_active else now
+        new_exp = base_date + (timedelta(days=365) if plan_type == "anual" else timedelta(days=30))
 
-    new_exp = base_date + (timedelta(days=365) if plan_type == "anual" else timedelta(days=30))
+        update_fields = {
+            "plan": "premium",
+            "premium_expires_at": new_exp,
+            "updated_at": now,
+            "premium_started_at": user.get("premium_started_at") or now,
+        }
 
-    update_fields = {
-        "plan": "premium",
-        "premium_expires_at": new_exp,
-        "updated_at": now,
-        "premium_started_at": user.get("premium_started_at") or now,
-    }
-
-    if data.platform:
-        update_fields["subscription_platform"] = data.platform
-    if data.product_id:
-        update_fields["subscription_product_id"] = data.product_id
-    if data.transaction_id:
-        update_fields["subscription_last_transaction_id"] = data.transaction_id
-    if data.purchase_token:
-        update_fields["subscription_purchase_token"] = data.purchase_token
+        if data.platform:
+            update_fields["subscription_platform"] = data.platform
+        if data.product_id:
+            update_fields["subscription_product_id"] = data.product_id
+        if data.transaction_id:
+            update_fields["subscription_last_transaction_id"] = data.transaction_id
+        if data.purchase_token:
+            update_fields["subscription_purchase_token"] = data.purchase_token
 
     await db.users.update_one(
         {"_id": ObjectId(current_user["id"])},
