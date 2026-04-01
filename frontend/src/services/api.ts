@@ -5,6 +5,23 @@ const BASE_URL =
 // Callback global para manejar logout cuando hay 401 real con token activo
 let onUnauthorized: (() => void | Promise<void>) | null = null;
 
+// Clase de error personalizada para propagar el detail completo del backend
+export class ApiError extends Error {
+  status: number;
+  detail: any;
+
+  constructor(status: number, detail: any) {
+    const message =
+      typeof detail === 'string'
+        ? detail
+        : detail?.message || detail?.detail || `HTTP ${status}`;
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
 class ApiService {
   private token: string | null = null;
 
@@ -63,15 +80,18 @@ class ApiService {
       }
 
       if (!response.ok) {
-        throw new Error(
-          typeof data === 'string'
-            ? data
-            : data?.message || data?.detail || `HTTP ${response.status}`
-        );
+        // FIX: Lanzar ApiError con el detail completo para que el frontend
+        // pueda detectar códigos como FREE_PLAN_LIMIT_REACHED
+        throw new ApiError(response.status, data?.detail || data);
       }
 
       return data;
     } catch (error: any) {
+      // Re-lanzar ApiError sin modificar
+      if (error instanceof ApiError) {
+        throw error;
+      }
+
       if (error?.name === 'AbortError') {
         throw new Error('La solicitud tardó demasiado. Intenta de nuevo.');
       }

@@ -17,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { api } from '../../src/services/api';
+import { api, ApiError } from '../../src/services/api';
 import { DatePickerField } from '../../src/components/DatePickerField';
 
 interface Ave {
@@ -33,7 +33,7 @@ export default function AveFormScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const isEdit = !!id && id !== 'new';
 
-  const MEMBERSHIP_PLANS_ROUTE = '/planes';
+  const MEMBERSHIP_PLANS_ROUTE = '/premium';
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -156,6 +156,12 @@ export default function AveFormScreen() {
   }, []);
 
   const extractErrorMessage = useCallback((error: any) => {
+    if (error instanceof ApiError) {
+      if (typeof error.detail === 'object' && error.detail?.message) {
+        return error.detail.message;
+      }
+      return error.message;
+    }
     return (
       error?.response?.data?.detail?.message ||
       error?.response?.data?.detail ||
@@ -166,33 +172,29 @@ export default function AveFormScreen() {
   }, []);
 
   const isPremiumLimitError = useCallback((error: any) => {
-  const code =
-    error?.response?.data?.detail?.code ||
-    error?.response?.data?.code ||
-    error?.code;
-
-  return (
-    code === 'PREMIUM_REQUIRED' ||
-    code === 'FREE_PLAN_LIMIT_REACHED' ||
-    code === 'TRIAL_EXPIRED' ||
-    code === 'PLAN_REQUIRED'
-  );
-}, []);
+    if (error instanceof ApiError) {
+      const code =
+        error.detail?.code ||
+        (typeof error.detail === 'object' && error.detail?.code);
+      return (
+        code === 'PREMIUM_REQUIRED' ||
+        code === 'FREE_PLAN_LIMIT_REACHED' ||
+        code === 'TRIAL_EXPIRED' ||
+        code === 'PLAN_REQUIRED' ||
+        error.status === 403
+      );
+    }
+    return false;
+  }, []);
 
   const openPremiumModalFromError = useCallback((error: any) => {
-    const title =
-      error?.response?.data?.detail?.title ||
-      error?.response?.data?.title ||
-      'Límite alcanzado';
-
-    const message =
-      error?.response?.data?.detail?.message ||
-      error?.response?.data?.detail ||
-      error?.response?.data?.message ||
-      'Has alcanzado el límite de tu plan. Ve a Planes de membresía para continuar.';
-
-    setPremiumModalTitle(title);
-    setPremiumModalMessage(message);
+    if (error instanceof ApiError && typeof error.detail === 'object') {
+      setPremiumModalTitle(error.detail?.title || 'Límite alcanzado');
+      setPremiumModalMessage(
+        error.detail?.message ||
+          'Has alcanzado el límite de tu plan. Hazte Premium para seguir registrando.'
+      );
+    }
     setShowPremiumModal(true);
   }, []);
 
@@ -1360,786 +1362,127 @@ export default function AveFormScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1a1a1a',
-  },
-  saveButton: {
-    backgroundColor: '#f59e0b',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  saveButtonDisabled: {
-    opacity: 0.7,
-  },
-  saveButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#000',
-  },
-  form: {
-    flex: 1,
-  },
-  formContent: {
-    padding: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#9ca3af',
-    marginBottom: 8,
-    marginTop: 16,
-  },
-  input: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: '#1a1a1a',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  textArea: {
-    minHeight: 100,
-    textAlignVertical: 'top',
-  },
-  tipoContainer: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  tipoButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  tipoButtonActive: {
-    backgroundColor: '#f59e0b',
-    borderColor: '#f59e0b',
-  },
-  tipoText: {
-    fontSize: 16,
-    color: '#9ca3af',
-  },
-  tipoTextActive: {
-    color: '#000',
-    fontWeight: '600',
-  },
-  estadoContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  estadoButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  estadoButtonActive: {
-    backgroundColor: '#22c55e',
-    borderColor: '#22c55e',
-  },
-  estadoText: {
-    fontSize: 14,
-    color: '#9ca3af',
-  },
-  estadoTextActive: {
-    color: '#000',
-    fontWeight: '600',
-  },
-  selectButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  selectButtonText: {
-    fontSize: 16,
-    color: '#9ca3af',
-  },
-  colorGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 12,
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  colorOption: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: '#e0e0e0',
-    borderWidth: 1,
-    borderColor: '#3a3a3a',
-  },
-  colorOptionActive: {
-    backgroundColor: '#f59e0b',
-    borderColor: '#f59e0b',
-  },
-  colorOptionText: {
-    fontSize: 14,
-    color: '#9ca3af',
-  },
-  colorOptionTextActive: {
-    color: '#000',
-    fontWeight: '600',
-  },
-  photoModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  photoModal: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 24,
-    width: '100%',
-    maxWidth: 340,
-  },
-  photoModalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  photoModalSubtitle: {
-    fontSize: 14,
-    color: '#555555',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  photoModalOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 12,
-    marginBottom: 12,
-    gap: 16,
-  },
-  photoModalIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  photoModalOptionText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1a1a1a',
-  },
-  photoModalOptionSubtext: {
-    fontSize: 12,
-    color: '#555555',
-    marginTop: 2,
-  },
-  photoModalCancel: {
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  photoModalCancelText: {
-    fontSize: 16,
-    color: '#555555',
-    fontWeight: '500',
-  },
-  placaContainer: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  placaInput: {
-    flex: 1,
-  },
-  colorPlacaButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    gap: 6,
-  },
-  colorPlacaDot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  colorPlacaText: {
-    fontSize: 14,
-    color: '#555555',
-  },
-  colorPlacaGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 8,
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  colorPlacaOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#f5f5f5',
-    gap: 6,
-  },
-  colorPlacaOptionActive: {
-    backgroundColor: '#d4a017',
-  },
-  colorPlacaDotSmall: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.1)',
-  },
-  colorPlacaOptionText: {
-    fontSize: 13,
-    color: '#1a1a1a',
-  },
-  castadorList: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    overflow: 'hidden',
-  },
-  castadorNuevoButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 14,
-    backgroundColor: 'rgba(212, 160, 23, 0.08)',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-    gap: 10,
-  },
-  castadorNuevoText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#d4a017',
-  },
-  nuevoCastadorForm: {
-    padding: 12,
-    backgroundColor: '#f5f5f5',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  nuevoCastadorInput: {
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 14,
-    color: '#1a1a1a',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    marginBottom: 8,
-  },
-  nuevoCastadorConfirm: {
-    backgroundColor: '#d4a017',
-    borderRadius: 8,
-    padding: 10,
-    alignItems: 'center',
-  },
-  nuevoCastadorConfirmText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#000',
-  },
-  castadoresExistentes: {
-    padding: 12,
-  },
-  castadoresTitle: {
-    fontSize: 12,
-    color: '#555555',
-    marginBottom: 8,
-    fontWeight: '500',
-  },
-  castadorItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 12,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-    marginBottom: 6,
-  },
-  castadorItemActive: {
-    backgroundColor: 'rgba(212, 160, 23, 0.15)',
-    borderWidth: 1,
-    borderColor: '#d4a017',
-  },
-  castadorNombre: {
-    fontSize: 15,
-    color: '#1a1a1a',
-    fontWeight: '500',
-  },
-  castadorCantidad: {
-    backgroundColor: '#e0e0e0',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  castadorCantidadText: {
-    fontSize: 12,
-    color: '#555555',
-    fontWeight: '600',
-  },
-  noCastadores: {
-    padding: 16,
-    textAlign: 'center',
-    color: '#555555',
-    fontSize: 14,
-  },
-  padresSectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 14,
-    marginTop: 20,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  padresSectionHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  padresSectionTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1a1a1a',
-  },
-  padresSectionContent: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 14,
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  photoSectionCentered: {
-    alignItems: 'center',
-    marginBottom: 20,
-    paddingVertical: 10,
-  },
-  photoContainerCircle: {
-    position: 'relative',
-    width: 100,
-    height: 100,
-  },
-  photoCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 3,
-    borderColor: '#d4a017',
-  },
-  photoPlaceholderCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(212, 160, 23, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#d4a017',
-    borderStyle: 'dashed',
-  },
-  photoPlusIcon: {
-    position: 'absolute',
-    bottom: 2,
-    right: 2,
-    backgroundColor: '#d4a017',
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  removePhotoButtonCircle: {
-    position: 'absolute',
-    top: -5,
-    right: -5,
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-  },
-  treeFormContainer: {
-    alignItems: 'center',
-    paddingVertical: 16,
-  },
-  treeFormCurrentBird: {
-    alignItems: 'center',
-  },
-  treeFormNodeMain: {
-    backgroundColor: 'rgba(212, 160, 23, 0.15)',
-    borderRadius: 12,
-    padding: 12,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#d4a017',
-    minWidth: 90,
-  },
-  treeFormPhoto: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginBottom: 6,
-  },
-  treeFormPhotoPlaceholder: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#f5f5f5',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6,
-  },
-  treeFormPhotoPlaceholderEmpty: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#f5f5f5',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6,
-    borderWidth: 2,
-    borderColor: '#e0e0e0',
-    borderStyle: 'dashed',
-  },
-  treeFormNodeCode: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#1a1a1a',
-    textAlign: 'center',
-  },
-  treeFormConnectorVertical: {
-    width: 2,
-    height: 16,
-    backgroundColor: '#d4a017',
-  },
-  treeFormConnectorHorizontal: {
-    width: 120,
-    height: 2,
-    backgroundColor: '#d4a017',
-    marginBottom: 8,
-  },
-  treeFormParentsRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-    width: '100%',
-  },
-  treeFormParentColumn: {
-    flex: 1,
-    alignItems: 'center',
-    maxWidth: 150,
-  },
-  treeFormDivider: {
-    width: 20,
-  },
-  treeFormLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#d4a017',
-    textTransform: 'uppercase',
-    marginBottom: 8,
-  },
-  treeFormNode: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    minWidth: 100,
-    width: '100%',
-  },
-  treeFormNodeSelected: {
-    borderColor: '#d4a017',
-    backgroundColor: 'rgba(212, 160, 23, 0.08)',
-  },
-  treeFormNodePlaceholder: {
-    fontSize: 12,
-    color: '#9ca3af',
-  },
-  treeFormNodeExternal: {
-    fontSize: 10,
-    color: '#f59e0b',
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  treeFormSelectList: {
-    position: 'absolute',
-    top: '100%',
-    left: 0,
-    right: 0,
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    marginTop: 4,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    maxHeight: 200,
-    zIndex: 100,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  treeFormSelectOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-    gap: 8,
-  },
-  treeFormSelectOptionActive: {
-    backgroundColor: 'rgba(212, 160, 23, 0.1)',
-  },
-  treeFormSelectOptionText: {
-    fontSize: 13,
-    color: '#1a1a1a',
-  },
-  treeFormSelectOptionTextAdd: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#f59e0b',
-  },
-  treeFormInput: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    fontSize: 13,
-    color: '#1a1a1a',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  treeFormConfirmBtn: {
-    backgroundColor: '#f59e0b',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    justifyContent: 'center',
-  },
-  treeFormConfirmText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#000',
-  },
-  treeFormLabelMain: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#d4a017',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 6,
-  },
-  treeFormNodeGalleria: {
-    fontSize: 10,
-    color: '#555555',
-    marginTop: 2,
-  },
-  treeFormExternalInputContainer: {
-    padding: 10,
-    backgroundColor: '#f5f5f5',
-    gap: 8,
-  },
-  treeFormAddAbueloBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    backgroundColor: 'rgba(212, 160, 23, 0.1)',
-    borderRadius: 16,
-    gap: 4,
-  },
-  treeFormAddAbueloText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#d4a017',
-  },
-  abuelosTreeSection: {
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  abuelosTreeConnectorFromParent: {
-    width: 2,
-    height: 12,
-    backgroundColor: '#d4a017',
-  },
-  abuelosTreeHorizontal: {
-    width: 100,
-    height: 2,
-    backgroundColor: '#d4a017',
-    marginBottom: 8,
-  },
-  abuelosTreeRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 16,
-  },
-  abueloTreeItem: {
-    alignItems: 'center',
-  },
-  abueloTreeLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#9ca3af',
-    marginBottom: 6,
-  },
-  abueloTreeNode: {
-    backgroundColor: '#f9f9f9',
-    borderRadius: 10,
-    padding: 10,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    minWidth: 80,
-  },
-  abueloTreeIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6,
-  },
-  abueloTreeInput: {
-    backgroundColor: '#ffffff',
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    fontSize: 11,
-    color: '#1a1a1a',
-    textAlign: 'center',
-    width: 70,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  premiumModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  premiumModal: {
-    width: '100%',
-    maxWidth: 360,
-    backgroundColor: '#ffffff',
-    borderRadius: 18,
-    padding: 24,
-    alignItems: 'center',
-  },
-  premiumIconWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(212, 160, 23, 0.14)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-  },
-  premiumTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1a1a1a',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  premiumMessage: {
-    fontSize: 14,
-    lineHeight: 21,
-    color: '#555555',
-    textAlign: 'center',
-    marginBottom: 22,
-  },
-  premiumPrimaryButton: {
-    width: '100%',
-    backgroundColor: '#d4a017',
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  premiumPrimaryButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#000',
-  },
-  premiumSecondaryButton: {
-    width: '100%',
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-  },
-  premiumSecondaryButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#555555',
-  },
+  container: { flex: 1, backgroundColor: '#f5f5f5' },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#e0e0e0' },
+  backButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  title: { fontSize: 18, fontWeight: '600', color: '#1a1a1a' },
+  saveButton: { backgroundColor: '#f59e0b', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
+  saveButtonDisabled: { opacity: 0.7 },
+  saveButtonText: { fontSize: 14, fontWeight: '600', color: '#000' },
+  form: { flex: 1 },
+  formContent: { padding: 16 },
+  label: { fontSize: 14, fontWeight: '500', color: '#9ca3af', marginBottom: 8, marginTop: 16 },
+  input: { backgroundColor: '#ffffff', borderRadius: 12, padding: 16, fontSize: 16, color: '#1a1a1a', borderWidth: 1, borderColor: '#e0e0e0' },
+  textArea: { minHeight: 100, textAlignVertical: 'top' },
+  tipoContainer: { flexDirection: 'row', gap: 12 },
+  tipoButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff', borderRadius: 12, padding: 16, gap: 8, borderWidth: 1, borderColor: '#e0e0e0' },
+  tipoButtonActive: { backgroundColor: '#f59e0b', borderColor: '#f59e0b' },
+  tipoText: { fontSize: 16, color: '#9ca3af' },
+  tipoTextActive: { color: '#000', fontWeight: '600' },
+  estadoContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  estadoButton: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e0e0e0' },
+  estadoButtonActive: { backgroundColor: '#22c55e', borderColor: '#22c55e' },
+  estadoText: { fontSize: 14, color: '#9ca3af' },
+  estadoTextActive: { color: '#000', fontWeight: '600' },
+  selectButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#ffffff', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#e0e0e0' },
+  selectButtonText: { fontSize: 16, color: '#9ca3af' },
+  colorGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12, backgroundColor: '#ffffff', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#e0e0e0' },
+  colorOption: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, backgroundColor: '#e0e0e0', borderWidth: 1, borderColor: '#3a3a3a' },
+  colorOptionActive: { backgroundColor: '#f59e0b', borderColor: '#f59e0b' },
+  colorOptionText: { fontSize: 14, color: '#9ca3af' },
+  colorOptionTextActive: { color: '#000', fontWeight: '600' },
+  photoModalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.8)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  photoModal: { backgroundColor: '#ffffff', borderRadius: 16, padding: 24, width: '100%', maxWidth: 340 },
+  photoModalTitle: { fontSize: 20, fontWeight: 'bold', color: '#1a1a1a', textAlign: 'center', marginBottom: 4 },
+  photoModalSubtitle: { fontSize: 14, color: '#555555', textAlign: 'center', marginBottom: 24 },
+  photoModalOption: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#f5f5f5', borderRadius: 12, marginBottom: 12, gap: 16 },
+  photoModalIcon: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
+  photoModalOptionText: { fontSize: 16, fontWeight: '600', color: '#1a1a1a' },
+  photoModalOptionSubtext: { fontSize: 12, color: '#555555', marginTop: 2 },
+  photoModalCancel: { padding: 16, alignItems: 'center', marginTop: 8 },
+  photoModalCancelText: { fontSize: 16, color: '#555555', fontWeight: '500' },
+  placaContainer: { flexDirection: 'row', gap: 10 },
+  placaInput: { flex: 1 },
+  colorPlacaButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#ffffff', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: '#e0e0e0', gap: 6 },
+  colorPlacaDot: { width: 16, height: 16, borderRadius: 8, borderWidth: 1, borderColor: '#e0e0e0' },
+  colorPlacaText: { fontSize: 14, color: '#555555' },
+  colorPlacaGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, backgroundColor: '#ffffff', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#e0e0e0' },
+  colorPlacaOption: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: '#f5f5f5', gap: 6 },
+  colorPlacaOptionActive: { backgroundColor: '#d4a017' },
+  colorPlacaDotSmall: { width: 12, height: 12, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(0,0,0,0.1)' },
+  colorPlacaOptionText: { fontSize: 13, color: '#1a1a1a' },
+  castadorList: { backgroundColor: '#ffffff', borderRadius: 12, marginTop: 8, borderWidth: 1, borderColor: '#e0e0e0', overflow: 'hidden' },
+  castadorNuevoButton: { flexDirection: 'row', alignItems: 'center', padding: 14, backgroundColor: 'rgba(212, 160, 23, 0.08)', borderBottomWidth: 1, borderBottomColor: '#e0e0e0', gap: 10 },
+  castadorNuevoText: { fontSize: 15, fontWeight: '600', color: '#d4a017' },
+  nuevoCastadorForm: { padding: 12, backgroundColor: '#f5f5f5', borderBottomWidth: 1, borderBottomColor: '#e0e0e0' },
+  nuevoCastadorInput: { backgroundColor: '#ffffff', borderRadius: 8, padding: 12, fontSize: 14, color: '#1a1a1a', borderWidth: 1, borderColor: '#e0e0e0', marginBottom: 8 },
+  nuevoCastadorConfirm: { backgroundColor: '#d4a017', borderRadius: 8, padding: 10, alignItems: 'center' },
+  nuevoCastadorConfirmText: { fontSize: 14, fontWeight: '600', color: '#000' },
+  castadoresExistentes: { padding: 12 },
+  castadoresTitle: { fontSize: 12, color: '#555555', marginBottom: 8, fontWeight: '500' },
+  castadorItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, backgroundColor: '#f5f5f5', borderRadius: 8, marginBottom: 6 },
+  castadorItemActive: { backgroundColor: 'rgba(212, 160, 23, 0.15)', borderWidth: 1, borderColor: '#d4a017' },
+  castadorNombre: { fontSize: 15, color: '#1a1a1a', fontWeight: '500' },
+  castadorCantidad: { backgroundColor: '#e0e0e0', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  castadorCantidadText: { fontSize: 12, color: '#555555', fontWeight: '600' },
+  noCastadores: { padding: 16, textAlign: 'center', color: '#555555', fontSize: 14 },
+  padresSectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#ffffff', borderRadius: 12, padding: 14, marginTop: 20, borderWidth: 1, borderColor: '#e0e0e0' },
+  padresSectionHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  padresSectionTitle: { fontSize: 15, fontWeight: '600', color: '#1a1a1a' },
+  padresSectionContent: { backgroundColor: '#ffffff', borderRadius: 12, padding: 14, marginTop: 8, borderWidth: 1, borderColor: '#e0e0e0' },
+  photoSectionCentered: { alignItems: 'center', marginBottom: 20, paddingVertical: 10 },
+  photoContainerCircle: { position: 'relative', width: 100, height: 100 },
+  photoCircle: { width: 100, height: 100, borderRadius: 50, borderWidth: 3, borderColor: '#d4a017' },
+  photoPlaceholderCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(212, 160, 23, 0.15)', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#d4a017', borderStyle: 'dashed' },
+  photoPlusIcon: { position: 'absolute', bottom: 2, right: 2, backgroundColor: '#d4a017', width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  removePhotoButtonCircle: { position: 'absolute', top: -5, right: -5, backgroundColor: '#ffffff', borderRadius: 12 },
+  treeFormContainer: { alignItems: 'center', paddingVertical: 16 },
+  treeFormCurrentBird: { alignItems: 'center' },
+  treeFormNodeMain: { backgroundColor: 'rgba(212, 160, 23, 0.15)', borderRadius: 12, padding: 12, alignItems: 'center', borderWidth: 2, borderColor: '#d4a017', minWidth: 90 },
+  treeFormPhoto: { width: 40, height: 40, borderRadius: 20, marginBottom: 6 },
+  treeFormPhotoPlaceholder: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#f5f5f5', alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+  treeFormPhotoPlaceholderEmpty: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#f5f5f5', alignItems: 'center', justifyContent: 'center', marginBottom: 6, borderWidth: 2, borderColor: '#e0e0e0', borderStyle: 'dashed' },
+  treeFormNodeCode: { fontSize: 13, fontWeight: '600', color: '#1a1a1a', textAlign: 'center' },
+  treeFormConnectorVertical: { width: 2, height: 16, backgroundColor: '#d4a017' },
+  treeFormConnectorHorizontal: { width: 120, height: 2, backgroundColor: '#d4a017', marginBottom: 8 },
+  treeFormParentsRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'flex-start', width: '100%' },
+  treeFormParentColumn: { flex: 1, alignItems: 'center', maxWidth: 150 },
+  treeFormDivider: { width: 20 },
+  treeFormLabel: { fontSize: 11, fontWeight: '600', color: '#d4a017', textTransform: 'uppercase', marginBottom: 8 },
+  treeFormNode: { backgroundColor: '#ffffff', borderRadius: 12, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: '#e0e0e0', minWidth: 100, width: '100%' },
+  treeFormNodeSelected: { borderColor: '#d4a017', backgroundColor: 'rgba(212, 160, 23, 0.08)' },
+  treeFormNodePlaceholder: { fontSize: 12, color: '#9ca3af' },
+  treeFormNodeExternal: { fontSize: 10, color: '#f59e0b', fontWeight: '600', marginTop: 2 },
+  treeFormSelectList: { position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#ffffff', borderRadius: 12, marginTop: 4, borderWidth: 1, borderColor: '#e0e0e0', maxHeight: 200, zIndex: 100, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 },
+  treeFormSelectOption: { flexDirection: 'row', alignItems: 'center', padding: 10, borderBottomWidth: 1, borderBottomColor: '#f0f0f0', gap: 8 },
+  treeFormSelectOptionActive: { backgroundColor: 'rgba(212, 160, 23, 0.1)' },
+  treeFormSelectOptionText: { fontSize: 13, color: '#1a1a1a' },
+  treeFormSelectOptionTextAdd: { fontSize: 13, fontWeight: '600', color: '#f59e0b' },
+  treeFormInput: { flex: 1, backgroundColor: '#ffffff', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: '#1a1a1a', borderWidth: 1, borderColor: '#e0e0e0' },
+  treeFormConfirmBtn: { backgroundColor: '#f59e0b', borderRadius: 8, paddingHorizontal: 12, justifyContent: 'center' },
+  treeFormConfirmText: { fontSize: 13, fontWeight: '600', color: '#000' },
+  treeFormLabelMain: { fontSize: 10, fontWeight: '700', color: '#d4a017', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 },
+  treeFormNodeGalleria: { fontSize: 10, color: '#555555', marginTop: 2 },
+  treeFormExternalInputContainer: { padding: 10, backgroundColor: '#f5f5f5', gap: 8 },
+  treeFormAddAbueloBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 8, paddingVertical: 6, paddingHorizontal: 12, backgroundColor: 'rgba(212, 160, 23, 0.1)', borderRadius: 16, gap: 4 },
+  treeFormAddAbueloText: { fontSize: 11, fontWeight: '600', color: '#d4a017' },
+  abuelosTreeSection: { alignItems: 'center', marginTop: 8 },
+  abuelosTreeConnectorFromParent: { width: 2, height: 12, backgroundColor: '#d4a017' },
+  abuelosTreeHorizontal: { width: 100, height: 2, backgroundColor: '#d4a017', marginBottom: 8 },
+  abuelosTreeRow: { flexDirection: 'row', justifyContent: 'center', gap: 16 },
+  abueloTreeItem: { alignItems: 'center' },
+  abueloTreeLabel: { fontSize: 10, fontWeight: '600', color: '#9ca3af', marginBottom: 6 },
+  abueloTreeNode: { backgroundColor: '#f9f9f9', borderRadius: 10, padding: 10, alignItems: 'center', borderWidth: 1, borderColor: '#e0e0e0', minWidth: 80 },
+  abueloTreeIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+  abueloTreeInput: { backgroundColor: '#ffffff', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 6, fontSize: 11, color: '#1a1a1a', textAlign: 'center', width: 70, borderWidth: 1, borderColor: '#e0e0e0' },
+  premiumModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  premiumModal: { width: '100%', maxWidth: 360, backgroundColor: '#ffffff', borderRadius: 18, padding: 24, alignItems: 'center' },
+  premiumIconWrap: { width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(212, 160, 23, 0.14)', alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  premiumTitle: { fontSize: 20, fontWeight: '700', color: '#1a1a1a', textAlign: 'center', marginBottom: 10 },
+  premiumMessage: { fontSize: 14, lineHeight: 21, color: '#555555', textAlign: 'center', marginBottom: 22 },
+  premiumPrimaryButton: { width: '100%', backgroundColor: '#d4a017', paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginBottom: 10 },
+  premiumPrimaryButtonText: { fontSize: 15, fontWeight: '700', color: '#000' },
+  premiumSecondaryButton: { width: '100%', paddingVertical: 12, borderRadius: 12, alignItems: 'center', backgroundColor: '#f5f5f5' },
+  premiumSecondaryButtonText: { fontSize: 14, fontWeight: '600', color: '#555555' },
 });

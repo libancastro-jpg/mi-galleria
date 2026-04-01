@@ -13,11 +13,12 @@ import {
   Image,
   Switch,
   GestureResponderEvent,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { api } from '../../src/services/api';
+import { api, ApiError } from '../../src/services/api';
 import { DatePickerField } from '../../src/components/DatePickerField';
 
 interface Ave {
@@ -89,6 +90,8 @@ export default function CruceFormScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const isEdit = !!id && id !== 'new';
 
+  const MEMBERSHIP_PLANS_ROUTE = '/premium';
+
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -115,6 +118,12 @@ export default function CruceFormScreen() {
   const [marcasNacimiento, setMarcasNacimiento] = useState<MarcaKey[]>([]);
   const [marcaColor, setMarcaColor] = useState<string>('#dc2626');
   const [showCaseraColors, setShowCaseraColors] = useState(false);
+
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [premiumModalTitle, setPremiumModalTitle] = useState('Límite alcanzado');
+  const [premiumModalMessage, setPremiumModalMessage] = useState(
+    'Has alcanzado el límite de tu plan. Ve a Planes de membresía para continuar.'
+  );
 
   const [formData, setFormData] = useState({
     padre_id: '',
@@ -156,6 +165,12 @@ export default function CruceFormScreen() {
   );
 
   const extractErrorMessage = (error: any) => {
+    if (error instanceof ApiError) {
+      if (typeof error.detail === 'object' && error.detail?.message) {
+        return error.detail.message;
+      }
+      return error.message;
+    }
     return (
       error?.response?.data?.detail?.message ||
       error?.response?.data?.detail ||
@@ -163,6 +178,38 @@ export default function CruceFormScreen() {
       error?.message ||
       'Ocurrió un error'
     );
+  };
+
+  const isPremiumLimitError = (error: any) => {
+    if (error instanceof ApiError) {
+      const code =
+        error.detail?.code ||
+        (typeof error.detail === 'object' && error.detail?.code);
+      return (
+        code === 'PREMIUM_REQUIRED' ||
+        code === 'FREE_PLAN_LIMIT_REACHED' ||
+        code === 'TRIAL_EXPIRED' ||
+        code === 'PLAN_REQUIRED' ||
+        error.status === 403
+      );
+    }
+    return false;
+  };
+
+  const openPremiumModalFromError = (error: any) => {
+    if (error instanceof ApiError && typeof error.detail === 'object') {
+      setPremiumModalTitle(error.detail?.title || 'Límite alcanzado');
+      setPremiumModalMessage(
+        error.detail?.message ||
+          'Has alcanzado el límite de tu plan. Ve a Planes de membresía para continuar.'
+      );
+    }
+    setShowPremiumModal(true);
+  };
+
+  const goToMembershipPlans = () => {
+    setShowPremiumModal(false);
+    router.push(MEMBERSHIP_PLANS_ROUTE as any);
   };
 
   const getCriadorDisplayName = (item?: Criador) => {
@@ -857,7 +904,11 @@ export default function CruceFormScreen() {
 
       router.back();
     } catch (error: any) {
-      Alert.alert('Error', extractErrorMessage(error));
+      if (isPremiumLimitError(error)) {
+        openPremiumModalFromError(error);
+      } else {
+        Alert.alert('Error', extractErrorMessage(error));
+      }
     } finally {
       setSaving(false);
     }
@@ -1364,6 +1415,38 @@ export default function CruceFormScreen() {
 
           <View style={{ height: 30 }} />
         </ScrollView>
+
+        <Modal
+          visible={showPremiumModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowPremiumModal(false)}
+        >
+          <View style={styles.premiumModalOverlay}>
+            <View style={styles.premiumModal}>
+              <View style={styles.premiumIconWrap}>
+                <Ionicons name="lock-closed" size={30} color="#d4a017" />
+              </View>
+
+              <Text style={styles.premiumTitle}>{premiumModalTitle}</Text>
+              <Text style={styles.premiumMessage}>{premiumModalMessage}</Text>
+
+              <TouchableOpacity
+                style={styles.premiumPrimaryButton}
+                onPress={goToMembershipPlans}
+              >
+                <Text style={styles.premiumPrimaryButtonText}>Ver planes de membresía</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.premiumSecondaryButton}
+                onPress={() => setShowPremiumModal(false)}
+              >
+                <Text style={styles.premiumSecondaryButtonText}>Cerrar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -1921,5 +2004,68 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#ffffff',
+  },
+  premiumModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  premiumModal: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    padding: 24,
+    alignItems: 'center',
+  },
+  premiumIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(212, 160, 23, 0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  premiumTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  premiumMessage: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: '#555555',
+    textAlign: 'center',
+    marginBottom: 22,
+  },
+  premiumPrimaryButton: {
+    width: '100%',
+    backgroundColor: '#d4a017',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  premiumPrimaryButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#000',
+  },
+  premiumSecondaryButton: {
+    width: '100%',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  premiumSecondaryButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#555555',
   },
 });

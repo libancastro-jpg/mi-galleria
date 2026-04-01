@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { api } from '../../src/services/api';
+import { api, ApiError } from '../../src/services/api';
 
 interface Ave {
   id: string;
@@ -65,6 +65,12 @@ export default function SaludFormScreen() {
   }, [id]);
 
   const extractErrorMessage = (error: any) => {
+    if (error instanceof ApiError) {
+      if (typeof error.detail === 'object' && error.detail?.message) {
+        return error.detail.message;
+      }
+      return error.message;
+    }
     return (
       error?.response?.data?.detail?.message ||
       error?.response?.data?.detail ||
@@ -75,33 +81,29 @@ export default function SaludFormScreen() {
   };
 
   const isPremiumLimitError = (error: any) => {
-    const code =
-      error?.response?.data?.detail?.code ||
-      error?.response?.data?.code ||
-      error?.code;
-
-    return (
-      code === 'PREMIUM_REQUIRED' ||
-      code === 'FREE_PLAN_LIMIT_REACHED' ||
-      code === 'TRIAL_EXPIRED' ||
-      code === 'PLAN_REQUIRED'
-    );
+    if (error instanceof ApiError) {
+      const code =
+        error.detail?.code ||
+        (typeof error.detail === 'object' && error.detail?.code);
+      return (
+        code === 'PREMIUM_REQUIRED' ||
+        code === 'FREE_PLAN_LIMIT_REACHED' ||
+        code === 'TRIAL_EXPIRED' ||
+        code === 'PLAN_REQUIRED' ||
+        error.status === 403
+      );
+    }
+    return false;
   };
 
   const openPremiumModalFromError = (error: any) => {
-    const title =
-      error?.response?.data?.detail?.title ||
-      error?.response?.data?.title ||
-      'Límite alcanzado';
-
-    const message =
-      error?.response?.data?.detail?.message ||
-      error?.response?.data?.detail ||
-      error?.response?.data?.message ||
-      'Has alcanzado el límite de tu plan. Ve a Planes de membresía para continuar.';
-
-    setPremiumModalTitle(title);
-    setPremiumModalMessage(message);
+    if (error instanceof ApiError && typeof error.detail === 'object') {
+      setPremiumModalTitle(error.detail?.title || 'Límite alcanzado');
+      setPremiumModalMessage(
+        error.detail?.message ||
+          'Has alcanzado el límite de tu plan. Ve a Planes de membresía para continuar.'
+      );
+    }
     setShowPremiumModal(true);
   };
 

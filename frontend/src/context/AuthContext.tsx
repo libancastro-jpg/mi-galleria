@@ -9,7 +9,7 @@ import React, {
   useRef,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { api } from '../services/api';
+import { api, ApiError } from '../services/api';
 import { Platform } from 'react-native';
 
 interface User {
@@ -116,11 +116,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await persistUser(freshUser);
       }
     } catch (error: any) {
-      if (
+      const isUnauthorized =
+        (error instanceof ApiError && error.status === 401) ||
         String(error?.message || '').includes('401') ||
         String(error?.message || '').toLowerCase().includes('token') ||
-        String(error?.message || '').toLowerCase().includes('autoriz')
-      ) {
+        String(error?.message || '').toLowerCase().includes('autoriz');
+    
+      if (isUnauthorized) {
         await forceLogout();
       }
     } finally {
