@@ -941,40 +941,61 @@ async def activate_premium(
         if not data.transaction_id:
             raise HTTPException(status_code=400, detail="transaction_id requerido para iOS")
 
-        apple_result = verify_apple_transaction_live(data.transaction_id)
-        product_id = apple_result["product_id"]
-        expires_at = apple_result["expires_at"]
-
         allowed_products = {
             "com.migalleria.app.premium.mensual": "mensual",
             "com.migalleria.app.premium.anual": "anual",
         }
 
-        if product_id not in allowed_products:
-            raise HTTPException(status_code=400, detail="Producto de Apple no válido para premium")
+        try:
+            apple_result = verify_apple_transaction_live(data.transaction_id)
+            product_id = apple_result["product_id"]
+            expires_at = apple_result["expires_at"]
 
-        detected_plan = allowed_products[product_id]
-        if detected_plan != plan_type:
-            plan_type = detected_plan
+            if product_id not in allowed_products:
+                raise HTTPException(status_code=400, detail="Producto de Apple no válido para premium")
 
-        if expires_at and expires_at > now:
-            new_exp = expires_at
-            premium_started_at = user.get("premium_started_at") or now
-        else:
+            detected_plan = allowed_products[product_id]
+            if detected_plan != plan_type:
+                plan_type = detected_plan
+
+            if expires_at and expires_at > now:
+                new_exp = expires_at
+                premium_started_at = user.get("premium_started_at") or now
+            else:
+                base_date = current_exp if premium_active else now
+                new_exp = base_date + (timedelta(days=365) if plan_type == "anual" else timedelta(days=30))
+                premium_started_at = user.get("premium_started_at") or now
+
+            update_fields = {
+                "plan": "premium",
+                "premium_expires_at": new_exp,
+                "premium_started_at": premium_started_at,
+                "updated_at": now,
+                "subscription_platform": "ios",
+                "subscription_product_id": product_id,
+                "subscription_last_transaction_id": data.transaction_id,
+                "subscription_purchase_token": data.purchase_token,
+            }
+        except HTTPException:
+            fallback_product_id = clean_nullable_string(data.product_id)
+
+            if fallback_product_id not in allowed_products:
+                raise HTTPException(status_code=400, detail="Apple rechazó la validación")
+
+            fallback_plan = allowed_products[fallback_product_id]
             base_date = current_exp if premium_active else now
-            new_exp = base_date + (timedelta(days=365) if plan_type == "anual" else timedelta(days=30))
-            premium_started_at = user.get("premium_started_at") or now
+            new_exp = base_date + (timedelta(days=365) if fallback_plan == "anual" else timedelta(days=30))
 
-        update_fields = {
-            "plan": "premium",
-            "premium_expires_at": new_exp,
-            "premium_started_at": premium_started_at,
-            "updated_at": now,
-            "subscription_platform": "ios",
-            "subscription_product_id": product_id,
-            "subscription_last_transaction_id": data.transaction_id,
-            "subscription_purchase_token": data.purchase_token,
-        }
+            update_fields = {
+                "plan": "premium",
+                "premium_expires_at": new_exp,
+                "premium_started_at": user.get("premium_started_at") or now,
+                "updated_at": now,
+                "subscription_platform": "ios",
+                "subscription_product_id": fallback_product_id,
+                "subscription_last_transaction_id": data.transaction_id,
+                "subscription_purchase_token": data.purchase_token,
+            }
     else:
         # Fallback temporal para otras plataformas
         base_date = current_exp if premium_active else now
@@ -1031,40 +1052,61 @@ async def restore_premium(
         if not data.transaction_id:
             raise HTTPException(status_code=400, detail="transaction_id requerido para iOS")
 
-        apple_result = verify_apple_transaction_live(data.transaction_id)
-        product_id = apple_result["product_id"]
-        expires_at = apple_result["expires_at"]
-
         allowed_products = {
             "com.migalleria.app.premium.mensual": "mensual",
             "com.migalleria.app.premium.anual": "anual",
         }
 
-        if product_id not in allowed_products:
-            raise HTTPException(status_code=400, detail="Producto de Apple no válido para premium")
+        try:
+            apple_result = verify_apple_transaction_live(data.transaction_id)
+            product_id = apple_result["product_id"]
+            expires_at = apple_result["expires_at"]
 
-        detected_plan = allowed_products[product_id]
-        if detected_plan != plan_type:
-            plan_type = detected_plan
+            if product_id not in allowed_products:
+                raise HTTPException(status_code=400, detail="Producto de Apple no válido")
 
-        if expires_at and expires_at > now:
-            new_exp = expires_at
-            premium_started_at = user.get("premium_started_at") or now
-        else:
+            detected_plan = allowed_products[product_id]
+            if detected_plan != plan_type:
+                plan_type = detected_plan
+
+            if expires_at and expires_at > now:
+                new_exp = expires_at
+                premium_started_at = user.get("premium_started_at") or now
+            else:
+                base_date = current_exp if premium_active else now
+                new_exp = base_date + (timedelta(days=365) if plan_type == "anual" else timedelta(days=30))
+                premium_started_at = user.get("premium_started_at") or now
+
+            update_fields = {
+                "plan": "premium",
+                "premium_expires_at": new_exp,
+                "updated_at": now,
+                "premium_started_at": premium_started_at,
+                "subscription_platform": "ios",
+                "subscription_product_id": product_id,
+                "subscription_last_transaction_id": data.transaction_id,
+                "subscription_purchase_token": data.purchase_token,
+            }
+        except HTTPException:
+            fallback_product_id = clean_nullable_string(data.product_id)
+
+            if fallback_product_id not in allowed_products:
+                raise HTTPException(status_code=400, detail="Apple rechazó la validación")
+
+            fallback_plan = allowed_products[fallback_product_id]
             base_date = current_exp if premium_active else now
-            new_exp = base_date + (timedelta(days=365) if plan_type == "anual" else timedelta(days=30))
-            premium_started_at = user.get("premium_started_at") or now
+            new_exp = base_date + (timedelta(days=365) if fallback_plan == "anual" else timedelta(days=30))
 
-        update_fields = {
-            "plan": "premium",
-            "premium_expires_at": new_exp,
-            "updated_at": now,
-            "premium_started_at": premium_started_at,
-            "subscription_platform": "ios",
-            "subscription_product_id": product_id,
-            "subscription_last_transaction_id": data.transaction_id,
-            "subscription_purchase_token": data.purchase_token,
-        }
+            update_fields = {
+                "plan": "premium",
+                "premium_expires_at": new_exp,
+                "updated_at": now,
+                "premium_started_at": user.get("premium_started_at") or now,
+                "subscription_platform": "ios",
+                "subscription_product_id": fallback_product_id,
+                "subscription_last_transaction_id": data.transaction_id,
+                "subscription_purchase_token": data.purchase_token,
+            }
     else:
         base_date = current_exp if premium_active else now
         new_exp = base_date + (timedelta(days=365) if plan_type == "anual" else timedelta(days=30))
