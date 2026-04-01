@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Query
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Query, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -15,6 +15,8 @@ import bcrypt
 from bson import ObjectId
 import time
 import requests
+import base64
+import json
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -682,6 +684,66 @@ def extract_apple_transaction_payload(raw: dict) -> dict:
 
 
 # =====================================================================
+# NUEVO: Helper para decodificar JWS payload de Apple
+# =====================================================================
+def decode_apple_jws_payload(jws_string: str) -> dict:
+    """Decodifica el payload de un JWS de Apple (sin verificar firma)."""
+    if not jws_string:
+        return {}
+    try:
+        parts = jws_string.split(".")
+        if len(parts) != 3:
+            return {}
+        payload_b64 = parts[1]
+        padding = 4 - len(payload_b64) % 4
+        if padding != 4:
+            payload_b64 += "=" * padding
+        payload_bytes = base64.urlsafe_b64decode(payload_b64)
+        return json.loads(payload_bytes)
+    except Exception as e:
+        logger.error("Error decodificando JWS payload: %s", e)
+        return {}
+
+
+# =====================================================================
+# PROTECCIÓN 1: Prevención de transactionId duplicados
+# Guarda cada transactionId validado en MongoDB para evitar reutilización
+# =====================================================================
+
+async def check_and_register_transaction(transaction_id: str, user_id: str) -> bool:
+    """
+    Verifica si un transactionId ya fue usado.
+    Si no fue usado, lo registra y retorna True.
+    Si ya fue usado POR EL MISMO usuario, retorna True (re-activación legítima).
+    Si ya fue usado POR OTRO usuario, retorna False (fraude).
+    """
+    existing = await db.apple_transactions.find_one({"transaction_id": transaction_id})
+
+    if existing:
+        if existing.get("user_id") == user_id:
+            # Mismo usuario re-enviando la misma transacción (normal en iOS)
+            logger.info("[AntiDup] TransactionId %s ya registrado para este usuario, permitiendo", transaction_id)
+            return True
+        else:
+            # OTRO usuario intentando usar el mismo transactionId = FRAUDE
+            logger.warning(
+                "[AntiDup] FRAUDE DETECTADO: TransactionId %s ya pertenece al user %s, "
+                "pero user %s intentó usarlo",
+                transaction_id, existing.get("user_id"), user_id,
+            )
+            return False
+
+    # Registrar nueva transacción
+    await db.apple_transactions.insert_one({
+        "transaction_id": transaction_id,
+        "user_id": user_id,
+        "created_at": datetime.utcnow(),
+    })
+    logger.info("[AntiDup] TransactionId %s registrado para user %s", transaction_id, user_id)
+    return True
+
+
+# =====================================================================
 # FIX 2: verify_apple_transaction_live — logging detallado + validación
 #         de que transaction_id sea numérico (no un JWS)
 # =====================================================================
@@ -702,13 +764,11 @@ def verify_apple_transaction_live(transaction_id: str) -> dict:
         try:
             parts = transaction_id.split(".")
             if len(parts) == 3:
-                import base64
                 # Agregar padding
                 payload_b64 = parts[1]
                 padding = 4 - len(payload_b64) % 4
                 if padding != 4:
                     payload_b64 += "=" * padding
-                import json
                 payload_bytes = base64.urlsafe_b64decode(payload_b64)
                 payload_data = json.loads(payload_bytes)
                 real_tx_id = str(payload_data.get("transactionId", ""))
@@ -815,6 +875,7 @@ def verify_apple_transaction_live(transaction_id: str) -> dict:
             "product_id": product_id,
             "bundle_id": bundle_id,
             "expires_at": expires_at,
+            "transaction_id": transaction_id,
             "raw": tx,
         }
 
@@ -822,6 +883,117 @@ def verify_apple_transaction_live(transaction_id: str) -> dict:
         status_code=400,
         detail=last_error or "No se pudo validar la compra con Apple"
     )
+
+
+# =====================================================================
+# PROTECCIÓN 3: Handler para Apple Server Notifications V2
+# =====================================================================
+
+async def handle_apple_notification(notification_type: str, subtype: str, tx_info: dict):
+    """
+    Procesa una notificación de Apple Server Notifications V2.
+    Maneja: cancelaciones, refunds, renovaciones, expiración.
+    """
+    original_transaction_id = str(tx_info.get("originalTransactionId", ""))
+    transaction_id = str(tx_info.get("transactionId", ""))
+    product_id = tx_info.get("productId", "")
+    expires_date = parse_apple_timestamp_ms(tx_info.get("expiresDate"))
+    revocation_date = parse_apple_timestamp_ms(tx_info.get("revocationDate"))
+
+    logger.info(
+        "[Apple Webhook] type=%s, subtype=%s, txId=%s, originalTxId=%s, productId=%s",
+        notification_type, subtype, transaction_id, original_transaction_id, product_id,
+    )
+
+    # Buscar usuario por transactionId en apple_transactions
+    user = None
+    if original_transaction_id:
+        tx_record = await db.apple_transactions.find_one({"transaction_id": original_transaction_id})
+        if tx_record:
+            user = await db.users.find_one({"_id": ObjectId(tx_record["user_id"])})
+
+    if not user and transaction_id:
+        tx_record = await db.apple_transactions.find_one({"transaction_id": transaction_id})
+        if tx_record:
+            user = await db.users.find_one({"_id": ObjectId(tx_record["user_id"])})
+
+    # Fallback: buscar en users por subscription_last_transaction_id
+    if not user:
+        user = await db.users.find_one({
+            "subscription_last_transaction_id": {"$in": [original_transaction_id, transaction_id]}
+        })
+
+    if not user:
+        logger.warning("[Apple Webhook] No se encontró usuario para txId=%s / originalTxId=%s", transaction_id, original_transaction_id)
+        return
+
+    user_id = str(user["_id"])
+    now = datetime.utcnow()
+
+    # REFUND o REVOKE → quitar premium inmediatamente
+    if notification_type in ("REFUND", "REVOKE") or revocation_date:
+        logger.info("[Apple Webhook] REFUND/REVOKE detectado para user %s, removiendo premium", user_id)
+        await db.users.update_one(
+            {"_id": user["_id"]},
+            {"$set": {
+                "plan": "gratis",
+                "premium_expires_at": None,
+                "premium_started_at": None,
+                "subscription_platform": None,
+                "subscription_product_id": None,
+                "subscription_last_transaction_id": None,
+                "subscription_purchase_token": None,
+                "updated_at": now,
+            }}
+        )
+        return
+
+    # EXPIRED o DID_FAIL_TO_RENEW → marcar expiración
+    if notification_type in ("EXPIRED", "DID_FAIL_TO_RENEW"):
+        logger.info("[Apple Webhook] Suscripción expirada/falló renovación para user %s", user_id)
+        exp = expires_date or now
+        await db.users.update_one(
+            {"_id": user["_id"]},
+            {"$set": {
+                "premium_expires_at": exp,
+                "updated_at": now,
+            }}
+        )
+        return
+
+    # DID_RENEW → renovar premium con nueva fecha
+    if notification_type == "DID_RENEW":
+        if expires_date and expires_date > now:
+            logger.info("[Apple Webhook] Renovación detectada para user %s, nuevo exp=%s", user_id, expires_date)
+            await db.users.update_one(
+                {"_id": user["_id"]},
+                {"$set": {
+                    "plan": "premium",
+                    "premium_expires_at": expires_date,
+                    "subscription_last_transaction_id": transaction_id,
+                    "updated_at": now,
+                }}
+            )
+            # Registrar nueva transacción
+            await db.apple_transactions.update_one(
+                {"transaction_id": transaction_id},
+                {"$set": {"transaction_id": transaction_id, "user_id": user_id, "created_at": now}},
+                upsert=True,
+            )
+        return
+
+    # SUBSCRIBED, DID_CHANGE_RENEWAL_STATUS, etc. → actualizar si tiene fecha
+    if expires_date and expires_date > now:
+        await db.users.update_one(
+            {"_id": user["_id"]},
+            {"$set": {
+                "plan": "premium",
+                "premium_expires_at": expires_date,
+                "updated_at": now,
+            }}
+        )
+
+    logger.info("[Apple Webhook] Notificación procesada: %s/%s para user %s", notification_type, subtype, user_id)
 
 
 # ============== AUTH ROUTES ==============
@@ -1015,9 +1187,18 @@ async def activate_premium(
         apple_result = verify_apple_transaction_live(data.transaction_id)
         product_id = apple_result["product_id"]
         expires_at = apple_result["expires_at"]
+        verified_tx_id = apple_result["transaction_id"]
 
         if product_id not in allowed_products:
             raise HTTPException(status_code=400, detail="Producto de Apple no válido para premium")
+
+        # PROTECCIÓN 1: Verificar duplicado de transacción
+        is_valid = await check_and_register_transaction(verified_tx_id, current_user["id"])
+        if not is_valid:
+            raise HTTPException(
+                status_code=403,
+                detail="Esta transacción ya fue utilizada por otra cuenta"
+            )
 
         detected_plan = allowed_products[product_id]
         if detected_plan != plan_type:
@@ -1038,7 +1219,7 @@ async def activate_premium(
             "updated_at": now,
             "subscription_platform": "ios",
             "subscription_product_id": product_id,
-            "subscription_last_transaction_id": data.transaction_id,
+            "subscription_last_transaction_id": verified_tx_id,
             "subscription_purchase_token": data.purchase_token,
         }
     else:
@@ -1105,9 +1286,18 @@ async def restore_premium(
         apple_result = verify_apple_transaction_live(data.transaction_id)
         product_id = apple_result["product_id"]
         expires_at = apple_result["expires_at"]
+        verified_tx_id = apple_result["transaction_id"]
 
         if product_id not in allowed_products:
             raise HTTPException(status_code=400, detail="Producto de Apple no válido para premium")
+
+        # PROTECCIÓN 1: Verificar duplicado de transacción
+        is_valid = await check_and_register_transaction(verified_tx_id, current_user["id"])
+        if not is_valid:
+            raise HTTPException(
+                status_code=403,
+                detail="Esta transacción ya fue utilizada por otra cuenta"
+            )
 
         detected_plan = allowed_products[product_id]
         if detected_plan != plan_type:
@@ -1128,7 +1318,7 @@ async def restore_premium(
             "premium_started_at": premium_started_at,
             "subscription_platform": "ios",
             "subscription_product_id": product_id,
-            "subscription_last_transaction_id": data.transaction_id,
+            "subscription_last_transaction_id": verified_tx_id,
             "subscription_purchase_token": data.purchase_token,
         }
     else:
@@ -1174,6 +1364,7 @@ async def delete_account(current_user: dict = Depends(get_current_user)):
     await db.peleas.delete_many({"user_id": user_id})
     await db.salud.delete_many({"user_id": user_id})
     await db.cuido.delete_many({"user_id": user_id})
+    await db.apple_transactions.delete_many({"user_id": user_id})
 
     # Eliminar usuario
     result = await db.users.delete_one({"_id": ObjectId(user_id)})
@@ -2675,6 +2866,65 @@ async def sync_download(since: Optional[str] = None, current_user: dict = Depend
         "sync_time": datetime.utcnow().isoformat()
     }
 
+# =====================================================================
+# PROTECCIÓN 3: Apple Server Notifications V2 (Webhook)
+# =====================================================================
+
+@api_router.post("/apple/webhook")
+async def apple_webhook(request: Request):
+    """
+    Recibe notificaciones de Apple Server Notifications V2.
+    Apple envía un JSON con un campo 'signedPayload' (JWS).
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        logger.error("[Apple Webhook] No se pudo parsear el body como JSON")
+        return {"status": "error"}
+
+    signed_payload = body.get("signedPayload")
+    if not signed_payload:
+        logger.error("[Apple Webhook] No se encontró signedPayload en el body")
+        return {"status": "error"}
+
+    # Decodificar el JWS principal (notificación)
+    notification_payload = decode_apple_jws_payload(signed_payload)
+    if not notification_payload:
+        logger.error("[Apple Webhook] No se pudo decodificar el signedPayload")
+        return {"status": "error"}
+
+    notification_type = notification_payload.get("notificationType", "")
+    subtype = notification_payload.get("subtype", "")
+
+    logger.info("[Apple Webhook] Recibido: %s / %s", notification_type, subtype)
+
+    # Extraer signedTransactionInfo del data
+    data = notification_payload.get("data", {})
+    signed_tx_info = data.get("signedTransactionInfo", "")
+
+    tx_info = {}
+    if signed_tx_info:
+        tx_info = decode_apple_jws_payload(signed_tx_info)
+
+    if not tx_info:
+        logger.warning("[Apple Webhook] No se pudo extraer transactionInfo")
+        return {"status": "ok"}
+
+    # Guardar log de la notificación
+    await db.apple_webhook_logs.insert_one({
+        "notification_type": notification_type,
+        "subtype": subtype,
+        "transaction_id": tx_info.get("transactionId"),
+        "original_transaction_id": tx_info.get("originalTransactionId"),
+        "product_id": tx_info.get("productId"),
+        "received_at": datetime.utcnow(),
+    })
+
+    # Procesar la notificación
+    await handle_apple_notification(notification_type, subtype, tx_info)
+
+    return {"status": "ok"}
+
 # ============== HEALTH CHECK ==============
 
 @api_router.get("/health")
@@ -2696,6 +2946,8 @@ async def startup_db_indexes():
     await db.aves.create_index([("user_id", 1), ("created_at", -1)])
     await db.aves.create_index([("user_id", 1), ("estado", 1), ("created_at", -1)])
     await db.aves.create_index([("user_id", 1), ("tipo", 1), ("created_at", -1)])
+    # NUEVO: Índice para transacciones de Apple (PROTECCIÓN 1)
+    await db.apple_transactions.create_index("transaction_id", unique=True)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
