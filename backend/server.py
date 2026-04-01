@@ -614,8 +614,19 @@ def _apple_config_ready() -> bool:
     )
 
 
+# =====================================================================
+# FIX 1: generate_apple_api_token — se agrega "bid" (bundle ID)
+# =====================================================================
 def generate_apple_api_token() -> str:
     if not _apple_config_ready():
+        logger.error(
+            "Apple config incompleta: ISSUER_ID=%s, KEY_ID=%s, BUNDLE_ID=%s, KEY_PATH=%s (exists=%s)",
+            bool(APPLE_ISSUER_ID),
+            bool(APPLE_KEY_ID),
+            bool(APPLE_BUNDLE_ID),
+            APPLE_PRIVATE_KEY_PATH,
+            Path(APPLE_PRIVATE_KEY_PATH).exists() if APPLE_PRIVATE_KEY_PATH else False,
+        )
         raise HTTPException(
             status_code=500,
             detail="Configuración Apple incompleta en el backend"
@@ -635,6 +646,7 @@ def generate_apple_api_token() -> str:
         "iat": now,
         "exp": now + 1200,
         "aud": "appstoreconnect-v1",
+        "bid": APPLE_BUNDLE_ID,            # ← FIX: campo requerido por App Store Server API v2
     }
 
     return jwt.encode(payload, private_key, algorithm="ES256", headers=headers)
@@ -663,15 +675,64 @@ def extract_apple_transaction_payload(raw: dict) -> dict:
             )
             if isinstance(payload, dict):
                 return payload
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error("Error decodificando signedTransactionInfo: %s", e)
 
     return raw
 
 
+# =====================================================================
+# FIX 2: verify_apple_transaction_live — logging detallado + validación
+#         de que transaction_id sea numérico (no un JWS)
+# =====================================================================
 def verify_apple_transaction_live(transaction_id: str) -> dict:
     if not transaction_id:
         raise HTTPException(status_code=400, detail="transaction_id requerido")
+
+    # FIX: Detectar si el frontend envió un JWS en vez de un transactionId numérico
+    # Un JWS tiene formato "xxxxx.yyyyy.zzzzz" (3 partes separadas por puntos)
+    # Un transactionId de Apple es numérico (ej: "2000000123456789")
+    if "." in transaction_id and len(transaction_id) > 100:
+        logger.warning(
+            "Se recibió un JWS como transaction_id (largo=%d). "
+            "Intentando extraer transactionId del JWS...",
+            len(transaction_id),
+        )
+        # Intentar decodificar el JWS para sacar el transactionId real
+        try:
+            parts = transaction_id.split(".")
+            if len(parts) == 3:
+                import base64
+                # Agregar padding
+                payload_b64 = parts[1]
+                padding = 4 - len(payload_b64) % 4
+                if padding != 4:
+                    payload_b64 += "=" * padding
+                import json
+                payload_bytes = base64.urlsafe_b64decode(payload_b64)
+                payload_data = json.loads(payload_bytes)
+                real_tx_id = str(payload_data.get("transactionId", ""))
+                if real_tx_id and real_tx_id.isdigit():
+                    logger.info(
+                        "TransactionId extraído del JWS: %s (productId: %s)",
+                        real_tx_id,
+                        payload_data.get("productId"),
+                    )
+                    transaction_id = real_tx_id
+                else:
+                    logger.error("No se encontró transactionId numérico dentro del JWS")
+                    raise HTTPException(
+                        status_code=400,
+                        detail="El transaction_id recibido es un JWS pero no contiene un transactionId válido"
+                    )
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error("Error parseando JWS como fallback: %s", e)
+            raise HTTPException(
+                status_code=400,
+                detail="transaction_id inválido: se recibió un JWS que no se pudo decodificar"
+            )
 
     token = generate_apple_api_token()
 
@@ -683,6 +744,9 @@ def verify_apple_transaction_live(transaction_id: str) -> dict:
     last_error = None
 
     for url in urls:
+        env_name = "production" if "api.storekit.itunes" in url else "sandbox"
+        logger.info("[Apple %s] GET %s", env_name, url)
+
         try:
             response = requests.get(
                 url,
@@ -690,12 +754,24 @@ def verify_apple_transaction_live(transaction_id: str) -> dict:
                 timeout=25,
             )
         except requests.RequestException as e:
-            logger.exception("Error conectando con Apple")
-            last_error = f"No se pudo validar la compra con Apple: {str(e)}"
+            logger.exception("[Apple %s] Error de conexión: %s", env_name, e)
+            last_error = f"No se pudo validar la compra con Apple ({env_name}): {str(e)}"
             continue
 
+        logger.info("[Apple %s] Status: %d", env_name, response.status_code)
+
         if response.status_code == 404:
-            last_error = "Transacción no encontrada en este entorno de Apple"
+            logger.info("[Apple %s] Transacción %s no encontrada, probando siguiente entorno...", env_name, transaction_id)
+            last_error = f"Transacción no encontrada en Apple ({env_name})"
+            continue
+
+        if response.status_code == 401:
+            try:
+                error_body = response.json()
+            except Exception:
+                error_body = response.text
+            logger.error("[Apple %s] Error 401 (JWT rechazado): %s", env_name, error_body)
+            last_error = f"Apple rechazó el JWT de autenticación ({env_name}). Verificar ISSUER_ID, KEY_ID, BUNDLE_ID y archivo .p8"
             continue
 
         if response.status_code >= 400:
@@ -703,24 +779,37 @@ def verify_apple_transaction_live(transaction_id: str) -> dict:
                 error_payload = response.json()
             except Exception:
                 error_payload = response.text
-            last_error = f"Apple rechazó la validación: {error_payload}"
+            logger.error("[Apple %s] Error %d: %s", env_name, response.status_code, error_payload)
+            last_error = f"Apple rechazó la validación ({env_name}, status {response.status_code}): {error_payload}"
             continue
 
+        # Status 200 - éxito
         try:
             raw_data = response.json()
         except Exception:
-            raise HTTPException(status_code=400, detail="Respuesta inválida de Apple")
+            raise HTTPException(status_code=400, detail="Respuesta inválida de Apple (no es JSON)")
+
+        logger.info("[Apple %s] Respuesta OK, extrayendo payload...", env_name)
 
         tx = extract_apple_transaction_payload(raw_data)
         product_id = tx.get("productId")
         bundle_id = tx.get("bundleId")
         expires_at = parse_apple_timestamp_ms(tx.get("expiresDate"))
 
+        logger.info(
+            "[Apple %s] productId=%s, bundleId=%s, expiresDate=%s",
+            env_name, product_id, bundle_id, expires_at,
+        )
+
         if not product_id:
-            raise HTTPException(status_code=400, detail="Apple no devolvió productId")
+            raise HTTPException(status_code=400, detail="Apple no devolvió productId en la transacción")
 
         if bundle_id and APPLE_BUNDLE_ID and bundle_id != APPLE_BUNDLE_ID:
-            raise HTTPException(status_code=400, detail="La compra no pertenece a esta app")
+            logger.error(
+                "Bundle ID mismatch: Apple devolvió '%s', esperábamos '%s'",
+                bundle_id, APPLE_BUNDLE_ID,
+            )
+            raise HTTPException(status_code=400, detail="La compra no pertenece a esta app (bundle ID mismatch)")
 
         return {
             "product_id": product_id,
