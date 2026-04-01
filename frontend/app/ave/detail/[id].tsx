@@ -463,7 +463,7 @@ export default function AveDetailScreen() {
           setLoading(true);
         }
 
-        const [aveData, peleasData, saludData, hijosData, pedigriData] = await Promise.all([
+        const [aveData, peleasData, saludData, hijosData, pedigriData] = await Promise.allSettled([
           api.get(`/aves/${id}`),
           api.get('/peleas'),
           api.get('/salud', { ave_id: id }),
@@ -471,38 +471,62 @@ export default function AveDetailScreen() {
           api.get(`/aves/${id}/pedigri`, { generations: '3' }),
         ]);
 
-        const peleasArray = Array.isArray(peleasData)
-          ? peleasData
-          : Array.isArray(peleasData?.data)
-          ? peleasData.data
+        const getData = (res: any) => res?.data || res || null;
+
+const aveRes = aveData.status === 'fulfilled' ? getData(aveData.value) : null;
+const peleasRes = peleasData.status === 'fulfilled' ? getData(peleasData.value) : [];
+const saludRes = saludData.status === 'fulfilled' ? getData(saludData.value) : [];
+const hijosRes = hijosData.status === 'fulfilled' ? getData(hijosData.value) : [];
+const pedigriRes = pedigriData.status === 'fulfilled' ? getData(pedigriData.value) : null;
+        if (!aveRes) {
+          throw new Error('No se pudo cargar la información principal del ave');
+        }
+
+        const peleasArray = Array.isArray(peleasRes)
+          ? peleasRes
+          : Array.isArray((peleasRes as any)?.data)
+          ? (peleasRes as any).data
           : [];
 
         const peleasDelAve = peleasArray.filter(
           (p: any) => String(p.ave_id) === String(id)
         );
 
-        setAve(aveData);
+        setAve(aveRes as Ave);
         setPeleas(peleasDelAve);
 
         setSalud(
-          Array.isArray(saludData)
-            ? saludData
-            : Array.isArray(saludData?.data)
-            ? saludData.data
+          Array.isArray(saludRes)
+            ? saludRes
+            : Array.isArray((saludRes as any)?.data)
+            ? (saludRes as any).data
             : []
         );
 
         setHijos(
-          Array.isArray(hijosData)
-            ? hijosData
-            : Array.isArray(hijosData?.data)
-            ? hijosData.data
+          Array.isArray(hijosRes)
+            ? hijosRes
+            : Array.isArray((hijosRes as any)?.data)
+            ? (hijosRes as any).data
             : []
         );
 
-        setPedigri(pedigriData?.data ?? pedigriData ?? null);
+        setPedigri(pedigriRes || null);
+        
+        const failedSections: string[] = [];
+        if (peleasData.status === 'rejected') failedSections.push('peleas');
+        if (saludData.status === 'rejected') failedSections.push('salud');
+        if (hijosData.status === 'rejected') failedSections.push('hijos');
+        if (pedigriData.status === 'rejected') failedSections.push('pedigrí');
+
+        if (manualRefresh && failedSections.length > 0) {
+          Alert.alert(
+            'Aviso',
+            `Se cargó la información principal, pero no se pudo cargar: ${failedSections.join(', ')}.`
+          );
+        }
       } catch (error: any) {
-        Alert.alert('Error', error?.message || 'No se pudo cargar el detalle');
+        Alert.alert('Error', error?.message || 'No se pudo cargar el detalle del ave');
       } finally {
         setLoading(false);
         setRefreshing(false);

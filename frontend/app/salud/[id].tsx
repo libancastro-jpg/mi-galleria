@@ -27,8 +27,8 @@ export default function SaludFormScreen() {
   const router = useRouter();
   const { id, ave_id: paramAveId } = useLocalSearchParams<{ id: string; ave_id?: string }>();
   const isEdit = !!id && id !== 'new';
-  const MEMBERSHIP_PLANS_ROUTE = '/planes';
-
+  const MEMBERSHIP_PLANS_ROUTE = '/premium';
+  
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [aves, setAves] = useState<Ave[]>([]);
@@ -80,26 +80,11 @@ export default function SaludFormScreen() {
       error?.response?.data?.code ||
       error?.code;
 
-    const message = String(
-      error?.response?.data?.detail?.message ||
-        error?.response?.data?.detail ||
-        error?.response?.data?.message ||
-        error?.message ||
-        ''
-    ).toLowerCase();
-
     return (
       code === 'PREMIUM_REQUIRED' ||
       code === 'FREE_PLAN_LIMIT_REACHED' ||
       code === 'TRIAL_EXPIRED' ||
-      code === 'PLAN_REQUIRED' ||
-      message.includes('premium') ||
-      message.includes('membres') ||
-      message.includes('trial') ||
-      message.includes('prueba gratis') ||
-      message.includes('límite') ||
-      message.includes('limite') ||
-      message.includes('plan requerido')
+      code === 'PLAN_REQUIRED'
     );
   };
 
@@ -128,11 +113,7 @@ export default function SaludFormScreen() {
   const fetchAves = async () => {
     try {
       const data = await api.get('/aves', { estado: 'activo' });
-      const avesData = Array.isArray(data)
-        ? data
-        : Array.isArray(data?.data)
-          ? data.data
-          : [];
+      const avesData = data?.data || data || [];
       setAves(avesData);
     } catch (error) {
       console.error('Error fetching aves:', error);

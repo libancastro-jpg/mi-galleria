@@ -161,17 +161,10 @@ export default function PeleasScreen() {
         api.get('/aves'),
       ]);
 
-      const peleasArray = Array.isArray(peleasData)
-        ? peleasData
-        : Array.isArray(peleasData?.data)
-        ? peleasData.data
-        : [];
+      const getData = (res: any) => res?.data || res || [];
 
-      const avesArray = Array.isArray(avesData)
-        ? avesData
-        : Array.isArray(avesData?.data)
-        ? avesData.data
-        : [];
+      const peleasArray = getData(peleasData);
+      const avesArray = getData(avesData);
 
       setPeleas(peleasArray);
 

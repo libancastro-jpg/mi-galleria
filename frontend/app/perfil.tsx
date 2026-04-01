@@ -90,7 +90,15 @@ export default function PerfilScreen() {
   }, [user]);
 
   useEffect(() => {
-    refreshUser?.();
+    const loadUser = async () => {
+      try {
+        await refreshUser?.();
+      } catch {
+        // evita romper la pantalla si falla el refresco
+      }
+    };
+
+    loadUser();
   }, [refreshUser]);
 
 
@@ -217,8 +225,25 @@ export default function PerfilScreen() {
   const handleSync = async () => {
     try {
       setSyncing(true);
-      await api.post('/sync/upload');
-      await api.post('/sync/download');
+
+      try {
+        await api.post('/sync/upload');
+      } catch {
+        // seguimos aunque upload falle
+      }
+
+      try {
+        await api.post('/sync/download');
+      } catch {
+        // seguimos aunque download falle
+      }
+
+      try {
+        await refreshUser?.();
+      } catch {
+        // no bloquear por fallo de refresh
+      }
+
       Alert.alert('Éxito', 'Sincronización completada.');
     } catch (error: any) {
       const message =

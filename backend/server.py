@@ -2952,3 +2952,4 @@ async def startup_db_indexes():
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
+    

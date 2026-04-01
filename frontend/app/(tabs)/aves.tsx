@@ -42,8 +42,6 @@ interface Ave {
 const galloDefaultImg = require('../../assets/images/gallo.png');
 const gallinaDefaultImg = require('../../assets/images/gallina.png');
 
-const FREE_RECORDS_LIMIT = 20;
-
 const getOptimizedImage = (url?: string, width: number = 300) => {
   if (!url) return undefined;
 
@@ -164,25 +162,8 @@ export default function AvesScreen() {
   }, [searchQuery]);
 
   const handleAddAve = useCallback(() => {
-    const isPremium = user?.plan === 'premium';
-
-    if (!isPremium && aves.length >= FREE_RECORDS_LIMIT) {
-      Alert.alert(
-        'Límite alcanzado',
-        'Has alcanzado el límite del plan gratis. Hazte Premium para seguir registrando.',
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          {
-            text: 'Ir a Premium',
-            onPress: () => router.push('/premium' as any),
-          },
-        ]
-      );
-      return;
-    }
-
     router.push('/ave/new' as any);
-  }, [aves.length, router, user?.plan]);
+  }, [router]);
 
   const fetchAves = useCallback(
     async (isManualRefresh = false, silent = false) => {

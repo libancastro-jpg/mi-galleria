@@ -98,6 +98,9 @@ export default function AveFormScreen() {
       'Ajiseñao',
       'Melao',
       'Joco',
+      'Bulico',
+      'Rubio',
+      'Camaguey',
       'Gallo Fino',
       'Otro',
     ],
@@ -163,33 +166,18 @@ export default function AveFormScreen() {
   }, []);
 
   const isPremiumLimitError = useCallback((error: any) => {
-    const code =
-      error?.response?.data?.detail?.code ||
-      error?.response?.data?.code ||
-      error?.code;
+  const code =
+    error?.response?.data?.detail?.code ||
+    error?.response?.data?.code ||
+    error?.code;
 
-    const message = String(
-      error?.response?.data?.detail?.message ||
-        error?.response?.data?.detail ||
-        error?.response?.data?.message ||
-        error?.message ||
-        ''
-    ).toLowerCase();
-
-    return (
-      code === 'PREMIUM_REQUIRED' ||
-      code === 'FREE_PLAN_LIMIT_REACHED' ||
-      code === 'TRIAL_EXPIRED' ||
-      code === 'PLAN_REQUIRED' ||
-      message.includes('premium') ||
-      message.includes('membres') ||
-      message.includes('trial') ||
-      message.includes('prueba gratis') ||
-      message.includes('límite') ||
-      message.includes('limite') ||
-      message.includes('plan requerido')
-    );
-  }, []);
+  return (
+    code === 'PREMIUM_REQUIRED' ||
+    code === 'FREE_PLAN_LIMIT_REACHED' ||
+    code === 'TRIAL_EXPIRED' ||
+    code === 'PLAN_REQUIRED'
+  );
+}, []);
 
   const openPremiumModalFromError = useCallback((error: any) => {
     const title =
@@ -353,13 +341,6 @@ export default function AveFormScreen() {
         padre_externo: formData.padre_externo || null,
         madre_externo: formData.madre_externo || null,
       };
-
-      
-      // 🔥 VALIDACIÓN PREMIUM FRONTEND
-      const isPremium = (globalThis as any)?.__USER_PLAN__ === 'premium';
-      if (!isPremium) {
-        // opcional: aquí podrías bloquear antes de enviar
-      }
 
       if (isEdit) {
         await api.put(`/aves/${id}`, dataToSend);

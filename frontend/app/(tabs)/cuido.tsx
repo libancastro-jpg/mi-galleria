@@ -46,7 +46,8 @@ export default function CuidoScreen() {
       const params: Record<string, string> = {};
       if (filterEstado) params.estado = filterEstado;
       const result = await api.get('/cuido', params);
-      setCuidos(result);
+      const data = result?.data || result || [];
+      setCuidos(data);
     } catch (error) {
       console.error('Error fetching cuidos:', error);
     } finally {

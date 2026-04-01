@@ -34,6 +34,47 @@ const SUBSCRIPTION_SKUS = [MONTHLY_SKU, YEARLY_SKU];
 
 type PlanType = 'mensual' | 'anual';
 
+// =====================================================================
+// FIX 3: Helper para extraer transactionId numérico de un JWS
+// react-native-iap a veces devuelve el JWS completo en transactionReceipt
+// pero la App Store Server API necesita el ID numérico
+// =====================================================================
+function extractTransactionId(purchase: any): string | null {
+  // Prioridad 1: transactionId numérico directo
+  const directId = purchase?.transactionId;
+  if (directId && !String(directId).includes('.')) {
+    console.log('[IAP] Usando transactionId directo:', directId);
+    return String(directId);
+  }
+
+  // Prioridad 2: Si transactionId es un JWS o solo tenemos transactionReceipt,
+  // decodificar el payload del JWS para extraer el transactionId numérico
+  const jws = directId || purchase?.transactionReceipt;
+  if (jws && typeof jws === 'string' && jws.includes('.')) {
+    try {
+      const parts = jws.split('.');
+      if (parts.length === 3) {
+        // Decodificar el payload (segunda parte del JWS)
+        const payloadBase64 = parts[1]
+          .replace(/-/g, '+')
+          .replace(/_/g, '/');
+        const decoded = atob(payloadBase64);
+        const payload = JSON.parse(decoded);
+
+        if (payload.transactionId) {
+          console.log('[IAP] TransactionId extraído del JWS:', payload.transactionId);
+          return String(payload.transactionId);
+        }
+      }
+    } catch (e) {
+      console.error('[IAP] Error decodificando JWS:', e);
+    }
+  }
+
+  console.warn('[IAP] No se pudo obtener transactionId válido del purchase');
+  return null;
+}
+
 function BenefitItem({ text }: { text: string }) {
   return (
     <View style={styles.benefitRow}>
@@ -111,21 +152,18 @@ export default function PremiumScreen() {
   } = useIAP({
     onPurchaseSuccess: async (purchase) => {
       try {
-        const transactionId =
-          (purchase as any)?.transactionId ||
-          (purchase as any)?.transactionReceipt ||
-          null;
+        // FIX: Usar helper para extraer transactionId numérico
+        const transactionId = extractTransactionId(purchase);
 
-        if (
-          transactionId &&
-          lastProcessedTransactionRef.current === transactionId
-        ) {
+        if (!transactionId) {
+          throw new Error('No se pudo obtener el ID de transacción de Apple.');
+        }
+
+        if (lastProcessedTransactionRef.current === transactionId) {
           return;
         }
 
-        if (transactionId) {
-          lastProcessedTransactionRef.current = transactionId;
-        }
+        lastProcessedTransactionRef.current = transactionId;
 
         const productId =
           (purchase as any)?.productId ||
@@ -139,11 +177,17 @@ export default function PremiumScreen() {
         const planType: PlanType =
           productId === YEARLY_SKU ? 'anual' : 'mensual';
 
+        console.log('[IAP] Activando premium:', {
+          plan_type: planType,
+          product_id: productId,
+          transaction_id: transactionId,
+        });
+
         await api.post('/auth/activate-premium', {
           plan_type: planType,
           product_id: productId,
           platform: 'ios',
-          transaction_id: (purchase as any)?.transactionId || null,
+          transaction_id: transactionId,
           purchase_token: (purchase as any)?.purchaseToken || null,
         });
 
@@ -152,6 +196,8 @@ export default function PremiumScreen() {
           isConsumable: false,
         });
 
+        await syncUserFromBackend();
+        await new Promise((resolve) => setTimeout(resolve, 500));
         await syncUserFromBackend();
 
         setBuyingSku(null);
@@ -162,12 +208,13 @@ export default function PremiumScreen() {
           [
             {
               text: 'Continuar',
-              onPress: () => router.back(),
+              onPress: () => router.replace('/perfil' as any),
             },
           ]
         );
       } catch (error: any) {
         setBuyingSku(null);
+        console.error('[IAP] Error activando premium:', error);
         Alert.alert(
           'Error',
           error?.message || 'La compra se realizó, pero hubo un problema activando premium.'
@@ -219,6 +266,13 @@ export default function PremiumScreen() {
       (p: any) => p.id === YEARLY_SKU || p.productId === YEARLY_SKU
     );
   }, [products]);
+
+  useEffect(() => {
+    console.log('IAP connected =>', connected);
+    console.log('IAP products =>', JSON.stringify(products, null, 2));
+    console.log('IAP monthlyProduct =>', monthlyProduct);
+    console.log('IAP yearlyProduct =>', yearlyProduct);
+  }, [connected, products, monthlyProduct, yearlyProduct]);
 
   const getProductPrice = (product: any, fallback: string) => {
     return (
@@ -317,33 +371,48 @@ export default function PremiumScreen() {
         throw new Error('No se pudo identificar la compra a restaurar.');
       }
 
-      const transactionId =
-        restoredPurchase?.transactionId ||
-        restoredPurchase?.transactionReceipt ||
-        null;
+      // FIX: Usar helper para extraer transactionId numérico
+      const transactionId = extractTransactionId(restoredPurchase);
 
-      if (transactionId) {
-        lastProcessedTransactionRef.current = transactionId;
+      if (!transactionId) {
+        throw new Error('No se pudo obtener el ID de transacción para restaurar.');
       }
+
+      lastProcessedTransactionRef.current = transactionId;
 
       const planType: PlanType =
         restoredProductId === YEARLY_SKU ? 'anual' : 'mensual';
+
+      console.log('[IAP] Restaurando premium:', {
+        plan_type: planType,
+        product_id: restoredProductId,
+        transaction_id: transactionId,
+      });
 
       await api.post('/auth/restore-premium', {
         plan_type: planType,
         product_id: restoredProductId,
         platform: 'ios',
-        transaction_id: restoredPurchase?.transactionId || null,
+        transaction_id: transactionId,
         purchase_token: restoredPurchase?.purchaseToken || null,
       });
 
       await syncUserFromBackend();
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      await syncUserFromBackend();
 
       Alert.alert(
         'Restaurar compras',
-        'Tu membresía premium fue restaurada correctamente.'
+        'Tu membresía premium fue restaurada correctamente.',
+        [
+          {
+            text: 'Continuar',
+            onPress: () => router.replace('/perfil' as any),
+          },
+        ]
       );
     } catch (error: any) {
+      console.error('[IAP] Error restaurando:', error);
       Alert.alert(
         'Error',
         error?.message || 'No se pudieron restaurar las compras.'

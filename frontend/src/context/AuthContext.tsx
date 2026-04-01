@@ -108,7 +108,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       api.setToken(currentToken);
 
-      const freshUser = await api.get('/auth/me');
+      const response = await api.get('/auth/me');
+      const freshUser = response?.data || response;
 
       if (freshUser) {
         applyAuthState(currentToken, freshUser);

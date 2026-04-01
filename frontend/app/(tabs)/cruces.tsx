@@ -415,17 +415,10 @@ export default function CrucesScreen() {
         api.get('/aves'),
       ]);
 
-      const crucesData: Cruce[] = Array.isArray(crucesDataRaw)
-        ? crucesDataRaw
-        : Array.isArray(crucesDataRaw?.data)
-          ? crucesDataRaw.data
-          : [];
+      const getData = (res: any) => res?.data || res || [];
 
-      const avesData: Ave[] = Array.isArray(avesDataRaw)
-        ? avesDataRaw
-        : Array.isArray(avesDataRaw?.data)
-          ? avesDataRaw.data
-          : [];
+      const crucesData: Cruce[] = getData(crucesDataRaw);
+      const avesData: Ave[] = getData(avesDataRaw);
 
       let filteredCruces = crucesData;
 
