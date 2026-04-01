@@ -17,6 +17,7 @@ import time
 import requests
 import base64
 import json
+from whatsapp import send_whatsapp_template  # ← NUEVO: WhatsApp
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -1027,7 +1028,20 @@ async def register(user_data: UserCreate):
     result = await db.users.insert_one(user_doc)
     user_id = str(result.inserted_id)
     token = create_token(user_id)
-    
+
+    # ============== NUEVO: WHATSAPP - Enviar bienvenida al nuevo usuario ==============
+    try:
+        if user_data.telefono:
+            send_whatsapp_template(user_data.telefono)
+            await db.users.update_one(
+                {"_id": result.inserted_id},
+                {"$set": {"whatsapp_welcome_sent": True}}
+            )
+            logger.info("[WhatsApp] Bienvenida enviada a nuevo usuario: %s", user_data.telefono)
+    except Exception as e:
+        logger.error("[WhatsApp] Error enviando bienvenida a %s: %s", user_data.telefono, e)
+    # ============== FIN WHATSAPP ==============
+
     return TokenResponse(
         access_token=token,
         user=UserResponse(
@@ -2952,4 +2966,3 @@ async def startup_db_indexes():
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
-    
