@@ -674,33 +674,65 @@ def verify_apple_transaction_live(transaction_id: str) -> dict:
         raise HTTPException(status_code=400, detail="transaction_id requerido")
 
     token = generate_apple_api_token()
-    url = f"https://api.storekit.itunes.apple.com/inApps/v1/transactions/{transaction_id}"
 
-    try:
-        response = requests.get(
-            url,
-            headers={"Authorization": f"Bearer {token}"},
-            timeout=25,
-        )
-    except requests.RequestException as e:
-        logger.exception("Error conectando con Apple")
-        raise HTTPException(
-            status_code=502,
-            detail=f"No se pudo validar la compra con Apple: {str(e)}"
-        )
+    urls = [
+        f"https://api.storekit.itunes.apple.com/inApps/v1/transactions/{transaction_id}",
+        f"https://api.storekit-sandbox.itunes.apple.com/inApps/v1/transactions/{transaction_id}",
+    ]
 
-    if response.status_code == 404:
-        raise HTTPException(status_code=400, detail="Transacción de Apple no encontrada")
+    last_error = None
 
-    if response.status_code >= 400:
+    for url in urls:
         try:
-            error_payload = response.json()
+            response = requests.get(
+                url,
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=25,
+            )
+        except requests.RequestException as e:
+            logger.exception("Error conectando con Apple")
+            last_error = f"No se pudo validar la compra con Apple: {str(e)}"
+            continue
+
+        if response.status_code == 404:
+            last_error = "Transacción no encontrada en este entorno de Apple"
+            continue
+
+        if response.status_code >= 400:
+            try:
+                error_payload = response.json()
+            except Exception:
+                error_payload = response.text
+            last_error = f"Apple rechazó la validación: {error_payload}"
+            continue
+
+        try:
+            raw_data = response.json()
         except Exception:
-            error_payload = response.text
-        raise HTTPException(
-            status_code=400,
-            detail=f"Apple rechazó la validación: {error_payload}"
-        )
+            raise HTTPException(status_code=400, detail="Respuesta inválida de Apple")
+
+        tx = extract_apple_transaction_payload(raw_data)
+        product_id = tx.get("productId")
+        bundle_id = tx.get("bundleId")
+        expires_at = parse_apple_timestamp_ms(tx.get("expiresDate"))
+
+        if not product_id:
+            raise HTTPException(status_code=400, detail="Apple no devolvió productId")
+
+        if bundle_id and APPLE_BUNDLE_ID and bundle_id != APPLE_BUNDLE_ID:
+            raise HTTPException(status_code=400, detail="La compra no pertenece a esta app")
+
+        return {
+            "product_id": product_id,
+            "bundle_id": bundle_id,
+            "expires_at": expires_at,
+            "raw": tx,
+        }
+
+    raise HTTPException(
+        status_code=400,
+        detail=last_error or "No se pudo validar la compra con Apple"
+    )
 
     try:
         raw_data = response.json()
