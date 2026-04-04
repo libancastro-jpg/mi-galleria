@@ -1029,10 +1029,10 @@ async def register(user_data: UserCreate):
     user_id = str(result.inserted_id)
     token = create_token(user_id)
 
-    # ============== NUEVO: WHATSAPP - Enviar bienvenida al nuevo usuario ==============
+   # ============== NUEVO: WHATSAPP - Enviar bienvenida al nuevo usuario ==============
     try:
         if user_data.telefono:
-            send_whatsapp_template(user_data.telefono)
+            send_whatsapp_template(user_data.telefono, template_name="bienvenida_migalleria")
             await db.users.update_one(
                 {"_id": result.inserted_id},
                 {"$set": {"whatsapp_welcome_sent": True}}
