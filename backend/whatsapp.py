@@ -11,8 +11,11 @@ WHATSAPP_TOKEN = os.environ.get("WHATSAPP_TOKEN")
 WHATSAPP_PHONE_ID = os.environ.get("WHATSAPP_PHONE_ID")
 WHATSAPP_API_URL = f"https://graph.facebook.com/v22.0/{WHATSAPP_PHONE_ID}/messages"
 
+# Media ID de la imagen del banner (800x418px)
+BANNER_MEDIA_ID = "1728927351813272"
 
-def send_whatsapp_template(phone_number: str, template_name: str = "bienvenida_soporte", language: str = "es") -> dict:
+
+def send_whatsapp_template(phone_number: str, template_name: str = "bienvenida_migalleria", language: str = "es") -> dict:
     if not WHATSAPP_TOKEN or not WHATSAPP_PHONE_ID:
         logger.error("WHATSAPP_TOKEN o WHATSAPP_PHONE_ID no configurados")
         return {"error": "WhatsApp no configurado"}
@@ -34,6 +37,19 @@ def send_whatsapp_template(phone_number: str, template_name: str = "bienvenida_s
         "template": {
             "name": template_name,
             "language": {"code": language},
+            "components": [
+                {
+                    "type": "header",
+                    "parameters": [
+                        {
+                            "type": "image",
+                            "image": {
+                                "id": BANNER_MEDIA_ID
+                            }
+                        }
+                    ]
+                }
+            ]
         },
     }
 
