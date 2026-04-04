@@ -47,6 +47,10 @@ APPLE_KEY_ID = os.environ.get("APPLE_KEY_ID")
 APPLE_BUNDLE_ID = os.environ.get("APPLE_BUNDLE_ID")
 APPLE_PRIVATE_KEY_PATH = os.environ.get("APPLE_PRIVATE_KEY_PATH")
 
+# Número personal para recibir notificaciones de mensajes entrantes
+ADMIN_WHATSAPP_NUMBER = "18299805618"
+WEBHOOK_VERIFY_TOKEN = "migalleria_webhook_2026"
+
 app = FastAPI(title="Castador Pro API")
 api_router = APIRouter(prefix="/api")
 security = HTTPBearer(auto_error=False)
@@ -425,7 +429,6 @@ def serialize_doc(doc: dict) -> dict:
 
     result = {}
 
-    # 🔥 FIX IMPORTANTE
     if "_id" in doc:
         result["id"] = str(doc["_id"])
     else:
@@ -446,14 +449,12 @@ def normalize_pelea_doc(doc: dict) -> dict:
 
     doc = serialize_doc(doc)
 
-    # Si ya viene en formato nuevo
     if "ganadas" in doc or "perdidas" in doc or "entabladas" in doc:
         doc["ganadas"] = int(doc.get("ganadas", 0) or 0)
         doc["perdidas"] = int(doc.get("perdidas", 0) or 0)
         doc["entabladas"] = int(doc.get("entabladas", 0) or 0)
         return doc
 
-    # Compatibilidad con formato viejo
     resultado = doc.get("resultado")
     cantidad = int(doc.get("cantidad_resultado", 1) or 1)
 
@@ -523,7 +524,6 @@ async def normalize_user_subscription_state(user_doc: dict):
         user_doc["plan"] = effective_plan
 
     if effective_plan == "gratis":
-        # Si ya no es premium, limpia cualquier residuo
         if user_doc.get("premium_expires_at") is not None:
             update_fields["premium_expires_at"] = None
             changed = True
@@ -541,7 +541,6 @@ async def normalize_user_subscription_state(user_doc: dict):
                 changed = True
             user_doc[field] = None
     else:
-        # Si sigue premium, normaliza strings basura tipo "null"
         for field in [
             "subscription_platform",
             "subscription_product_id",
@@ -617,9 +616,6 @@ def _apple_config_ready() -> bool:
     )
 
 
-# =====================================================================
-# FIX 1: generate_apple_api_token — se agrega "bid" (bundle ID)
-# =====================================================================
 def generate_apple_api_token() -> str:
     if not _apple_config_ready():
         logger.error(
@@ -649,7 +645,7 @@ def generate_apple_api_token() -> str:
         "iat": now,
         "exp": now + 1200,
         "aud": "appstoreconnect-v1",
-        "bid": APPLE_BUNDLE_ID,            # ← FIX: campo requerido por App Store Server API v2
+        "bid": APPLE_BUNDLE_ID,
     }
 
     return jwt.encode(payload, private_key, algorithm="ES256", headers=headers)
@@ -684,11 +680,7 @@ def extract_apple_transaction_payload(raw: dict) -> dict:
     return raw
 
 
-# =====================================================================
-# NUEVO: Helper para decodificar JWS payload de Apple
-# =====================================================================
 def decode_apple_jws_payload(jws_string: str) -> dict:
-    """Decodifica el payload de un JWS de Apple (sin verificar firma)."""
     if not jws_string:
         return {}
     try:
@@ -706,27 +698,14 @@ def decode_apple_jws_payload(jws_string: str) -> dict:
         return {}
 
 
-# =====================================================================
-# PROTECCIÓN 1: Prevención de transactionId duplicados
-# Guarda cada transactionId validado en MongoDB para evitar reutilización
-# =====================================================================
-
 async def check_and_register_transaction(transaction_id: str, user_id: str) -> bool:
-    """
-    Verifica si un transactionId ya fue usado.
-    Si no fue usado, lo registra y retorna True.
-    Si ya fue usado POR EL MISMO usuario, retorna True (re-activación legítima).
-    Si ya fue usado POR OTRO usuario, retorna False (fraude).
-    """
     existing = await db.apple_transactions.find_one({"transaction_id": transaction_id})
 
     if existing:
         if existing.get("user_id") == user_id:
-            # Mismo usuario re-enviando la misma transacción (normal en iOS)
             logger.info("[AntiDup] TransactionId %s ya registrado para este usuario, permitiendo", transaction_id)
             return True
         else:
-            # OTRO usuario intentando usar el mismo transactionId = FRAUDE
             logger.warning(
                 "[AntiDup] FRAUDE DETECTADO: TransactionId %s ya pertenece al user %s, "
                 "pero user %s intentó usarlo",
@@ -734,7 +713,6 @@ async def check_and_register_transaction(transaction_id: str, user_id: str) -> b
             )
             return False
 
-    # Registrar nueva transacción
     await db.apple_transactions.insert_one({
         "transaction_id": transaction_id,
         "user_id": user_id,
@@ -744,28 +722,19 @@ async def check_and_register_transaction(transaction_id: str, user_id: str) -> b
     return True
 
 
-# =====================================================================
-# FIX 2: verify_apple_transaction_live — logging detallado + validación
-#         de que transaction_id sea numérico (no un JWS)
-# =====================================================================
 def verify_apple_transaction_live(transaction_id: str) -> dict:
     if not transaction_id:
         raise HTTPException(status_code=400, detail="transaction_id requerido")
 
-    # FIX: Detectar si el frontend envió un JWS en vez de un transactionId numérico
-    # Un JWS tiene formato "xxxxx.yyyyy.zzzzz" (3 partes separadas por puntos)
-    # Un transactionId de Apple es numérico (ej: "2000000123456789")
     if "." in transaction_id and len(transaction_id) > 100:
         logger.warning(
             "Se recibió un JWS como transaction_id (largo=%d). "
             "Intentando extraer transactionId del JWS...",
             len(transaction_id),
         )
-        # Intentar decodificar el JWS para sacar el transactionId real
         try:
             parts = transaction_id.split(".")
             if len(parts) == 3:
-                # Agregar padding
                 payload_b64 = parts[1]
                 padding = 4 - len(payload_b64) % 4
                 if padding != 4:
@@ -832,7 +801,7 @@ def verify_apple_transaction_live(transaction_id: str) -> dict:
             except Exception:
                 error_body = response.text
             logger.error("[Apple %s] Error 401 (JWT rechazado): %s", env_name, error_body)
-            last_error = f"Apple rechazó el JWT de autenticación ({env_name}). Verificar ISSUER_ID, KEY_ID, BUNDLE_ID y archivo .p8"
+            last_error = f"Apple rechazó el JWT de autenticación ({env_name})."
             continue
 
         if response.status_code >= 400:
@@ -844,7 +813,6 @@ def verify_apple_transaction_live(transaction_id: str) -> dict:
             last_error = f"Apple rechazó la validación ({env_name}, status {response.status_code}): {error_payload}"
             continue
 
-        # Status 200 - éxito
         try:
             raw_data = response.json()
         except Exception:
@@ -886,15 +854,7 @@ def verify_apple_transaction_live(transaction_id: str) -> dict:
     )
 
 
-# =====================================================================
-# PROTECCIÓN 3: Handler para Apple Server Notifications V2
-# =====================================================================
-
 async def handle_apple_notification(notification_type: str, subtype: str, tx_info: dict):
-    """
-    Procesa una notificación de Apple Server Notifications V2.
-    Maneja: cancelaciones, refunds, renovaciones, expiración.
-    """
     original_transaction_id = str(tx_info.get("originalTransactionId", ""))
     transaction_id = str(tx_info.get("transactionId", ""))
     product_id = tx_info.get("productId", "")
@@ -906,7 +866,6 @@ async def handle_apple_notification(notification_type: str, subtype: str, tx_inf
         notification_type, subtype, transaction_id, original_transaction_id, product_id,
     )
 
-    # Buscar usuario por transactionId en apple_transactions
     user = None
     if original_transaction_id:
         tx_record = await db.apple_transactions.find_one({"transaction_id": original_transaction_id})
@@ -918,7 +877,6 @@ async def handle_apple_notification(notification_type: str, subtype: str, tx_inf
         if tx_record:
             user = await db.users.find_one({"_id": ObjectId(tx_record["user_id"])})
 
-    # Fallback: buscar en users por subscription_last_transaction_id
     if not user:
         user = await db.users.find_one({
             "subscription_last_transaction_id": {"$in": [original_transaction_id, transaction_id]}
@@ -931,7 +889,6 @@ async def handle_apple_notification(notification_type: str, subtype: str, tx_inf
     user_id = str(user["_id"])
     now = datetime.utcnow()
 
-    # REFUND o REVOKE → quitar premium inmediatamente
     if notification_type in ("REFUND", "REVOKE") or revocation_date:
         logger.info("[Apple Webhook] REFUND/REVOKE detectado para user %s, removiendo premium", user_id)
         await db.users.update_one(
@@ -949,7 +906,6 @@ async def handle_apple_notification(notification_type: str, subtype: str, tx_inf
         )
         return
 
-    # EXPIRED o DID_FAIL_TO_RENEW → marcar expiración
     if notification_type in ("EXPIRED", "DID_FAIL_TO_RENEW"):
         logger.info("[Apple Webhook] Suscripción expirada/falló renovación para user %s", user_id)
         exp = expires_date or now
@@ -962,7 +918,6 @@ async def handle_apple_notification(notification_type: str, subtype: str, tx_inf
         )
         return
 
-    # DID_RENEW → renovar premium con nueva fecha
     if notification_type == "DID_RENEW":
         if expires_date and expires_date > now:
             logger.info("[Apple Webhook] Renovación detectada para user %s, nuevo exp=%s", user_id, expires_date)
@@ -975,7 +930,6 @@ async def handle_apple_notification(notification_type: str, subtype: str, tx_inf
                     "updated_at": now,
                 }}
             )
-            # Registrar nueva transacción
             await db.apple_transactions.update_one(
                 {"transaction_id": transaction_id},
                 {"$set": {"transaction_id": transaction_id, "user_id": user_id, "created_at": now}},
@@ -983,7 +937,6 @@ async def handle_apple_notification(notification_type: str, subtype: str, tx_inf
             )
         return
 
-    # SUBSCRIBED, DID_CHANGE_RENEWAL_STATUS, etc. → actualizar si tiene fecha
     if expires_date and expires_date > now:
         await db.users.update_one(
             {"_id": user["_id"]},
@@ -995,6 +948,40 @@ async def handle_apple_notification(notification_type: str, subtype: str, tx_inf
         )
 
     logger.info("[Apple Webhook] Notificación procesada: %s/%s para user %s", notification_type, subtype, user_id)
+
+
+# ============== HELPER: Enviar mensaje de texto simple por WhatsApp ==============
+
+def send_whatsapp_text(to_number: str, message: str):
+    """Envía un mensaje de texto simple via WhatsApp Cloud API."""
+    token = os.environ.get("WHATSAPP_TOKEN")
+    phone_id = os.environ.get("WHATSAPP_PHONE_ID")
+
+    if not token or not phone_id:
+        logger.error("[WS Text] Token o Phone ID no configurados")
+        return
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": to_number,
+        "type": "text",
+        "text": {"body": message}
+    }
+
+    try:
+        response = requests.post(
+            f"https://graph.facebook.com/v22.0/{phone_id}/messages",
+            json=payload,
+            headers=headers,
+            timeout=10
+        )
+        logger.info("[WS Text] Enviado a %s: %s", to_number, response.status_code)
+    except Exception as e:
+        logger.error("[WS Text] Error enviando a %s: %s", to_number, e)
 
 
 # ============== AUTH ROUTES ==============
@@ -1029,7 +1016,7 @@ async def register(user_data: UserCreate):
     user_id = str(result.inserted_id)
     token = create_token(user_id)
 
-   # ============== NUEVO: WHATSAPP - Enviar bienvenida al nuevo usuario ==============
+    # ============== WHATSAPP - Enviar bienvenida al nuevo usuario ==============
     try:
         if user_data.telefono:
             send_whatsapp_template(user_data.telefono, template_name="bienvenida_migalleria")
@@ -1104,6 +1091,7 @@ async def get_subscription_status(current_user: dict = Depends(get_current_user)
 class ProfileUpdate(BaseModel):
     email: Optional[str] = None
     nombre: Optional[str] = None
+    telefono: Optional[str] = None
 
 @api_router.put("/auth/profile")
 async def update_profile(
@@ -1115,6 +1103,8 @@ async def update_profile(
         update_data["email"] = data.email
     if data.nombre is not None:
         update_data["nombre"] = data.nombre
+    if data.telefono is not None:
+        update_data["telefono"] = data.telefono
     
     await db.users.update_one(
         {"_id": ObjectId(current_user["id"])},
@@ -1154,7 +1144,7 @@ async def change_pin(
     return {"message": "PIN actualizado correctamente"}
 
 class ActivatePremiumRequest(BaseModel):
-    plan_type: str  # mensual | anual
+    plan_type: str
     platform: Optional[str] = None
     product_id: Optional[str] = None
     transaction_id: Optional[str] = None
@@ -1163,7 +1153,7 @@ class ActivatePremiumRequest(BaseModel):
 
 
 class RestorePremiumRequest(BaseModel):
-    plan_type: str  # mensual | anual
+    plan_type: str
     platform: Optional[str] = None
     product_id: Optional[str] = None
     transaction_id: Optional[str] = None
@@ -1206,7 +1196,6 @@ async def activate_premium(
         if product_id not in allowed_products:
             raise HTTPException(status_code=400, detail="Producto de Apple no válido para premium")
 
-        # PROTECCIÓN 1: Verificar duplicado de transacción
         is_valid = await check_and_register_transaction(verified_tx_id, current_user["id"])
         if not is_valid:
             raise HTTPException(
@@ -1237,7 +1226,6 @@ async def activate_premium(
             "subscription_purchase_token": data.purchase_token,
         }
     else:
-        # Fallback temporal para otras plataformas
         base_date = current_exp if premium_active else now
         new_exp = base_date + (timedelta(days=365) if plan_type == "anual" else timedelta(days=30))
 
@@ -1305,7 +1293,6 @@ async def restore_premium(
         if product_id not in allowed_products:
             raise HTTPException(status_code=400, detail="Producto de Apple no válido para premium")
 
-        # PROTECCIÓN 1: Verificar duplicado de transacción
         is_valid = await check_and_register_transaction(verified_tx_id, current_user["id"])
         if not is_valid:
             raise HTTPException(
@@ -1371,7 +1358,6 @@ async def restore_premium(
 async def delete_account(current_user: dict = Depends(get_current_user)):
     user_id = current_user["id"]
 
-    # Eliminar todos los datos asociados al usuario
     await db.aves.delete_many({"user_id": user_id})
     await db.cruces.delete_many({"user_id": user_id})
     await db.camadas.delete_many({"user_id": user_id})
@@ -1380,7 +1366,6 @@ async def delete_account(current_user: dict = Depends(get_current_user)):
     await db.cuido.delete_many({"user_id": user_id})
     await db.apple_transactions.delete_many({"user_id": user_id})
 
-    # Eliminar usuario
     result = await db.users.delete_one({"_id": ObjectId(user_id)})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
@@ -1438,7 +1423,7 @@ async def migrar_imagenes_publico():
 
     cursor = db.aves.find({
         "foto_principal": {"$regex": "^data:image"}
-    }).limit(20)  # 👈 SOLO 20 POR VEZ
+    }).limit(20)
 
     migradas = 0
 
@@ -1477,8 +1462,6 @@ async def get_aves(
     if tipo and tipo != "todos":
         query["tipo"] = tipo
 
-    # Temporalmente ignoramos estado para no ocultar aves existentes
-    # a usuarios con la app vieja que todavía abre filtrando por "activo".
     if color:
         query["color"] = {"$regex": color, "$options": "i"}
     if linea:
@@ -1893,7 +1876,6 @@ async def get_cruces(
 ):
     query = {"user_id": current_user["id"]}
 
-    # Mostrar todo por defecto. Solo filtra si realmente se envía un estado válido.
     if estado and estado not in ["todos", "all"]:
         query["estado"] = estado
 
@@ -1982,6 +1964,7 @@ async def delete_cruce(cruce_id: str, current_user: dict = Depends(get_current_u
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Cruce no encontrado")
     return {"message": "Cruce eliminado"}
+
 # ============== CAMADAS ROUTES ==============
 
 @api_router.post("/camadas", response_model=CamadaResponse)
@@ -2113,8 +2096,6 @@ async def delete_camada(camada_id: str, current_user: dict = Depends(get_current
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Camada no encontrada")
     return {"message": "Camada eliminada"}
-
-# ============== PELEAS ROUTES ==============
 
 # ============== PELEAS ROUTES ==============
 
@@ -2514,7 +2495,6 @@ async def get_cuidos(
 ):
     query = {"user_id": current_user["id"]}
 
-    # Mostrar todo por defecto. Solo filtra si realmente se envía un estado válido.
     if estado and estado not in ["todos", "all"]:
         query["estado"] = estado
 
@@ -2880,16 +2860,10 @@ async def sync_download(since: Optional[str] = None, current_user: dict = Depend
         "sync_time": datetime.utcnow().isoformat()
     }
 
-# =====================================================================
-# PROTECCIÓN 3: Apple Server Notifications V2 (Webhook)
-# =====================================================================
+# ============== APPLE WEBHOOK ==============
 
 @api_router.post("/apple/webhook")
 async def apple_webhook(request: Request):
-    """
-    Recibe notificaciones de Apple Server Notifications V2.
-    Apple envía un JSON con un campo 'signedPayload' (JWS).
-    """
     try:
         body = await request.json()
     except Exception:
@@ -2901,7 +2875,6 @@ async def apple_webhook(request: Request):
         logger.error("[Apple Webhook] No se encontró signedPayload en el body")
         return {"status": "error"}
 
-    # Decodificar el JWS principal (notificación)
     notification_payload = decode_apple_jws_payload(signed_payload)
     if not notification_payload:
         logger.error("[Apple Webhook] No se pudo decodificar el signedPayload")
@@ -2912,7 +2885,6 @@ async def apple_webhook(request: Request):
 
     logger.info("[Apple Webhook] Recibido: %s / %s", notification_type, subtype)
 
-    # Extraer signedTransactionInfo del data
     data = notification_payload.get("data", {})
     signed_tx_info = data.get("signedTransactionInfo", "")
 
@@ -2924,7 +2896,6 @@ async def apple_webhook(request: Request):
         logger.warning("[Apple Webhook] No se pudo extraer transactionInfo")
         return {"status": "ok"}
 
-    # Guardar log de la notificación
     await db.apple_webhook_logs.insert_one({
         "notification_type": notification_type,
         "subtype": subtype,
@@ -2934,7 +2905,6 @@ async def apple_webhook(request: Request):
         "received_at": datetime.utcnow(),
     })
 
-    # Procesar la notificación
     await handle_apple_notification(notification_type, subtype, tx_info)
 
     return {"status": "ok"}
@@ -2944,6 +2914,77 @@ async def apple_webhook(request: Request):
 @api_router.get("/health")
 async def health_check():
     return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
+
+
+# ============== WEBHOOK WHATSAPP ENTRANTE ==============
+
+@app.get("/whatsapp/webhook")
+async def whatsapp_webhook_verify(request: Request):
+    """Verificación del webhook por Meta."""
+    mode = request.query_params.get("hub.mode")
+    token = request.query_params.get("hub.verify_token")
+    challenge = request.query_params.get("hub.challenge")
+
+    if mode == "subscribe" and token == WEBHOOK_VERIFY_TOKEN:
+        logger.info("[WS Webhook] Verificación exitosa")
+        return int(challenge)
+    raise HTTPException(status_code=403, detail="Token inválido")
+
+
+@app.post("/whatsapp/webhook")
+async def whatsapp_webhook_receive(request: Request):
+    """Recibe mensajes entrantes de WhatsApp y los reenvía al número del admin."""
+    try:
+        body = await request.json()
+        entry = body.get("entry", [])
+
+        for e in entry:
+            for change in e.get("changes", []):
+                value = change.get("value", {})
+                messages = value.get("messages", [])
+
+                for msg in messages:
+                    from_number = msg.get("from", "")
+                    msg_type = msg.get("type", "")
+                    text = ""
+
+                    if msg_type == "text":
+                        text = msg.get("text", {}).get("body", "")
+                    elif msg_type == "image":
+                        text = "[Imagen]"
+                    elif msg_type == "audio":
+                        text = "[Audio]"
+                    elif msg_type == "video":
+                        text = "[Video]"
+                    elif msg_type == "document":
+                        text = "[Documento]"
+                    else:
+                        text = f"[Mensaje tipo: {msg_type}]"
+
+                    # Obtener nombre del contacto
+                    contacts = value.get("contacts", [])
+                    name = "Usuario"
+                    if contacts:
+                        name = contacts[0].get("profile", {}).get("name", "Usuario")
+
+                    # Reenviar al número personal del admin
+                    notification = (
+                        f"📩 *Nuevo mensaje de Mi Galleria*\n\n"
+                        f"👤 *De:* {name}\n"
+                        f"📱 *Número:* +{from_number}\n\n"
+                        f"💬 *Mensaje:*\n{text}"
+                    )
+
+                    send_whatsapp_text(ADMIN_WHATSAPP_NUMBER, notification)
+                    logger.info("[WS Webhook] Mensaje de +%s reenviado al admin", from_number)
+
+    except Exception as e:
+        logger.error("[WS Webhook] Error procesando mensaje: %s", e)
+
+    return {"status": "ok"}
+
+# ============== FIN WEBHOOK WHATSAPP ==============
+
 
 app.include_router(api_router)
 
@@ -2960,7 +3001,6 @@ async def startup_db_indexes():
     await db.aves.create_index([("user_id", 1), ("created_at", -1)])
     await db.aves.create_index([("user_id", 1), ("estado", 1), ("created_at", -1)])
     await db.aves.create_index([("user_id", 1), ("tipo", 1), ("created_at", -1)])
-    # NUEVO: Índice para transacciones de Apple (PROTECCIÓN 1)
     await db.apple_transactions.create_index("transaction_id", unique=True)
 
 @app.on_event("shutdown")
