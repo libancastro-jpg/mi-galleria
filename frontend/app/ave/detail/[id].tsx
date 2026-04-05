@@ -406,6 +406,7 @@ export default function AveDetailScreen() {
   });
 
   const isFetchingRef = useRef(false);
+  const isDeletedRef = useRef(false);
 
   const totalGanadas = useMemo(
     () => peleas.reduce((acc, pelea) => acc + Number(pelea.ganadas || 0), 0),
@@ -478,9 +479,9 @@ const peleasRes = peleasData.status === 'fulfilled' ? getData(peleasData.value) 
 const saludRes = saludData.status === 'fulfilled' ? getData(saludData.value) : [];
 const hijosRes = hijosData.status === 'fulfilled' ? getData(hijosData.value) : [];
 const pedigriRes = pedigriData.status === 'fulfilled' ? getData(pedigriData.value) : null;
-        if (!aveRes) {
-          throw new Error('No se pudo cargar la información principal del ave');
-        }
+if (!aveRes) {
+  return;
+}
 
         const peleasArray = Array.isArray(peleasRes)
           ? peleasRes
@@ -558,7 +559,13 @@ const pedigriRes = pedigriData.status === 'fulfilled' ? getData(pedigriData.valu
           onPress: async () => {
             try {
               await api.delete(`/aves/${id}`);
-              router.back();
+              isDeletedRef.current = true;
+              Alert.alert('Éxito', 'Ave eliminada correctamente', [
+                {
+                  text: 'OK',
+                  onPress: () => router.replace('/(tabs)/aves' as any),
+                },
+              ]);
             } catch (error: any) {
               Alert.alert('Error', error?.message || 'No se pudo eliminar');
             }

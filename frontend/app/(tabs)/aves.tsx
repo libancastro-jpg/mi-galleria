@@ -242,8 +242,9 @@ export default function AvesScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      lastFetchAtRef.current[cacheKey] = 0;
       fetchAves(false, firstLoadDoneRef.current);
-    }, [fetchAves])
+    }, [fetchAves, cacheKey])
   );
 
   const onRefresh = useCallback(() => {

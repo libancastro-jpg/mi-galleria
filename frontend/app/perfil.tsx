@@ -23,6 +23,7 @@ const COLORS = {
   gold: '#F5A623',
   goldLight: 'rgba(245, 166, 35, 0.15)',
   greenDark: '#22c55e',
+  greenElite: '#16a34a',
   redDeep: '#ef4444',
   redLight: 'rgba(239, 68, 68, 0.15)',
   grayDark: '#111827',
@@ -34,6 +35,8 @@ const COLORS = {
   card: '#ffffff',
   blue: '#2563eb',
 };
+
+const ADMIN_PHONE = '8299805618';
 
 const PRIVACY_URL = 'https://sites.google.com/view/migalleria-privacidad';
 const TERMS_URL = 'https://sites.google.com/view/migalleria-terminos';
@@ -59,11 +62,29 @@ export default function PerfilScreen() {
   const router = useRouter();
   const { user, logout, refreshUser } = useAuth();
 
+  const isAdmin =
+    user?.telefono === ADMIN_PHONE || (user as any)?.rol === 'admin';
+
+  // ── Modales existentes ─────────────────────────────────────
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
 
+  // ── Modal código promo ─────────────────────────────────────
+  const [showCodeModal, setShowCodeModal] = useState(false);
+  const [promoCode, setPromoCode] = useState('');
+  const [redeemingCode, setRedeemingCode] = useState(false);
+
+  // ── Modal admin ────────────────────────────────────────────
+  const [showAdminModal, setShowAdminModal] = useState(false);
+  const [adminDias, setAdminDias] = useState('30');
+  const [adminMaxUsos, setAdminMaxUsos] = useState('1');
+  const [adminCustomCode, setAdminCustomCode] = useState('');
+  const [creatingCode, setCreatingCode] = useState(false);
+  const [generatedCode, setGeneratedCode] = useState('');
+
+  // ── Campos edición ─────────────────────────────────────────
   const [editingGalleria, setEditingGalleria] = useState(user?.nombre || '');
   const [editingEmail, setEditingEmail] = useState(user?.email || '');
   const [editingPhone, setEditingPhone] = useState(user?.telefono || '');
@@ -82,7 +103,6 @@ export default function PerfilScreen() {
   const [searchPlaca, setSearchPlaca] = useState('');
   const [selectedAves, setSelectedAves] = useState<string[]>([]);
 
-
   useEffect(() => {
     setEditingGalleria(user?.nombre || '');
     setEditingEmail(user?.email || '');
@@ -97,10 +117,8 @@ export default function PerfilScreen() {
         // evita romper la pantalla si falla el refresco
       }
     };
-
     loadUser();
   }, [refreshUser]);
-
 
   const userPhone = useMemo(() => {
     return user?.telefono || 'No disponible';
@@ -118,15 +136,12 @@ export default function PerfilScreen() {
 
   const filteredAves = useMemo(() => {
     const term = searchPlaca.trim().toLowerCase();
-
     if (!term) return aves;
-
     return aves.filter((ave) => {
       const codigo = ave.codigo?.toLowerCase() || '';
       const nombre = ave.nombre?.toLowerCase() || '';
       const color = ave.color?.toLowerCase() || '';
       const linea = ave.linea?.toLowerCase() || '';
-
       return (
         codigo.includes(term) ||
         nombre.includes(term) ||
@@ -149,6 +164,64 @@ export default function PerfilScreen() {
     }
   };
 
+  // ── Canjear código promo ───────────────────────────────────
+  const handleRedeemCode = async () => {
+    const code = promoCode.trim().toUpperCase();
+    if (!code) {
+      Alert.alert('Error', 'Ingresa un código válido.');
+      return;
+    }
+    try {
+      setRedeemingCode(true);
+      const result = await api.post('/auth/redeem-code', { code });
+      await refreshUser?.();
+      setPromoCode('');
+      setShowCodeModal(false);
+      Alert.alert('🎉 ¡Éxito!', result.message || 'Premium activado correctamente.');
+    } catch (error: any) {
+      const msg = error?.response?.data?.detail || 'Código inválido o ya utilizado.';
+      Alert.alert('Error', msg);
+    } finally {
+      setRedeemingCode(false);
+    }
+  };
+
+  // ── Crear código promo (admin) ─────────────────────────────
+  const handleCreatePromoCode = async () => {
+    const dias = parseInt(adminDias, 10);
+    const maxUsos = parseInt(adminMaxUsos, 10);
+
+    if (!dias || dias < 1) {
+      Alert.alert('Error', 'Ingresa una duración válida en días.');
+      return;
+    }
+    if (!maxUsos || maxUsos < 1) {
+      Alert.alert('Error', 'Ingresa un número de usos válido.');
+      return;
+    }
+
+    try {
+      setCreatingCode(true);
+      const result = await api.post('/admin/create-promo-code', {
+        code: adminCustomCode.trim().toUpperCase() || undefined,
+        dias,
+        max_usos: maxUsos,
+      });
+      setGeneratedCode(result.code);
+      setAdminCustomCode('');
+    } catch (error: any) {
+      const msg = error?.response?.data?.detail || 'No se pudo crear el código.';
+      Alert.alert('Error', msg);
+    } finally {
+      setCreatingCode(false);
+    }
+  };
+
+  const handleCopyCode = () => {
+    Share.share({ message: `Tu código de acceso Premium para Mi Galleria: ${generatedCode}` });
+  };
+
+  // ── Guardar perfil ─────────────────────────────────────────
   const handleSaveProfile = async () => {
     const nombre = editingGalleria.trim();
     const email = editingEmail.trim();
@@ -158,12 +231,10 @@ export default function PerfilScreen() {
       Alert.alert('Error', 'El nombre no puede estar vacío.');
       return;
     }
-
     if (!email) {
       Alert.alert('Error', 'El correo no puede estar vacío.');
       return;
     }
-
     if (!telefono) {
       Alert.alert('Error', 'El teléfono no puede estar vacío.');
       return;
@@ -171,11 +242,7 @@ export default function PerfilScreen() {
 
     try {
       setSaving(true);
-      await api.put('/auth/profile', {
-        nombre,
-        email,
-        telefono,
-      });
+      await api.put('/auth/profile', { nombre, email, telefono });
       await refreshUser?.();
       setShowEditModal(false);
       Alert.alert('Éxito', 'Perfil actualizado correctamente.');
@@ -186,17 +253,16 @@ export default function PerfilScreen() {
     }
   };
 
+  // ── Cambiar PIN ────────────────────────────────────────────
   const handleChangePin = async () => {
     if (!currentPin.trim() || !newPin.trim() || !confirmPin.trim()) {
       Alert.alert('Error', 'Completa todos los campos.');
       return;
     }
-
     if (newPin !== confirmPin) {
       Alert.alert('Error', 'La confirmación del PIN no coincide.');
       return;
     }
-
     if (newPin.length < 4) {
       Alert.alert('Error', 'El nuevo PIN debe tener al menos 4 dígitos.');
       return;
@@ -208,12 +274,10 @@ export default function PerfilScreen() {
         current_pin: currentPin,
         new_pin: newPin,
       });
-
       setCurrentPin('');
       setNewPin('');
       setConfirmPin('');
       setShowPinModal(false);
-
       Alert.alert('Éxito', 'PIN actualizado correctamente.');
     } catch {
       Alert.alert('Error', 'No se pudo cambiar el PIN.');
@@ -222,39 +286,23 @@ export default function PerfilScreen() {
     }
   };
 
+  // ── Sincronizar ────────────────────────────────────────────
   const handleSync = async () => {
     try {
       setSyncing(true);
-
-      try {
-        await api.post('/sync/upload');
-      } catch {
-        // seguimos aunque upload falle
-      }
-
-      try {
-        await api.post('/sync/download');
-      } catch {
-        // seguimos aunque download falle
-      }
-
-      try {
-        await refreshUser?.();
-      } catch {
-        // no bloquear por fallo de refresh
-      }
-
+      try { await api.post('/sync/upload'); } catch {}
+      try { await api.post('/sync/download'); } catch {}
+      try { await refreshUser?.(); } catch {}
       Alert.alert('Éxito', 'Sincronización completada.');
     } catch (error: any) {
-      const message =
-        error?.response?.data?.detail ||
-        'No se pudo sincronizar la información.';
+      const message = error?.response?.data?.detail || 'No se pudo sincronizar la información.';
       Alert.alert('Error', message);
     } finally {
       setSyncing(false);
     }
   };
 
+  // ── Exportar ───────────────────────────────────────────────
   const loadAvesForExport = async () => {
     try {
       setLoadingAves(true);
@@ -264,13 +312,9 @@ export default function PerfilScreen() {
       try {
         await api.post('/sync/upload');
         await api.post('/sync/download');
-      } catch {
-        // seguimos aunque sync falle
-      }
+      } catch {}
 
-      const result = await api.get('/aves', {
-        limit: '200',
-      });
+      const result = await api.get('/aves', { limit: '200' });
 
       const rawArray: any[] = Array.isArray(result?.data)
         ? result.data
@@ -303,8 +347,7 @@ export default function PerfilScreen() {
         Alert.alert('Aviso', 'No se encontraron aves para exportar.');
       }
     } catch (error: any) {
-      const message =
-        error?.response?.data?.detail || 'No se pudo cargar la lista de aves.';
+      const message = error?.response?.data?.detail || 'No se pudo cargar la lista de aves.';
       Alert.alert('Error', message);
     } finally {
       setLoadingAves(false);
@@ -313,10 +356,8 @@ export default function PerfilScreen() {
 
   const getParentName = (id?: string, externo?: string) => {
     if (externo) return externo;
-
     const ave = aves.find((a) => a.id === id);
     if (!ave) return 'N/D';
-
     return ave.nombre ? `${ave.codigo} - ${ave.nombre}` : ave.codigo || 'N/D';
   };
 
@@ -347,20 +388,12 @@ export default function PerfilScreen() {
         Alert.alert('Aviso', 'Selecciona al menos una ave.');
         return;
       }
-
       setExporting(true);
-
       const avesToExport = aves.filter((a) => selectedAves.includes(a.id));
-
       const content = avesToExport
         .map((ave, i) => `AVE ${i + 1}\n${formatAveText(ave)}`)
         .join('\n\n------------------\n\n');
-
-      await Share.share({
-        title: 'Exportar seleccionadas',
-        message: content,
-      });
-
+      await Share.share({ title: 'Exportar seleccionadas', message: content });
       setSelectedAves([]);
       setShowExportModal(false);
       setSearchPlaca('');
@@ -377,18 +410,14 @@ export default function PerfilScreen() {
         Alert.alert('Aviso', 'No hay aves registradas para exportar.');
         return;
       }
-
       setExporting(true);
-
       const content = aves
         .map((ave, index) => `AVE ${index + 1}\n${formatAveText(ave)}`)
         .join('\n\n-----------------------------\n\n');
-
       await Share.share({
         title: 'Exportar todas las aves',
         message: `Listado completo de aves registradas\n\n${content}`,
       });
-
       setShowExportModal(false);
       setSearchPlaca('');
       setSelectedAves([]);
@@ -402,14 +431,8 @@ export default function PerfilScreen() {
   const exportSingleAve = async (ave: Ave) => {
     try {
       setExporting(true);
-
       const content = `Ficha individual del ave\n\n${formatAveText(ave)}`;
-
-      await Share.share({
-        title: `Ave ${ave.codigo || ''}`,
-        message: content,
-      });
-
+      await Share.share({ title: `Ave ${ave.codigo || ''}`, message: content });
       setShowExportModal(false);
       setSearchPlaca('');
       setSelectedAves([]);
@@ -424,6 +447,7 @@ export default function PerfilScreen() {
     await loadAvesForExport();
   };
 
+  // ── Logout ─────────────────────────────────────────────────
   const confirmLogout = async () => {
     try {
       setShowLogoutConfirm(false);
@@ -439,20 +463,15 @@ export default function PerfilScreen() {
       setShowLogoutConfirm(true);
       return;
     }
-
     Alert.alert('Cerrar Sesión', '¿Estás seguro de que deseas cerrar sesión?', [
       { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Cerrar Sesión',
-        style: 'destructive',
-        onPress: confirmLogout,
-      },
+      { text: 'Cerrar Sesión', style: 'destructive', onPress: confirmLogout },
     ]);
   };
 
+  // ── Eliminar cuenta ────────────────────────────────────────
   const handleDeleteAccount = async () => {
     if (deletingAccount) return;
-
     Alert.alert(
       'Eliminar cuenta',
       'Esta acción eliminará tu cuenta y toda tu información permanentemente.',
@@ -478,6 +497,7 @@ export default function PerfilScreen() {
     );
   };
 
+  // ── Render helper ──────────────────────────────────────────
   const renderActionItem = (
     icon: keyof typeof Ionicons.glyphMap,
     iconColor: string,
@@ -497,7 +517,6 @@ export default function PerfilScreen() {
         </View>
         <Text style={styles.actionText}>{title}</Text>
       </View>
-
       {loading ? (
         <ActivityIndicator size="small" color={COLORS.gold} />
       ) : (
@@ -513,29 +532,36 @@ export default function PerfilScreen() {
           headerShown: true,
           headerTitle: 'Mi Perfil',
           headerShadowVisible: false,
-          headerTransparent: true,
+          headerStyle: { backgroundColor: COLORS.background },
+          headerTitleStyle: { color: COLORS.grayDark, fontWeight: '700', fontSize: 18 },
+          headerTintColor: COLORS.grayDark,
           headerLeft: () => (
             <TouchableOpacity
               onPress={() => router.back()}
-              style={{ marginLeft: 5 }}
+              style={styles.backButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Ionicons name="arrow-back" size={24} color="#000" />
+              <Ionicons
+                name={Platform.OS === 'ios' ? 'chevron-back' : 'arrow-back'}
+                size={26}
+                color={COLORS.grayDark}
+              />
             </TouchableOpacity>
           ),
         }}
       />
 
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
+          {/* ── Tarjeta de perfil ── */}
           <View style={styles.profileCard}>
             <View style={styles.avatar}>
               <Ionicons name="person" size={34} color={COLORS.gold} />
             </View>
-
             <View style={styles.profileInfo}>
               <Text style={styles.profileName}>{userName}</Text>
               <Text style={styles.profileSubtext}>Teléfono: {userPhone}</Text>
@@ -543,6 +569,7 @@ export default function PerfilScreen() {
             </View>
           </View>
 
+          {/* ── Tarjeta premium ── */}
           {plan === 'premium' ? (
             <TouchableOpacity
               style={[styles.premiumCard, styles.premiumCardActive]}
@@ -552,13 +579,11 @@ export default function PerfilScreen() {
               <Text style={[styles.premiumTitle, styles.premiumTitleActive]}>
                 👑 NIVEL ELITE ACTIVO
               </Text>
-
               <View style={[styles.premiumInnerButton, styles.premiumInnerButtonActive]}>
                 <Text style={styles.premiumInnerButtonText}>
                   ACCESO COMPLETO DESBLOQUEADO
                 </Text>
               </View>
-
               <Text style={[styles.premiumSubtext, styles.premiumSubtextActive]}>
                 Disfruta todas las funciones sin límites
               </Text>
@@ -570,80 +595,64 @@ export default function PerfilScreen() {
               activeOpacity={0.9}
             >
               <Text style={styles.premiumTitle}>Mi Membresía</Text>
-
               <View style={styles.premiumInnerButton}>
                 <Text style={styles.premiumInnerButtonText}>
                   👑SUBE A NIVEL ELITE👑
                 </Text>
               </View>
-
               <Text style={styles.premiumSubtext}>
                 Acceso completo + Más registros, + más funciones
               </Text>
             </TouchableOpacity>
           )}
 
+          {/* ── Botón código promocional ── */}
+          <TouchableOpacity
+            style={styles.promoCodeButton}
+            onPress={() => setShowCodeModal(true)}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="ticket-outline" size={22} color={COLORS.greenElite} />
+            <Text style={styles.promoCodeButtonText}>Tengo un código de acceso</Text>
+            <Ionicons name="chevron-forward" size={20} color={COLORS.greenElite} />
+          </TouchableOpacity>
+
+          {/* ── Botón Admin (solo tu cuenta) ── */}
+          {isAdmin && (
+            <TouchableOpacity
+              style={styles.adminButton}
+              onPress={() => {
+                setGeneratedCode('');
+                setShowAdminModal(true);
+              }}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="settings-outline" size={22} color="#fff" />
+              <Text style={styles.adminButtonText}>⚙️ Panel Admin</Text>
+              <Ionicons name="chevron-forward" size={20} color="#fff" />
+            </TouchableOpacity>
+          )}
+
+          {/* ── Sección cuenta ── */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Cuenta</Text>
-
-            {renderActionItem(
-              'create-outline',
-              COLORS.gold,
-              'Editar perfil',
-              () => setShowEditModal(true)
-            )}
-
-            {renderActionItem(
-              'lock-closed-outline',
-              COLORS.gold,
-              'Cambiar PIN',
-              () => setShowPinModal(true)
-            )}
+            {renderActionItem('create-outline', COLORS.gold, 'Editar perfil', () => setShowEditModal(true))}
+            {renderActionItem('lock-closed-outline', COLORS.gold, 'Cambiar PIN', () => setShowPinModal(true))}
           </View>
 
+          {/* ── Sección datos ── */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Datos</Text>
-
-            {renderActionItem(
-              'sync-outline',
-              COLORS.greenDark,
-              'Sincronizar información',
-              handleSync,
-              syncing
-            )}
-
-            {renderActionItem(
-              'download-outline',
-              COLORS.greenDark,
-              'Exportar datos',
-              handleExport,
-              exporting || loadingAves
-            )}
+            {renderActionItem('sync-outline', COLORS.greenDark, 'Sincronizar información', handleSync, syncing)}
+            {renderActionItem('download-outline', COLORS.greenDark, 'Exportar datos', handleExport, exporting || loadingAves)}
           </View>
 
+          {/* ── Sección legal ── */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Legal</Text>
-
-            {renderActionItem(
-              'document-text-outline',
-              COLORS.gold,
-              'Política de Privacidad',
-              () => openUrl(PRIVACY_URL)
-            )}
-
-            {renderActionItem(
-              'document-outline',
-              COLORS.gold,
-              'Términos y Condiciones',
-              () => openUrl(TERMS_URL)
-            )}
-
-            {renderActionItem(
-              'help-circle-outline',
-              COLORS.gold,
-              'Soporte',
-              () => openUrl(SUPPORT_URL)
-            )}
+            {renderActionItem('document-text-outline', COLORS.gold, 'Política de Privacidad', () => openUrl(PRIVACY_URL))}
+            {renderActionItem('document-outline', COLORS.gold, 'Términos y Condiciones', () => openUrl(TERMS_URL))}
+            {renderActionItem('help-circle-outline', COLORS.gold, 'Soporte', () => openUrl(SUPPORT_URL))}
           </View>
 
           <TouchableOpacity
@@ -669,6 +678,155 @@ export default function PerfilScreen() {
         </ScrollView>
       </SafeAreaView>
 
+      {/* ── Modal: Canjear código promo ── */}
+      <Modal
+        visible={showCodeModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowCodeModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>🎟️ Código de acceso</Text>
+            <Text style={styles.modalMessage}>
+              Ingresa el código que recibiste para activar tu plan Premium.
+            </Text>
+            <TextInput
+              style={[styles.input, styles.codeInput]}
+              placeholder="Ej: GALLO-X7K2"
+              value={promoCode}
+              onChangeText={(t) => setPromoCode(t.toUpperCase())}
+              autoCapitalize="characters"
+              placeholderTextColor="#9ca3af"
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.secondaryButton}
+                onPress={() => {
+                  setShowCodeModal(false);
+                  setPromoCode('');
+                }}
+                disabled={redeemingCode}
+              >
+                <Text style={styles.secondaryButtonText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.primaryButton, { backgroundColor: COLORS.greenElite }]}
+                onPress={handleRedeemCode}
+                disabled={redeemingCode}
+              >
+                {redeemingCode ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.primaryButtonText}>Canjear</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Modal: Panel Admin ── */}
+      <Modal
+        visible={showAdminModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowAdminModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { maxHeight: '85%' }]}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.modalTitle}>⚙️ Panel Admin</Text>
+              <Text style={styles.adminSectionLabel}>Generar código promocional</Text>
+
+              <Text style={styles.inputLabel}>Duración (días)</Text>
+              <View style={styles.diasRow}>
+                {['30', '90', '180', '365', '9999'].map((d) => (
+                  <TouchableOpacity
+                    key={d}
+                    style={[styles.diasChip, adminDias === d && styles.diasChipActive]}
+                    onPress={() => setAdminDias(d)}
+                  >
+                    <Text style={[styles.diasChipText, adminDias === d && styles.diasChipTextActive]}>
+                      {d === '9999' ? 'Vitalicio' : d === '365' ? '1 año' : d === '180' ? '6 meses' : d === '90' ? '3 meses' : '1 mes'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <TextInput
+                style={styles.input}
+                placeholder="O escribe días manualmente (ej: 45)"
+                value={adminDias}
+                onChangeText={setAdminDias}
+                keyboardType="numeric"
+                placeholderTextColor="#9ca3af"
+              />
+
+              <Text style={styles.inputLabel}>Usos máximos</Text>
+              <View style={styles.diasRow}>
+                {['1', '5', '10', '50'].map((u) => (
+                  <TouchableOpacity
+                    key={u}
+                    style={[styles.diasChip, adminMaxUsos === u && styles.diasChipActive]}
+                    onPress={() => setAdminMaxUsos(u)}
+                  >
+                    <Text style={[styles.diasChipText, adminMaxUsos === u && styles.diasChipTextActive]}>
+                      {u}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.inputLabel}>Código personalizado (opcional)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Ej: CASTRO30 (dejar vacío = automático)"
+                value={adminCustomCode}
+                onChangeText={(t) => setAdminCustomCode(t.toUpperCase())}
+                autoCapitalize="characters"
+                placeholderTextColor="#9ca3af"
+              />
+
+              <TouchableOpacity
+                style={[styles.primaryButton, { width: '100%', marginBottom: 16 }]}
+                onPress={handleCreatePromoCode}
+                disabled={creatingCode}
+              >
+                {creatingCode ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.primaryButtonText}>Generar código</Text>
+                )}
+              </TouchableOpacity>
+
+              {generatedCode !== '' && (
+                <TouchableOpacity
+                  style={styles.generatedCodeBox}
+                  onPress={handleCopyCode}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.generatedCodeLabel}>✅ Código generado — toca para compartir</Text>
+                  <Text style={styles.generatedCodeText}>{generatedCode}</Text>
+                </TouchableOpacity>
+              )}
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.secondaryButton}
+                  onPress={() => {
+                    setShowAdminModal(false);
+                    setGeneratedCode('');
+                  }}
+                >
+                  <Text style={styles.secondaryButtonText}>Cerrar</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Modal: Editar Perfil ── */}
       <Modal
         visible={showEditModal}
         transparent
@@ -678,7 +836,6 @@ export default function PerfilScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Editar perfil</Text>
-
             <TextInput
               style={styles.input}
               placeholder="Nombre"
@@ -686,7 +843,6 @@ export default function PerfilScreen() {
               onChangeText={setEditingGalleria}
               placeholderTextColor="#9ca3af"
             />
-
             <TextInput
               style={styles.input}
               placeholder="Correo electrónico"
@@ -696,7 +852,6 @@ export default function PerfilScreen() {
               autoCapitalize="none"
               placeholderTextColor="#9ca3af"
             />
-
             <TextInput
               style={styles.input}
               placeholder="Teléfono"
@@ -705,7 +860,6 @@ export default function PerfilScreen() {
               keyboardType="phone-pad"
               placeholderTextColor="#9ca3af"
             />
-
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={styles.secondaryButton}
@@ -714,7 +868,6 @@ export default function PerfilScreen() {
               >
                 <Text style={styles.secondaryButtonText}>Cancelar</Text>
               </TouchableOpacity>
-
               <TouchableOpacity
                 style={styles.primaryButton}
                 onPress={handleSaveProfile}
@@ -731,6 +884,7 @@ export default function PerfilScreen() {
         </View>
       </Modal>
 
+      {/* ── Modal: Cambiar PIN ── */}
       <Modal
         visible={showPinModal}
         transparent
@@ -740,7 +894,6 @@ export default function PerfilScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Cambiar PIN</Text>
-
             <TextInput
               style={styles.input}
               placeholder="PIN actual"
@@ -750,7 +903,6 @@ export default function PerfilScreen() {
               keyboardType="numeric"
               placeholderTextColor="#9ca3af"
             />
-
             <TextInput
               style={styles.input}
               placeholder="Nuevo PIN"
@@ -760,7 +912,6 @@ export default function PerfilScreen() {
               keyboardType="numeric"
               placeholderTextColor="#9ca3af"
             />
-
             <TextInput
               style={styles.input}
               placeholder="Confirmar nuevo PIN"
@@ -770,7 +921,6 @@ export default function PerfilScreen() {
               keyboardType="numeric"
               placeholderTextColor="#9ca3af"
             />
-
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={styles.secondaryButton}
@@ -779,7 +929,6 @@ export default function PerfilScreen() {
               >
                 <Text style={styles.secondaryButtonText}>Cancelar</Text>
               </TouchableOpacity>
-
               <TouchableOpacity
                 style={styles.primaryButton}
                 onPress={handleChangePin}
@@ -796,6 +945,7 @@ export default function PerfilScreen() {
         </View>
       </Modal>
 
+      {/* ── Modal: Exportar ── */}
       <Modal
         visible={showExportModal}
         transparent
@@ -811,7 +961,6 @@ export default function PerfilScreen() {
                 <Text style={styles.selectedInfoLabel}>Seleccionadas</Text>
                 <Text style={styles.selectedInfoCount}>{selectedAves.length}</Text>
               </View>
-
               <TouchableOpacity
                 style={[
                   styles.sendSelectedButton,
@@ -859,7 +1008,6 @@ export default function PerfilScreen() {
               ) : (
                 filteredAves.map((ave) => {
                   const selected = selectedAves.includes(ave.id);
-
                   return (
                     <View key={ave.id} style={styles.exportAveItem}>
                       <TouchableOpacity
@@ -873,7 +1021,6 @@ export default function PerfilScreen() {
                           color={selected ? COLORS.greenDark : '#999'}
                         />
                       </TouchableOpacity>
-
                       <TouchableOpacity
                         style={styles.exportAveInfo}
                         onPress={() => exportSingleAve(ave)}
@@ -882,20 +1029,16 @@ export default function PerfilScreen() {
                         <Text style={styles.exportAveCode}>
                           {ave.codigo || 'Sin placa'}
                         </Text>
-
                         <Text style={styles.exportAveName}>
                           {ave.nombre || 'Sin nombre'}
                         </Text>
-
                         <Text style={styles.exportAveParentText}>
                           Padre: {getParentName(ave.padre_id, ave.padre_externo)}
                         </Text>
-
                         <Text style={styles.exportAveParentText}>
                           Madre: {getParentName(ave.madre_id, ave.madre_externo)}
                         </Text>
                       </TouchableOpacity>
-
                       <TouchableOpacity
                         style={styles.shareButton}
                         onPress={() => exportSingleAve(ave)}
@@ -926,6 +1069,7 @@ export default function PerfilScreen() {
         </View>
       </Modal>
 
+      {/* ── Modal: Logout (web) ── */}
       <Modal
         visible={showLogoutConfirm}
         transparent
@@ -938,7 +1082,6 @@ export default function PerfilScreen() {
             <Text style={styles.modalMessage}>
               ¿Estás seguro de que deseas cerrar sesión?
             </Text>
-
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={styles.secondaryButton}
@@ -946,7 +1089,6 @@ export default function PerfilScreen() {
               >
                 <Text style={styles.secondaryButtonText}>Cancelar</Text>
               </TouchableOpacity>
-
               <TouchableOpacity style={styles.dangerButton} onPress={confirmLogout}>
                 <Text style={styles.dangerButtonText}>Cerrar Sesión</Text>
               </TouchableOpacity>
@@ -968,10 +1110,13 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 16,
-    paddingTop: 40,
+    paddingTop: 16,
     paddingBottom: 32,
   },
-
+  backButton: {
+    paddingHorizontal: Platform.OS === 'android' ? 8 : 4,
+    paddingVertical: 4,
+  },
   profileCard: {
     backgroundColor: COLORS.card,
     borderRadius: 18,
@@ -1005,13 +1150,12 @@ const styles = StyleSheet.create({
     color: COLORS.grayMedium,
     marginBottom: 2,
   },
-
   premiumCard: {
     backgroundColor: '#ecfdf5',
     borderRadius: 22,
     paddingVertical: 20,
     paddingHorizontal: 18,
-    marginBottom: 22,
+    marginBottom: 14,
     borderWidth: 1.5,
     borderColor: '#22c55e',
   },
@@ -1056,7 +1200,105 @@ const styles = StyleSheet.create({
   premiumSubtextActive: {
     color: '#4ade80',
   },
-
+  promoCodeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0fdf4',
+    borderWidth: 1.5,
+    borderColor: COLORS.greenElite,
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginBottom: 12,
+    gap: 10,
+  },
+  promoCodeButtonText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.greenElite,
+  },
+  adminButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1f2937',
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginBottom: 18,
+    gap: 10,
+  },
+  adminButtonText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  adminSectionLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.grayDark,
+    marginBottom: 12,
+  },
+  inputLabel: {
+    fontSize: 13,
+    color: COLORS.grayMedium,
+    marginBottom: 8,
+    fontWeight: '600',
+  },
+  diasRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
+  },
+  diasChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: COLORS.grayBorder,
+    backgroundColor: '#f9fafb',
+  },
+  diasChipActive: {
+    borderColor: COLORS.gold,
+    backgroundColor: COLORS.goldLight,
+  },
+  diasChipText: {
+    fontSize: 13,
+    color: COLORS.grayMedium,
+    fontWeight: '600',
+  },
+  diasChipTextActive: {
+    color: COLORS.gold,
+  },
+  generatedCodeBox: {
+    backgroundColor: '#f0fdf4',
+    borderWidth: 1.5,
+    borderColor: COLORS.greenElite,
+    borderRadius: 14,
+    padding: 16,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  generatedCodeLabel: {
+    fontSize: 13,
+    color: COLORS.greenElite,
+    marginBottom: 8,
+    fontWeight: '600',
+  },
+  generatedCodeText: {
+    fontSize: 28,
+    fontWeight: '900',
+    color: COLORS.greenElite,
+    letterSpacing: 2,
+  },
+  codeInput: {
+    fontSize: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+    letterSpacing: 2,
+  },
   section: {
     marginBottom: 22,
   },
@@ -1067,7 +1309,6 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     fontWeight: '600',
   },
-
   actionItem: {
     backgroundColor: COLORS.card,
     borderRadius: 14,
@@ -1096,7 +1337,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.grayDark,
   },
-
   logoutButton: {
     backgroundColor: COLORS.redLight,
     paddingVertical: 16,
@@ -1109,7 +1349,6 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
   },
-
   deleteContainer: {
     marginTop: 14,
     alignItems: 'center',
@@ -1120,7 +1359,6 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
     fontSize: 16,
   },
-
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.35)',
@@ -1194,7 +1432,6 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontWeight: '700',
   },
-
   exportModalCard: {
     maxHeight: '85%',
   },

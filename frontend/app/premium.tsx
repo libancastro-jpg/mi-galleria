@@ -7,6 +7,8 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Linking,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
@@ -32,29 +34,22 @@ const MONTHLY_SKU = 'com.migalleria.app.premium.mensual';
 const YEARLY_SKU = 'com.migalleria.app.premium.anual';
 const SUBSCRIPTION_SKUS = [MONTHLY_SKU, YEARLY_SKU];
 
+const PRIVACY_URL = 'https://sites.google.com/view/migalleria-privacidad';
+const TERMS_URL = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
 type PlanType = 'mensual' | 'anual';
 
-// =====================================================================
-// FIX 3: Helper para extraer transactionId numérico de un JWS
-// react-native-iap a veces devuelve el JWS completo en transactionReceipt
-// pero la App Store Server API necesita el ID numérico
-// =====================================================================
 function extractTransactionId(purchase: any): string | null {
-  // Prioridad 1: transactionId numérico directo
   const directId = purchase?.transactionId;
   if (directId && !String(directId).includes('.')) {
     console.log('[IAP] Usando transactionId directo:', directId);
     return String(directId);
   }
 
-  // Prioridad 2: Si transactionId es un JWS o solo tenemos transactionReceipt,
-  // decodificar el payload del JWS para extraer el transactionId numérico
   const jws = directId || purchase?.transactionReceipt;
   if (jws && typeof jws === 'string' && jws.includes('.')) {
     try {
       const parts = jws.split('.');
       if (parts.length === 3) {
-        // Decodificar el payload (segunda parte del JWS)
         const payloadBase64 = parts[1]
           .replace(/-/g, '+')
           .replace(/_/g, '/');
@@ -139,6 +134,8 @@ export default function PremiumScreen() {
   const [loadingRestore, setLoadingRestore] = useState(false);
 
   const lastProcessedTransactionRef = useRef<string | null>(null);
+  // ── Guard para evitar procesamiento duplicado ──────────────
+  const isProcessingRef = useRef<boolean>(false);
 
   const isPremium = user?.plan === 'premium';
   const premiumExpiresAt = user?.premium_expires_at || null;
@@ -152,17 +149,34 @@ export default function PremiumScreen() {
   } = useIAP({
     onPurchaseSuccess: async (purchase) => {
       try {
-        // FIX: Usar helper para extraer transactionId numérico
+        // ── GUARD 1: Si ya está procesando, ignorar ──────────
+        if (isProcessingRef.current) {
+          console.log('[IAP] Ya hay un procesamiento en curso, ignorando evento duplicado');
+          return;
+        }
+
+        // ── GUARD 2: Si el usuario ya es premium por código promo, ignorar ──
+        if (user?.plan === 'premium') {
+          console.log('[IAP] Usuario ya es premium (posiblemente por código promo), ignorando evento IAP');
+          try {
+            await finishTransaction({ purchase, isConsumable: false });
+          } catch {}
+          return;
+        }
+
         const transactionId = extractTransactionId(purchase);
 
         if (!transactionId) {
           throw new Error('No se pudo obtener el ID de transacción de Apple.');
         }
 
+        // ── GUARD 3: Si ya procesamos esta transacción, ignorar ──
         if (lastProcessedTransactionRef.current === transactionId) {
+          console.log('[IAP] TransactionId ya procesado, ignorando:', transactionId);
           return;
         }
 
+        isProcessingRef.current = true;
         lastProcessedTransactionRef.current = transactionId;
 
         const productId =
@@ -196,8 +210,7 @@ export default function PremiumScreen() {
           isConsumable: false,
         });
 
-        await syncUserFromBackend();
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        // ── Un solo syncUserFromBackend es suficiente ────────
         await syncUserFromBackend();
 
         setBuyingSku(null);
@@ -219,10 +232,13 @@ export default function PremiumScreen() {
           'Error',
           error?.message || 'La compra se realizó, pero hubo un problema activando premium.'
         );
+      } finally {
+        isProcessingRef.current = false;
       }
     },
     onPurchaseError: (error) => {
       setBuyingSku(null);
+      isProcessingRef.current = false;
 
       const message = String(error?.message || '');
 
@@ -285,10 +301,8 @@ export default function PremiumScreen() {
 
   const formatExpirationDate = (value: string | null) => {
     if (!value) return null;
-
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return null;
-
     return date.toLocaleDateString('es-DO', {
       year: 'numeric',
       month: 'long',
@@ -371,7 +385,6 @@ export default function PremiumScreen() {
         throw new Error('No se pudo identificar la compra a restaurar.');
       }
 
-      // FIX: Usar helper para extraer transactionId numérico
       const transactionId = extractTransactionId(restoredPurchase);
 
       if (!transactionId) {
@@ -397,8 +410,7 @@ export default function PremiumScreen() {
         purchase_token: restoredPurchase?.purchaseToken || null,
       });
 
-      await syncUserFromBackend();
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // ── Un solo syncUserFromBackend es suficiente ────────
       await syncUserFromBackend();
 
       Alert.alert(
@@ -457,11 +469,9 @@ export default function PremiumScreen() {
                 Tu membresía premium está activa y tienes acceso completo a las
                 funciones de Mi Galleria.
               </Text>
-
               <View style={styles.heroButtonActive}>
                 <Text style={styles.heroButtonText}>ACCESO COMPLETO DESBLOQUEADO</Text>
               </View>
-
               {expiresFormatted ? (
                 <Text style={styles.expirationText}>
                   Activo hasta: {expiresFormatted}
@@ -475,7 +485,6 @@ export default function PremiumScreen() {
                 Desbloquea el control libre, más registros y una experiencia premium
                 dentro de Mi Galleria.
               </Text>
-
               <View style={styles.heroButton}>
                 <Text style={styles.heroButtonText}>👑 SUBE A NIVEL ELITE 👑</Text>
               </View>
@@ -484,7 +493,6 @@ export default function PremiumScreen() {
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Beneficios Premium</Text>
-
             <View style={styles.benefitsCard}>
               <BenefitItem text="Más registros y mayor capacidad en la app" />
               <BenefitItem text="Acceso libre a todas las funciones" />
@@ -527,7 +535,6 @@ export default function PremiumScreen() {
                   disabled={buttonsDisabled && buyingSku !== MONTHLY_SKU}
                   onPress={() => handleBuySubscription(MONTHLY_SKU)}
                 />
-
                 <PlanCard
                   title="Premium Anual"
                   price={getProductPrice(yearlyProduct, '$66.99 / año')}
@@ -558,11 +565,22 @@ export default function PremiumScreen() {
           </TouchableOpacity>
 
           <View style={styles.infoCard}>
-            <Text style={styles.infoTitle}>Importante</Text>
+            <Text style={styles.infoTitle}>Información de la suscripción</Text>
             <Text style={styles.infoText}>
-            Tu membresía desbloquea acceso completo a las funciones premium.
-            Puedes restaurar tus compras en cualquier momento.
+              • Premium Mensual: $7.99 USD / mes{'\n'}
+              • Premium Anual: $66.99 USD / año{'\n\n'}
+              La suscripción se renueva automáticamente a menos que se cancele al menos 24 horas antes del fin del periodo actual. Tu cuenta de Apple será cargada por la renovación dentro de las 24 horas previas al fin del periodo actual.{'\n\n'}
+              Puedes gestionar y cancelar tu suscripción desde los ajustes de tu cuenta en la App Store. Cualquier porción no utilizada del periodo de prueba gratuito, si se ofrece, se perderá al adquirir una suscripción.
             </Text>
+            <View style={styles.legalLinks}>
+              <TouchableOpacity onPress={() => Linking.openURL(PRIVACY_URL)}>
+                <Text style={styles.legalLinkText}>Política de Privacidad</Text>
+              </TouchableOpacity>
+              <Text style={styles.legalSeparator}>|</Text>
+              <TouchableOpacity onPress={() => Linking.openURL(TERMS_URL)}>
+                <Text style={styles.legalLinkText}>Términos de Uso</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -580,10 +598,9 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 16,
-    paddingTop: 40,
+    paddingTop: Platform.OS === 'android' ? 50 : 40,
     paddingBottom: 32,
   },
-
   heroCard: {
     backgroundColor: COLORS.greenLight,
     borderRadius: 24,
@@ -656,7 +673,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#86efac',
   },
-
   section: {
     marginBottom: 22,
   },
@@ -666,7 +682,6 @@ const styles = StyleSheet.create({
     color: COLORS.grayDark,
     marginBottom: 12,
   },
-
   benefitsCard: {
     backgroundColor: COLORS.card,
     borderRadius: 18,
@@ -686,7 +701,6 @@ const styles = StyleSheet.create({
     color: COLORS.grayDark,
     lineHeight: 21,
   },
-
   planCard: {
     backgroundColor: COLORS.card,
     borderRadius: 20,
@@ -746,7 +760,6 @@ const styles = StyleSheet.create({
   disabledButton: {
     opacity: 0.7,
   },
-
   activePlanCard: {
     backgroundColor: '#ecfdf5',
     borderRadius: 18,
@@ -769,7 +782,6 @@ const styles = StyleSheet.create({
     color: COLORS.grayDark,
     textAlign: 'center',
   },
-
   infoMiniCard: {
     backgroundColor: COLORS.card,
     borderRadius: 14,
@@ -783,7 +795,6 @@ const styles = StyleSheet.create({
     color: COLORS.grayMedium,
     fontSize: 14,
   },
-
   restoreButton: {
     backgroundColor: '#f3f4f6',
     borderRadius: 14,
@@ -801,7 +812,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
-
   infoCard: {
     backgroundColor: COLORS.card,
     borderRadius: 18,
@@ -816,8 +826,25 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   infoText: {
-    fontSize: 14,
-    lineHeight: 22,
+    fontSize: 13,
+    lineHeight: 20,
     color: COLORS.grayMedium,
+  },
+  legalLinks: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 16,
+    gap: 8,
+  },
+  legalLinkText: {
+    color: '#2563eb',
+    fontSize: 13,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
+  legalSeparator: {
+    color: '#9ca3af',
+    fontSize: 13,
   },
 });

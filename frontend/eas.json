@@ -29,12 +29,15 @@
       }
     }
   },
-  "submit": {
+"submit": {
     "production": {
       "ios": {
         "appleId": "liban_castro@hotmail.com",
         "ascAppId": "6760793399",
-        "appleTeamId": "24YHWWB57N"
+        "appleTeamId": "24YHWWB57N",
+        "ascApiKeyId": "MYRCDU478J",
+        "ascApiKeyIssuerId": "30bfbf95-7d8c-4012-8895-f8571073d401",
+        "ascApiKeyPath": "./AuthKey_MYRCDU478J.p8"
       },
       "android": {
         "track": "production",

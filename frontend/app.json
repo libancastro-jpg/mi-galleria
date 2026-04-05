@@ -2,7 +2,7 @@
   "expo": {
     "name": "Mi Galleria",
     "slug": "mi-galleria",
-    "version": "1.0.5",
+    "version": "1.0.11",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "mi-galleria",
@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.migalleria.app",
-      "buildNumber": "8",
+      "buildNumber": "16",
       "infoPlist": {
         "NSCameraUsageDescription": "Tomar fotos de tus aves para identificarlas fácilmente",
         "NSPhotoLibraryUsageDescription": "Seleccionar fotos de tus aves desde tu galería",
@@ -26,7 +26,7 @@
       },
       "edgeToEdgeEnabled": false,
       "package": "com.migalleria.app",
-      "versionCode": 22,
+      "versionCode": 29,
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
