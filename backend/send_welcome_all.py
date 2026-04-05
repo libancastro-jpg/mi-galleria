@@ -25,7 +25,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--limit", type=int, default=0)
-    parser.add_argument("--template", type=str, default="bienvenida_soporte")
+    parser.add_argument("--template", type=str, default="bienvenida_migalleria")
     args = parser.parse_args()
 
     client = MongoClient(MONGO_URL)
@@ -36,7 +36,7 @@ def main():
         "whatsapp_welcome_sent": {"$ne": True},
     }
 
-    users = list(db.users.find(query).sort("created_at", -1))
+    users = list(db.users.find(query).sort("created_at", 1))
     total = len(users)
 
     print(f"\nUsuarios pendientes de mensaje WhatsApp: {total}")

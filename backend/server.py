@@ -18,6 +18,8 @@ import requests
 import base64
 import json
 from whatsapp import send_whatsapp_template  # ← NUEVO: WhatsApp
+import random
+import string
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -2985,6 +2987,123 @@ async def whatsapp_webhook_receive(request: Request):
 
 # ============== FIN WEBHOOK WHATSAPP ==============
 
+# ============== PROMO CODES / ADMIN ==============
+
+ADMIN_PHONE = "8299805618"
+
+class CreatePromoCodeRequest(BaseModel):
+    code: Optional[str] = None
+    dias: int
+    max_usos: int = 1
+
+class RedeemCodeRequest(BaseModel):
+    code: str
+
+class GiftPremiumRequest(BaseModel):
+    telefono: str
+    dias: int
+
+def generate_promo_code(length: int = 8) -> str:
+    chars = string.ascii_uppercase + string.digits
+    suffix = ''.join(random.choices(chars, k=length))
+    return f"GALLO-{suffix}"
+
+async def require_admin(current_user: dict = Depends(get_current_user)):
+    user = await db.users.find_one({"_id": ObjectId(current_user["id"])})
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    if user.get("rol") != "admin" and user.get("telefono") != ADMIN_PHONE:
+        raise HTTPException(status_code=403, detail="Acceso denegado: solo administradores")
+    return current_user
+
+@api_router.get("/app/version")
+async def get_app_version():
+    return {
+        "latest_version": "1.0.11",
+        "minimum_version": "1.0.10",
+        "force_update": False,
+        "message": "Hay una nueva versión disponible con mejoras importantes. Actualiza para disfrutar los códigos promocionales y más funciones."
+    }
+
+@api_router.post("/admin/create-promo-code")
+async def create_promo_code(data: CreatePromoCodeRequest, current_user: dict = Depends(require_admin)):
+    if data.dias < 1:
+        raise HTTPException(status_code=400, detail="La duración debe ser al menos 1 día")
+    if data.max_usos < 1:
+        raise HTTPException(status_code=400, detail="El máximo de usos debe ser al menos 1")
+    code = (data.code or "").strip().upper()
+    if not code:
+        code = generate_promo_code()
+    existing = await db.promo_codes.find_one({"code": code})
+    if existing:
+        raise HTTPException(status_code=400, detail=f"El código '{code}' ya existe")
+    now = datetime.utcnow()
+    await db.promo_codes.insert_one({"code": code, "dias": data.dias, "max_usos": data.max_usos, "usos_actuales": 0, "usado_por": [], "activo": True, "created_by": current_user["id"], "created_at": now})
+    logger.info("[PromoCode] Código '%s' creado — %d días, %d usos", code, data.dias, data.max_usos)
+    return {"code": code, "dias": data.dias, "max_usos": data.max_usos, "message": f"Código '{code}' creado correctamente"}
+
+@api_router.get("/admin/promo-codes")
+async def list_promo_codes(current_user: dict = Depends(require_admin)):
+    codes = await db.promo_codes.find({}).sort("created_at", -1).to_list(200)
+    return [{"id": str(c["_id"]), "code": c["code"], "dias": c["dias"], "max_usos": c["max_usos"], "usos_actuales": c.get("usos_actuales", 0), "activo": c.get("activo", True), "created_at": c["created_at"]} for c in codes]
+
+@api_router.post("/auth/redeem-code")
+async def redeem_promo_code(data: RedeemCodeRequest, current_user: dict = Depends(get_current_user)):
+    code = data.code.strip().upper()
+    if not code:
+        raise HTTPException(status_code=400, detail="El código no puede estar vacío")
+    promo = await db.promo_codes.find_one({"code": code})
+    if not promo:
+        raise HTTPException(status_code=404, detail="Código no válido o inexistente")
+    if not promo.get("activo", True):
+        raise HTTPException(status_code=400, detail="Este código ya no está activo")
+    usos = promo.get("usos_actuales", 0)
+    max_usos = promo.get("max_usos", 1)
+    if usos >= max_usos:
+        raise HTTPException(status_code=400, detail="Este código ya alcanzó su límite de usos")
+    usado_por = promo.get("usado_por", [])
+    if current_user["id"] in usado_por:
+        raise HTTPException(status_code=400, detail="Ya utilizaste este código anteriormente")
+    user = await db.users.find_one({"_id": ObjectId(current_user["id"])})
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    now = datetime.utcnow()
+    dias = promo["dias"]
+    current_exp = parse_datetime_safe(user.get("premium_expires_at"))
+    premium_active = bool(current_exp and current_exp > now)
+    base_date = current_exp if premium_active else now
+    new_exp = base_date + timedelta(days=dias)
+    await db.users.update_one(
+        {"_id": ObjectId(current_user["id"])},
+        {"$set": {"plan": "premium", "premium_expires_at": new_exp, "premium_started_at": user.get("premium_started_at") or now, "subscription_platform": "promo_code", "subscription_product_id": code, "updated_at": now}}
+    )
+    await db.promo_codes.update_one(
+        {"_id": promo["_id"]},
+        {"$inc": {"usos_actuales": 1}, "$push": {"usado_por": current_user["id"]}, "$set": {"activo": (usos + 1) < max_usos}}
+    )
+    updated_user = await db.users.find_one({"_id": ObjectId(current_user["id"])})
+    logger.info("[PromoCode] '%s' canjeado por user %s — premium hasta %s", code, current_user["id"], new_exp)
+    return {"message": f"¡Código canjeado! Premium activado por {dias} días 🎉", "premium_expires_at": new_exp, "user": build_user_response(updated_user)}
+
+@api_router.post("/admin/gift-premium")
+async def gift_premium(data: GiftPremiumRequest, current_user: dict = Depends(require_admin)):
+    if data.dias < 1:
+        raise HTTPException(status_code=400, detail="La duración debe ser al menos 1 día")
+    user = await db.users.find_one({"telefono": data.telefono})
+    if not user:
+        raise HTTPException(status_code=404, detail=f"No se encontró usuario con teléfono {data.telefono}")
+    now = datetime.utcnow()
+    current_exp = parse_datetime_safe(user.get("premium_expires_at"))
+    premium_active = bool(current_exp and current_exp > now)
+    base_date = current_exp if premium_active else now
+    new_exp = base_date + timedelta(days=data.dias)
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$set": {"plan": "premium", "premium_expires_at": new_exp, "premium_started_at": user.get("premium_started_at") or now, "subscription_platform": "gift", "updated_at": now}}
+    )
+    logger.info("[GiftPremium] Admin regaló %d días a %s — expira %s", data.dias, data.telefono, new_exp)
+    updated_user = await db.users.find_one({"_id": user["_id"]})
+    return {"message": f"Premium de {data.dias} días activado para {data.telefono} ✅", "premium_expires_at": new_exp, "user": build_user_response(updated_user)}
 
 app.include_router(api_router)
 
@@ -3002,6 +3121,7 @@ async def startup_db_indexes():
     await db.aves.create_index([("user_id", 1), ("estado", 1), ("created_at", -1)])
     await db.aves.create_index([("user_id", 1), ("tipo", 1), ("created_at", -1)])
     await db.apple_transactions.create_index("transaction_id", unique=True)
+    await db.promo_codes.create_index("code", unique=True)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
