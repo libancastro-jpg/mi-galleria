@@ -3170,7 +3170,7 @@ def send_otp_sms(telefono: str, codigo: str, tipo: str = "registro"):
             },
             json={
                 "messages": [{
-                    "from": "MiGalleria",
+                    "from": "447491163443",
                     "destinations": [{"to": f"+{telefono}"}],
                     "text": mensaje
                 }]
