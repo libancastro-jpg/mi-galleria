@@ -3185,9 +3185,15 @@ def send_otp_sms(telefono: str, codigo: str, tipo: str = "registro"):
 @api_router.post("/auth/send-otp")
 async def send_otp(data: SendOTPRequest):
     telefono = data.telefono.strip().replace(" ", "").replace("-", "")
-    # Normalizar formato para WhatsApp (agregar código de país)
-    if not telefono.startswith("1") and len(telefono) == 10:
-        telefono = "1" + telefono
+   # Normalizar teléfono — quitar espacios, guiones, paréntesis y el +
+    telefono = data.telefono.strip().replace(" ", "").replace("-", "").replace("(", "").replace(")", "").replace("+", "")
+
+    # Normalizar formato para WhatsApp
+    if telefono.startswith("1") and len(telefono) == 11:
+        pass  # Ya tiene código de país: 18091234567 ✅
+    elif len(telefono) == 10:
+        telefono = "1" + telefono  # RD sin código: 8091234567 → 18091234567
+    # Si tiene más de 11 dígitos ya viene con código internacional completo
     tipo = data.tipo
 
     if not telefono:
