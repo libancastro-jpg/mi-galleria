@@ -3148,7 +3148,7 @@ def send_otp_whatsapp(telefono: str, codigo: str, tipo: str = "registro"):
 
 
 def send_otp_sms(telefono: str, codigo: str, tipo: str = "registro"):
-    """Envía el código OTP por SMS usando Infobip (fallback)."""
+    """Envía el código OTP por SMS usando Infobip."""
     api_key = os.environ.get("INFOBIP_API_KEY")
     base_url = os.environ.get("INFOBIP_BASE_URL")
 
@@ -3207,7 +3207,7 @@ async def send_otp(data: SendOTPRequest):
         user = await db.users.find_one({"telefono": telefono})
         if not user:
             raise HTTPException(status_code=404, detail="No se encontró una cuenta con ese número")
-        
+
     # Verificar si ya hay un OTP reciente (evitar spam)
     existing_otp = await db.otp_codes.find_one({
         "telefono": telefono,
@@ -3217,7 +3217,6 @@ async def send_otp(data: SendOTPRequest):
     })
 
     if existing_otp:
-        # Si el OTP tiene menos de 1 minuto, no reenviar
         created = existing_otp.get("created_at", datetime.utcnow())
         segundos_pasados = (datetime.utcnow() - created).total_seconds()
         if segundos_pasados < 60:
@@ -3246,7 +3245,16 @@ async def send_otp(data: SendOTPRequest):
         "expires_at": expires_at,
     })
 
-    # Intentar enviar por WhatsApp primero
+    # Intentar enviar por SMS (Infobip) primero
+    sms_ok = send_otp_sms(telefono, codigo, tipo)
+    if sms_ok:
+        return {
+            "message": "Código enviado por SMS",
+            "canal": "sms",
+            "expires_in": 600
+        }
+
+    # Fallback: WhatsApp
     try:
         send_otp_whatsapp(telefono, codigo, tipo)
         logger.info("[OTP] Código enviado por WhatsApp a %s", telefono)
@@ -3256,16 +3264,7 @@ async def send_otp(data: SendOTPRequest):
             "expires_in": 600
         }
     except Exception as e:
-        logger.warning("[OTP] WhatsApp falló para %s: %s. Intentando SMS...", telefono, e)
-
-    # Fallback: SMS por Twilio
-    sms_ok = send_otp_sms(telefono, codigo, tipo)
-    if sms_ok:
-        return {
-            "message": "Código enviado por SMS",
-            "canal": "sms",
-            "expires_in": 600
-        }
+        logger.warning("[OTP] WhatsApp también falló para %s: %s", telefono, e)
 
     # Si ambos fallan
     raise HTTPException(
@@ -3292,7 +3291,6 @@ async def verify_otp(data: VerifyOTPRequest):
     if not otp:
         raise HTTPException(status_code=400, detail="Código inválido o expirado")
 
-    # Verificar intentos máximos
     intentos = otp.get("intentos", 0)
     if intentos >= 5:
         await db.otp_codes.update_one(
@@ -3312,7 +3310,6 @@ async def verify_otp(data: VerifyOTPRequest):
             detail=f"Código incorrecto. Te quedan {intentos_restantes} intentos"
         )
 
-    # Marcar como usado
     await db.otp_codes.update_one(
         {"_id": otp["_id"]},
         {"$set": {"usado": True}}
@@ -3332,7 +3329,6 @@ async def recover_pin(data: RecoverPinRequest):
     if not nuevo_pin.isdigit() or len(nuevo_pin) < 4 or len(nuevo_pin) > 6:
         raise HTTPException(status_code=400, detail="El nuevo PIN debe ser de 4 a 6 dígitos")
 
-    # Verificar OTP
     otp = await db.otp_codes.find_one({
         "telefono": telefono,
         "tipo": "recuperar_pin",
@@ -3352,7 +3348,6 @@ async def recover_pin(data: RecoverPinRequest):
         await db.otp_codes.update_one({"_id": otp["_id"]}, {"$inc": {"intentos": 1}})
         raise HTTPException(status_code=400, detail="Código incorrecto")
 
-    # Actualizar PIN
     user = await db.users.find_one({"telefono": telefono})
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
@@ -3362,7 +3357,6 @@ async def recover_pin(data: RecoverPinRequest):
         {"$set": {"pin": hash_pin(nuevo_pin), "updated_at": datetime.utcnow()}}
     )
 
-    # Marcar OTP como usado
     await db.otp_codes.update_one({"_id": otp["_id"]}, {"$set": {"usado": True}})
 
     logger.info("[OTP] PIN recuperado para %s", telefono)
