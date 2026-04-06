@@ -3177,12 +3177,11 @@ def send_otp_sms(telefono: str, codigo: str, tipo: str = "registro"):
             },
             timeout=10,
         )
-        logger.info("[OTP SMS] Infobip enviado a %s: %s", telefono, response.status_code)
+        logger.info("[OTP SMS] Infobip status: %s — body: %s", response.status_code, response.text)
         return response.status_code == 200
     except Exception as e:
         logger.error("[OTP SMS] Error enviando SMS a %s: %s", telefono, e)
         return False
-
 
 # ── Endpoint: enviar OTP ─────────────────────────────────────
 
