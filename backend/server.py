@@ -3148,13 +3148,12 @@ def send_otp_whatsapp(telefono: str, codigo: str, tipo: str = "registro"):
 
 
 def send_otp_sms(telefono: str, codigo: str, tipo: str = "registro"):
-    """Envía el código OTP por SMS usando Twilio (fallback)."""
-    twilio_sid = os.environ.get("TWILIO_ACCOUNT_SID")
-    twilio_token = os.environ.get("TWILIO_AUTH_TOKEN")
-    twilio_number = os.environ.get("TWILIO_PHONE_NUMBER")
+    """Envía el código OTP por SMS usando Infobip (fallback)."""
+    api_key = os.environ.get("INFOBIP_API_KEY")
+    base_url = os.environ.get("INFOBIP_BASE_URL")
 
-    if not twilio_sid or not twilio_token or not twilio_number:
-        logger.warning("[OTP SMS] Twilio no configurado, saltando SMS")
+    if not api_key or not base_url:
+        logger.warning("[OTP SMS] Infobip no configurado, saltando SMS")
         return False
 
     if tipo == "registro":
@@ -3164,17 +3163,22 @@ def send_otp_sms(telefono: str, codigo: str, tipo: str = "registro"):
 
     try:
         response = requests.post(
-            f"https://api.twilio.com/2010-04-01/Accounts/{twilio_sid}/Messages.json",
-            auth=(twilio_sid, twilio_token),
-            data={
-                "From": twilio_number,
-                "To": f"+{telefono}",
-                "Body": mensaje,
+            f"https://{base_url}/sms/2/text/advanced",
+            headers={
+                "Authorization": f"App {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "messages": [{
+                    "from": "MiGalleria",
+                    "destinations": [{"to": f"+{telefono}"}],
+                    "text": mensaje
+                }]
             },
             timeout=10,
         )
-        logger.info("[OTP SMS] Enviado a %s: %s", telefono, response.status_code)
-        return response.status_code == 201
+        logger.info("[OTP SMS] Infobip enviado a %s: %s", telefono, response.status_code)
+        return response.status_code == 200
     except Exception as e:
         logger.error("[OTP SMS] Error enviando SMS a %s: %s", telefono, e)
         return False
