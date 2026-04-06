@@ -3185,6 +3185,9 @@ def send_otp_sms(telefono: str, codigo: str, tipo: str = "registro"):
 @api_router.post("/auth/send-otp")
 async def send_otp(data: SendOTPRequest):
     telefono = data.telefono.strip().replace(" ", "").replace("-", "")
+    # Normalizar formato para WhatsApp (agregar código de país)
+    if not telefono.startswith("1") and len(telefono) == 10:
+        telefono = "1" + telefono
     tipo = data.tipo
 
     if not telefono:
