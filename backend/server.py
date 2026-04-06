@@ -3104,6 +3104,258 @@ async def gift_premium(data: GiftPremiumRequest, current_user: dict = Depends(re
     logger.info("[GiftPremium] Admin regaló %d días a %s — expira %s", data.dias, data.telefono, new_exp)
     updated_user = await db.users.find_one({"_id": user["_id"]})
     return {"message": f"Premium de {data.dias} días activado para {data.telefono} ✅", "premium_expires_at": new_exp, "user": build_user_response(updated_user)}
+# ============== OTP - VERIFICACIÓN Y RECUPERACIÓN PIN ==============
+
+import secrets
+
+class SendOTPRequest(BaseModel):
+    telefono: str
+    tipo: str = "registro"  # "registro" | "recuperar_pin"
+
+class VerifyOTPRequest(BaseModel):
+    telefono: str
+    codigo: str
+    tipo: str = "registro"
+
+class RecoverPinRequest(BaseModel):
+    telefono: str
+    codigo: str
+    nuevo_pin: str
+
+
+def generate_otp() -> str:
+    """Genera un código OTP de 6 dígitos."""
+    return str(secrets.randbelow(900000) + 100000)
+
+
+def send_otp_whatsapp(telefono: str, codigo: str, tipo: str = "registro"):
+    """Envía el código OTP por WhatsApp."""
+    if tipo == "registro":
+        mensaje = (
+            f"🐓 *Mi Galleria*\n\n"
+            f"Tu código de verificación es:\n\n"
+            f"*{codigo}*\n\n"
+            f"Válido por 10 minutos. No lo compartas con nadie."
+        )
+    else:
+        mensaje = (
+            f"🐓 *Mi Galleria*\n\n"
+            f"Tu código para recuperar el PIN es:\n\n"
+            f"*{codigo}*\n\n"
+            f"Válido por 10 minutos. No lo compartas con nadie."
+        )
+    send_whatsapp_text(telefono, mensaje)
+
+
+def send_otp_sms(telefono: str, codigo: str, tipo: str = "registro"):
+    """Envía el código OTP por SMS usando Twilio (fallback)."""
+    twilio_sid = os.environ.get("TWILIO_ACCOUNT_SID")
+    twilio_token = os.environ.get("TWILIO_AUTH_TOKEN")
+    twilio_number = os.environ.get("TWILIO_PHONE_NUMBER")
+
+    if not twilio_sid or not twilio_token or not twilio_number:
+        logger.warning("[OTP SMS] Twilio no configurado, saltando SMS")
+        return False
+
+    if tipo == "registro":
+        mensaje = f"Mi Galleria: Tu codigo de verificacion es {codigo}. Valido por 10 minutos."
+    else:
+        mensaje = f"Mi Galleria: Tu codigo para recuperar el PIN es {codigo}. Valido por 10 minutos."
+
+    try:
+        response = requests.post(
+            f"https://api.twilio.com/2010-04-01/Accounts/{twilio_sid}/Messages.json",
+            auth=(twilio_sid, twilio_token),
+            data={
+                "From": twilio_number,
+                "To": f"+{telefono}",
+                "Body": mensaje,
+            },
+            timeout=10,
+        )
+        logger.info("[OTP SMS] Enviado a %s: %s", telefono, response.status_code)
+        return response.status_code == 201
+    except Exception as e:
+        logger.error("[OTP SMS] Error enviando SMS a %s: %s", telefono, e)
+        return False
+
+
+# ── Endpoint: enviar OTP ─────────────────────────────────────
+
+@api_router.post("/auth/send-otp")
+async def send_otp(data: SendOTPRequest):
+    telefono = data.telefono.strip().replace(" ", "").replace("-", "")
+    tipo = data.tipo
+
+    if not telefono:
+        raise HTTPException(status_code=400, detail="El teléfono es requerido")
+
+    # Para recuperar PIN, verificar que el usuario existe
+    if tipo == "recuperar_pin":
+        user = await db.users.find_one({"telefono": telefono})
+        if not user:
+            raise HTTPException(status_code=404, detail="No se encontró una cuenta con ese número")
+
+    # Verificar si ya hay un OTP reciente (evitar spam)
+    existing_otp = await db.otp_codes.find_one({
+        "telefono": telefono,
+        "tipo": tipo,
+        "expires_at": {"$gt": datetime.utcnow()},
+        "usado": False
+    })
+
+    if existing_otp:
+        # Si el OTP tiene menos de 1 minuto, no reenviar
+        created = existing_otp.get("created_at", datetime.utcnow())
+        segundos_pasados = (datetime.utcnow() - created).total_seconds()
+        if segundos_pasados < 60:
+            raise HTTPException(
+                status_code=429,
+                detail=f"Espera {int(60 - segundos_pasados)} segundos antes de solicitar otro código"
+            )
+
+    # Invalidar OTPs anteriores del mismo teléfono
+    await db.otp_codes.update_many(
+        {"telefono": telefono, "tipo": tipo, "usado": False},
+        {"$set": {"usado": True}}
+    )
+
+    # Generar nuevo OTP
+    codigo = generate_otp()
+    expires_at = datetime.utcnow() + timedelta(minutes=10)
+
+    await db.otp_codes.insert_one({
+        "telefono": telefono,
+        "codigo": codigo,
+        "tipo": tipo,
+        "usado": False,
+        "intentos": 0,
+        "created_at": datetime.utcnow(),
+        "expires_at": expires_at,
+    })
+
+    # Intentar enviar por WhatsApp primero
+    try:
+        send_otp_whatsapp(telefono, codigo, tipo)
+        logger.info("[OTP] Código enviado por WhatsApp a %s", telefono)
+        return {
+            "message": "Código enviado por WhatsApp",
+            "canal": "whatsapp",
+            "expires_in": 600
+        }
+    except Exception as e:
+        logger.warning("[OTP] WhatsApp falló para %s: %s. Intentando SMS...", telefono, e)
+
+    # Fallback: SMS por Twilio
+    sms_ok = send_otp_sms(telefono, codigo, tipo)
+    if sms_ok:
+        return {
+            "message": "Código enviado por SMS",
+            "canal": "sms",
+            "expires_in": 600
+        }
+
+    # Si ambos fallan
+    raise HTTPException(
+        status_code=500,
+        detail="No se pudo enviar el código. Verifica tu número e intenta nuevamente."
+    )
+
+
+# ── Endpoint: verificar OTP (para registro) ──────────────────
+
+@api_router.post("/auth/verify-otp")
+async def verify_otp(data: VerifyOTPRequest):
+    telefono = data.telefono.strip()
+    codigo = data.codigo.strip()
+    tipo = data.tipo
+
+    otp = await db.otp_codes.find_one({
+        "telefono": telefono,
+        "tipo": tipo,
+        "usado": False,
+        "expires_at": {"$gt": datetime.utcnow()}
+    })
+
+    if not otp:
+        raise HTTPException(status_code=400, detail="Código inválido o expirado")
+
+    # Verificar intentos máximos
+    intentos = otp.get("intentos", 0)
+    if intentos >= 5:
+        await db.otp_codes.update_one(
+            {"_id": otp["_id"]},
+            {"$set": {"usado": True}}
+        )
+        raise HTTPException(status_code=400, detail="Demasiados intentos. Solicita un nuevo código")
+
+    if otp["codigo"] != codigo:
+        await db.otp_codes.update_one(
+            {"_id": otp["_id"]},
+            {"$inc": {"intentos": 1}}
+        )
+        intentos_restantes = 4 - intentos
+        raise HTTPException(
+            status_code=400,
+            detail=f"Código incorrecto. Te quedan {intentos_restantes} intentos"
+        )
+
+    # Marcar como usado
+    await db.otp_codes.update_one(
+        {"_id": otp["_id"]},
+        {"$set": {"usado": True}}
+    )
+
+    return {"message": "Código verificado correctamente", "verificado": True}
+
+
+# ── Endpoint: recuperar PIN ───────────────────────────────────
+
+@api_router.post("/auth/recover-pin")
+async def recover_pin(data: RecoverPinRequest):
+    telefono = data.telefono.strip()
+    codigo = data.codigo.strip()
+    nuevo_pin = data.nuevo_pin.strip()
+
+    if not nuevo_pin.isdigit() or len(nuevo_pin) < 4 or len(nuevo_pin) > 6:
+        raise HTTPException(status_code=400, detail="El nuevo PIN debe ser de 4 a 6 dígitos")
+
+    # Verificar OTP
+    otp = await db.otp_codes.find_one({
+        "telefono": telefono,
+        "tipo": "recuperar_pin",
+        "usado": False,
+        "expires_at": {"$gt": datetime.utcnow()}
+    })
+
+    if not otp:
+        raise HTTPException(status_code=400, detail="Código inválido o expirado")
+
+    intentos = otp.get("intentos", 0)
+    if intentos >= 5:
+        await db.otp_codes.update_one({"_id": otp["_id"]}, {"$set": {"usado": True}})
+        raise HTTPException(status_code=400, detail="Demasiados intentos. Solicita un nuevo código")
+
+    if otp["codigo"] != codigo:
+        await db.otp_codes.update_one({"_id": otp["_id"]}, {"$inc": {"intentos": 1}})
+        raise HTTPException(status_code=400, detail="Código incorrecto")
+
+    # Actualizar PIN
+    user = await db.users.find_one({"telefono": telefono})
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$set": {"pin": hash_pin(nuevo_pin), "updated_at": datetime.utcnow()}}
+    )
+
+    # Marcar OTP como usado
+    await db.otp_codes.update_one({"_id": otp["_id"]}, {"$set": {"usado": True}})
+
+    logger.info("[OTP] PIN recuperado para %s", telefono)
+    return {"message": "PIN actualizado correctamente"}
+
 
 app.include_router(api_router)
 
@@ -3122,6 +3374,8 @@ async def startup_db_indexes():
     await db.aves.create_index([("user_id", 1), ("tipo", 1), ("created_at", -1)])
     await db.apple_transactions.create_index("transaction_id", unique=True)
     await db.promo_codes.create_index("code", unique=True)
+    await db.otp_codes.create_index("expires_at", expireAfterSeconds=0)
+    await db.otp_codes.create_index([("telefono", 1), ("tipo", 1)])
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
