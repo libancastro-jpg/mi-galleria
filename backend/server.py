@@ -3184,7 +3184,6 @@ def send_otp_sms(telefono: str, codigo: str, tipo: str = "registro"):
 
 @api_router.post("/auth/send-otp")
 async def send_otp(data: SendOTPRequest):
-    telefono = data.telefono.strip().replace(" ", "").replace("-", "")
    # Normalizar teléfono — quitar espacios, guiones, paréntesis y el +
     telefono = data.telefono.strip().replace(" ", "").replace("-", "").replace("(", "").replace(")", "").replace("+", "")
 
