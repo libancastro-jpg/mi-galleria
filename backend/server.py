@@ -1420,7 +1420,7 @@ async def create_ave(ave: AveCreate, current_user: dict = Depends(get_current_us
     return AveResponse(**serialize_doc(ave_doc))
 
 @api_router.get("/aves/migrar-imagenes-publico")
-async def migrar_imagenes_publico():
+async def migrar_imagenes_publico(current_user: dict = Depends(get_current_user)):
     import cloudinary.uploader
 
     cursor = db.aves.find({
