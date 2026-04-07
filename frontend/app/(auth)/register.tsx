@@ -33,6 +33,10 @@ export default function RegisterScreen() {
       Alert.alert('Error', 'El número de teléfono es obligatorio');
       return;
     }
+    if (!nombre.trim()) {
+      Alert.alert('Error', 'El nombre de tu Galleria es obligatorio');
+      return;
+    }
     if (!pin.trim() || pin.length < 4) {
       Alert.alert('Error', 'El PIN debe tener al menos 4 dígitos');
       return;
@@ -48,7 +52,7 @@ export default function RegisterScreen() {
         telefono.trim(),
         pin,
         email.trim() || undefined,
-        nombre.trim() || undefined
+        nombre.trim()
       );
       router.replace('/(tabs)');
     } catch (error: any) {
@@ -70,8 +74,8 @@ export default function RegisterScreen() {
         >
           <View style={styles.header}>
             <View style={styles.logoContainer}>
-              <Image 
-                source={require('../../assets/images/logo.png')} 
+              <Image
+                source={require('../../assets/images/logo.png')}
                 style={styles.logoImage}
                 resizeMode="contain"
               />
@@ -81,6 +85,8 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.form}>
+
+            {/* Teléfono */}
             <View style={styles.inputContainer}>
               <Ionicons name="call-outline" size={20} color="#9ca3af" style={styles.inputIcon} />
               <TextInput
@@ -93,6 +99,19 @@ export default function RegisterScreen() {
               />
             </View>
 
+            {/* Nombre de Galleria — OBLIGATORIO */}
+            <View style={styles.inputContainer}>
+              <Ionicons name="home-outline" size={20} color="#9ca3af" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Nombre de tu Galleria *"
+                placeholderTextColor="#555555"
+                value={nombre}
+                onChangeText={setNombre}
+              />
+            </View>
+
+            {/* Email — opcional */}
             <View style={styles.inputContainer}>
               <Ionicons name="mail-outline" size={20} color="#9ca3af" style={styles.inputIcon} />
               <TextInput
@@ -106,17 +125,7 @@ export default function RegisterScreen() {
               />
             </View>
 
-            <View style={styles.inputContainer}>
-              <Ionicons name="home-outline" size={20} color="#9ca3af" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Galleria (opcional)"
-                placeholderTextColor="#555555"
-                value={nombre}
-                onChangeText={setNombre}
-              />
-            </View>
-
+            {/* PIN */}
             <View style={styles.inputContainer}>
               <Ionicons name="lock-closed-outline" size={20} color="#9ca3af" style={styles.inputIcon} />
               <TextInput
@@ -134,6 +143,7 @@ export default function RegisterScreen() {
               </TouchableOpacity>
             </View>
 
+            {/* Confirmar PIN */}
             <View style={styles.inputContainer}>
               <Ionicons name="lock-closed-outline" size={20} color="#9ca3af" style={styles.inputIcon} />
               <TextInput

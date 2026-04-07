@@ -17,6 +17,8 @@ import {
   TextInput,
   Image,
   Alert,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -44,26 +46,13 @@ const gallinaDefaultImg = require('../../assets/images/gallina.png');
 
 const getOptimizedImage = (url?: string, width: number = 300) => {
   if (!url) return undefined;
-
   if (!url.includes('/image/upload/')) return url;
-
-  return url.replace(
-    '/image/upload/',
-    `/image/upload/f_auto,q_auto,w_${width}/`
-  );
+  return url.replace('/image/upload/', `/image/upload/f_auto,q_auto,w_${width}/`);
 };
 
 const getAveImageSource = (ave: Ave) => {
-  const url =
-    ave.foto_principal ||
-    ave.foto ||
-    ave.imagen ||
-    ave.image_url;
-
-  if (url) {
-    return { uri: getOptimizedImage(url, 300) };
-  }
-
+  const url = ave.foto_principal || ave.foto || ave.imagen || ave.image_url;
+  if (url) return { uri: getOptimizedImage(url, 300) };
   return ave.tipo === 'gallo' ? galloDefaultImg : gallinaDefaultImg;
 };
 
@@ -107,7 +96,6 @@ const AveCard = memo(function AveCard({
               <Text style={styles.detailText}>{item.color}</Text>
             </View>
           ) : null}
-
           {item.linea ? (
             <View style={styles.detailTag}>
               <Text style={styles.detailText}>{item.linea}</Text>
@@ -148,16 +136,13 @@ export default function AvesScreen() {
 
   useEffect(() => {
     mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
+    return () => { mountedRef.current = false; };
   }, []);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
     }, 250);
-
     return () => clearTimeout(timeout);
   }, [searchQuery]);
 
@@ -201,9 +186,7 @@ export default function AvesScreen() {
         const start = Date.now();
         console.log('⏱️ INICIO fetch /aves');
 
-        const result = await api.get('/aves', {
-          ...params,
-        });
+        const result = await api.get('/aves', { ...params });
 
         console.log('⏱️ FIN fetch /aves:', Date.now() - start, 'ms');
 
@@ -222,10 +205,8 @@ export default function AvesScreen() {
         firstLoadDoneRef.current = true;
       } catch (error) {
         if (!mountedRef.current || requestId !== lastRequestIdRef.current) return;
-
         console.error('Error fetching aves:', error);
         setErrorMessage('No se pudieron cargar las aves. Intenta nuevamente.');
-
         if (isManualRefresh) {
           Alert.alert('Error', 'No se pudieron actualizar las aves.');
         }
@@ -254,15 +235,12 @@ export default function AvesScreen() {
 
   const filteredAves = useMemo(() => {
     const query = debouncedSearchQuery.trim().toLowerCase();
-
     if (!query) return aves;
-
     return aves.filter((ave) => {
       const codigo = ave.codigo?.toLowerCase() || '';
       const nombre = ave.nombre?.toLowerCase() || '';
       const color = ave.color?.toLowerCase() || '';
       const linea = ave.linea?.toLowerCase() || '';
-
       return (
         codigo.includes(query) ||
         nombre.includes(query) ||
@@ -288,7 +266,6 @@ export default function AvesScreen() {
 
   const listHeader = useMemo(() => {
     if (!errorMessage) return null;
-
     return (
       <View style={styles.errorBox}>
         <Ionicons name="alert-circle-outline" size={18} color="#b91c1c" />
@@ -297,14 +274,10 @@ export default function AvesScreen() {
     );
   }, [errorMessage]);
 
-  const listEmptyTitle = errorMessage
-    ? 'No se pudieron mostrar las aves'
-    : 'Sin aves';
-
+  const listEmptyTitle = errorMessage ? 'No se pudieron mostrar las aves' : 'Sin aves';
   const listEmptyText = errorMessage
     ? 'Intenta nuevamente o desliza hacia abajo para refrescar.'
     : 'Agrega tu primera ave para comenzar a llevar el control de tu galleria.';
-
   const showEmptyButton = !errorMessage;
 
   const listEmpty = useMemo(
@@ -314,10 +287,7 @@ export default function AvesScreen() {
         <Text style={styles.emptyTitle}>{listEmptyTitle}</Text>
         <Text style={styles.emptyText}>{listEmptyText}</Text>
         {showEmptyButton ? (
-          <TouchableOpacity
-            style={styles.emptyButton}
-            onPress={handleAddAve}
-          >
+          <TouchableOpacity style={styles.emptyButton} onPress={handleAddAve}>
             <Ionicons name="add" size={20} color="#000" />
             <Text style={styles.emptyButtonText}>Agregar Ave</Text>
           </TouchableOpacity>
@@ -328,112 +298,117 @@ export default function AvesScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Mis Aves</Text>
-        <TouchableOpacity style={styles.addButton} onPress={handleAddAve}>
-          <Ionicons name="add" size={24} color="#000" />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color="#555555" style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Buscar por placa, nombre, color..."
-          placeholderTextColor="#555555"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-        {searchQuery ? (
-          <TouchableOpacity onPress={() => setSearchQuery('')}>
-            <Ionicons name="close-circle" size={20} color="#555555" />
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Mis Aves</Text>
+          <TouchableOpacity style={styles.addButton} onPress={handleAddAve}>
+            <Ionicons name="add" size={24} color="#000" />
           </TouchableOpacity>
-        ) : null}
-      </View>
+        </View>
 
-      <View style={styles.filters}>
-        <TouchableOpacity
-          style={[styles.filterButton, filterTipo === null && styles.filterActive]}
-          onPress={() => setFilterTipo(null)}
-        >
-          <Text style={[styles.filterText, filterTipo === null && styles.filterTextActive]}>
-            Todos
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.searchContainer}>
+          <Ionicons name="search" size={20} color="#555555" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Buscar por placa, nombre, color..."
+            placeholderTextColor="#555555"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            returnKeyType="search"
+            onSubmitEditing={Keyboard.dismiss}
+          />
+          {searchQuery ? (
+            <TouchableOpacity onPress={() => { setSearchQuery(''); Keyboard.dismiss(); }}>
+              <Ionicons name="close-circle" size={20} color="#555555" />
+            </TouchableOpacity>
+          ) : null}
+        </View>
 
-        <TouchableOpacity
-          style={[styles.filterButton, filterTipo === 'gallo' && styles.filterActive]}
-          onPress={() => setFilterTipo('gallo')}
-        >
-          <AvesIcon size={18} />
-          <Text style={[styles.filterText, filterTipo === 'gallo' && styles.filterTextActive]}>
-            Gallos
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.filterButton, filterTipo === 'gallina' && styles.filterActive]}
-          onPress={() => setFilterTipo('gallina')}
-        >
-          <AvesIcon size={18} />
-          <Text style={[styles.filterText, filterTipo === 'gallina' && styles.filterTextActive]}>
-            Gallinas
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.estadoFilters}>
-        {['activo', 'vendido', 'retirado'].map((estado) => (
+        <View style={styles.filters}>
           <TouchableOpacity
-            key={estado}
-            style={[
-              styles.estadoChip,
-              filterEstado === estado && styles.estadoChipActive,
-            ]}
-            onPress={() => setFilterEstado(filterEstado === estado ? null : estado)}
+            style={[styles.filterButton, filterTipo === null && styles.filterActive]}
+            onPress={() => { setFilterTipo(null); Keyboard.dismiss(); }}
           >
-            <Text
-              style={[
-                styles.estadoText,
-                filterEstado === estado && styles.estadoTextActive,
-              ]}
-            >
-              {estado.charAt(0).toUpperCase() + estado.slice(1)}
+            <Text style={[styles.filterText, filterTipo === null && styles.filterTextActive]}>
+              Todos
             </Text>
           </TouchableOpacity>
-        ))}
-      </View>
 
-      {loading && aves.length === 0 ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#f59e0b" />
-          <Text style={styles.loadingText}>Cargando aves...</Text>
+          <TouchableOpacity
+            style={[styles.filterButton, filterTipo === 'gallo' && styles.filterActive]}
+            onPress={() => { setFilterTipo('gallo'); Keyboard.dismiss(); }}
+          >
+            <AvesIcon size={18} />
+            <Text style={[styles.filterText, filterTipo === 'gallo' && styles.filterTextActive]}>
+              Gallos
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.filterButton, filterTipo === 'gallina' && styles.filterActive]}
+            onPress={() => { setFilterTipo('gallina'); Keyboard.dismiss(); }}
+          >
+            <AvesIcon size={18} />
+            <Text style={[styles.filterText, filterTipo === 'gallina' && styles.filterTextActive]}>
+              Gallinas
+            </Text>
+          </TouchableOpacity>
         </View>
-      ) : (
-        <FlatList
-          data={filteredAves}
-          renderItem={renderAve}
-          keyExtractor={keyExtractor}
-          contentContainerStyle={styles.listContent}
-          keyboardShouldPersistTaps="handled"
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor="#f59e0b"
-            />
-          }
-          initialNumToRender={8}
-          maxToRenderPerBatch={8}
-          windowSize={5}
-          updateCellsBatchingPeriod={60}
-          removeClippedSubviews={false}
-          ListHeaderComponent={listHeader}
-          ListEmptyComponent={listEmpty}
-        />
-      )}
-    </SafeAreaView>
+
+        <View style={styles.estadoFilters}>
+          {['activo', 'vendido', 'retirado'].map((estado) => (
+            <TouchableOpacity
+              key={estado}
+              style={[
+                styles.estadoChip,
+                filterEstado === estado && styles.estadoChipActive,
+              ]}
+              onPress={() => { setFilterEstado(filterEstado === estado ? null : estado); Keyboard.dismiss(); }}
+            >
+              <Text
+                style={[
+                  styles.estadoText,
+                  filterEstado === estado && styles.estadoTextActive,
+                ]}
+              >
+                {estado.charAt(0).toUpperCase() + estado.slice(1)}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {loading && aves.length === 0 ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#f59e0b" />
+            <Text style={styles.loadingText}>Cargando aves...</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={filteredAves}
+            renderItem={renderAve}
+            keyExtractor={keyExtractor}
+            contentContainerStyle={styles.listContent}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor="#f59e0b"
+              />
+            }
+            initialNumToRender={8}
+            maxToRenderPerBatch={8}
+            windowSize={5}
+            updateCellsBatchingPeriod={60}
+            removeClippedSubviews={false}
+            ListHeaderComponent={listHeader}
+            ListEmptyComponent={listEmpty}
+          />
+        )}
+      </SafeAreaView>
+    </TouchableWithoutFeedback>
   );
 }
 

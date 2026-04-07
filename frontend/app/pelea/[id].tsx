@@ -11,17 +11,21 @@ import {
   KeyboardAvoidingView,
   Platform,
   Modal,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { api, ApiError } from '../../src/services/api';
 
+const DEFAULT_GALLO_IMG = require('../../assets/images/gallo.png');
+
 interface Ave {
   id: string;
   codigo: string;
   nombre?: string;
   tipo: string;
+  foto_principal?: string;
 }
 
 export default function PeleaFormScreen() {
@@ -35,6 +39,7 @@ export default function PeleaFormScreen() {
   const [saving, setSaving] = useState(false);
   const [gallos, setGallos] = useState<Ave[]>([]);
   const [showAveList, setShowAveList] = useState(false);
+  const [busquedaGallo, setBusquedaGallo] = useState('');
 
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [premiumModalTitle, setPremiumModalTitle] = useState('Límite alcanzado');
@@ -55,16 +60,20 @@ export default function PeleaFormScreen() {
 
   useEffect(() => {
     fetchGallos();
-    if (isEdit) {
-      fetchPelea();
-    }
+    if (isEdit) fetchPelea();
   }, [id]);
+
+  const gallosFiltrados = gallos.filter((g) => {
+    const q = busquedaGallo.toLowerCase();
+    return (
+      g.codigo.toLowerCase().includes(q) ||
+      (g.nombre || '').toLowerCase().includes(q)
+    );
+  });
 
   const extractErrorMessage = (error: any) => {
     if (error instanceof ApiError) {
-      if (typeof error.detail === 'object' && error.detail?.message) {
-        return error.detail.message;
-      }
+      if (typeof error.detail === 'object' && error.detail?.message) return error.detail.message;
       return error.message;
     }
     return (
@@ -78,9 +87,7 @@ export default function PeleaFormScreen() {
 
   const isPremiumLimitError = (error: any) => {
     if (error instanceof ApiError) {
-      const code =
-        error.detail?.code ||
-        (typeof error.detail === 'object' && error.detail?.code);
+      const code = error.detail?.code || (typeof error.detail === 'object' && error.detail?.code);
       return (
         code === 'PREMIUM_REQUIRED' ||
         code === 'FREE_PLAN_LIMIT_REACHED' ||
@@ -96,8 +103,7 @@ export default function PeleaFormScreen() {
     if (error instanceof ApiError && typeof error.detail === 'object') {
       setPremiumModalTitle(error.detail?.title || 'Límite alcanzado');
       setPremiumModalMessage(
-        error.detail?.message ||
-          'Has alcanzado el límite de tu plan. Hazte Premium para seguir registrando.'
+        error.detail?.message || 'Has alcanzado el límite de tu plan. Hazte Premium para seguir registrando.'
       );
     }
     setShowPremiumModal(true);
@@ -110,17 +116,12 @@ export default function PeleaFormScreen() {
 
   const fetchGallos = async () => {
     try {
-      const response = await api.get('/aves', {
-        tipo: 'gallo',
-        estado: 'activo',
-      });
-
+      const response = await api.get('/aves', { tipo: 'gallo', estado: 'activo' });
       const gallosData = Array.isArray(response)
         ? response
         : Array.isArray(response?.data)
           ? response.data
           : [];
-
       setGallos(gallosData);
     } catch (error) {
       console.error('Error fetching gallos:', error);
@@ -130,20 +131,10 @@ export default function PeleaFormScreen() {
 
   const mapLegacyResultado = (resultado?: string, cantidad?: number) => {
     const safeCantidad =
-      Number.isFinite(Number(cantidad)) && Number(cantidad) > 0
-        ? Number(cantidad)
-        : 1;
-
-    if (resultado === 'GANO') {
-      return { ganadas: safeCantidad, perdidas: 0, entabladas: 0 };
-    }
-    if (resultado === 'PERDIO') {
-      return { ganadas: 0, perdidas: safeCantidad, entabladas: 0 };
-    }
-    if (resultado === 'ENTABLO') {
-      return { ganadas: 0, perdidas: 0, entabladas: safeCantidad };
-    }
-
+      Number.isFinite(Number(cantidad)) && Number(cantidad) > 0 ? Number(cantidad) : 1;
+    if (resultado === 'GANO') return { ganadas: safeCantidad, perdidas: 0, entabladas: 0 };
+    if (resultado === 'PERDIO') return { ganadas: 0, perdidas: safeCantidad, entabladas: 0 };
+    if (resultado === 'ENTABLO') return { ganadas: 0, perdidas: 0, entabladas: safeCantidad };
     return { ganadas: 0, perdidas: 0, entabladas: 0 };
   };
 
@@ -152,19 +143,14 @@ export default function PeleaFormScreen() {
     try {
       const pelea = await api.get(`/peleas/${id}`);
       const data = pelea?.data ?? pelea;
-
       const legacy = mapLegacyResultado(data.resultado, data.cantidad_resultado);
-
       setFormData({
         ave_id: data.ave_id || '',
         fecha: data.fecha || '',
         lugar: data.lugar || '',
-        ganadas:
-          typeof data.ganadas === 'number' ? data.ganadas : legacy.ganadas,
-        perdidas:
-          typeof data.perdidas === 'number' ? data.perdidas : legacy.perdidas,
-        entabladas:
-          typeof data.entabladas === 'number' ? data.entabladas : legacy.entabladas,
+        ganadas: typeof data.ganadas === 'number' ? data.ganadas : legacy.ganadas,
+        perdidas: typeof data.perdidas === 'number' ? data.perdidas : legacy.perdidas,
+        entabladas: typeof data.entabladas === 'number' ? data.entabladas : legacy.entabladas,
         calificacion: data.calificacion || '',
         notas: data.notas || '',
       });
@@ -175,60 +161,33 @@ export default function PeleaFormScreen() {
     }
   };
 
-  const increase = (field: 'ganadas' | 'perdidas' | 'entabladas') => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: prev[field] + 1,
-    }));
-  };
+  const increase = (field: 'ganadas' | 'perdidas' | 'entabladas') =>
+    setFormData((prev) => ({ ...prev, [field]: prev[field] + 1 }));
 
-  const decrease = (field: 'ganadas' | 'perdidas' | 'entabladas') => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: prev[field] > 0 ? prev[field] - 1 : 0,
-    }));
-  };
+  const decrease = (field: 'ganadas' | 'perdidas' | 'entabladas') =>
+    setFormData((prev) => ({ ...prev, [field]: prev[field] > 0 ? prev[field] - 1 : 0 }));
 
-  const getTotalResultados = () => {
-    return formData.ganadas + formData.perdidas + formData.entabladas;
-  };
+  const getTotalResultados = () =>
+    formData.ganadas + formData.perdidas + formData.entabladas;
 
   const handleSave = async () => {
-    if (!formData.ave_id) {
-      Alert.alert('Error', 'Debes seleccionar un gallo');
-      return;
-    }
-
-    if (getTotalResultados() === 0) {
-      Alert.alert('Error', 'Debes registrar al menos un resultado');
-      return;
-    }
-
-    if (!formData.calificacion) {
-      Alert.alert('Error', 'Debes seleccionar una calificación');
-      return;
-    }
-
-    const payload = {
-      ...formData,
-    };
+    if (!formData.ave_id) { Alert.alert('Error', 'Debes seleccionar un gallo'); return; }
+    if (getTotalResultados() === 0) { Alert.alert('Error', 'Debes registrar al menos un resultado'); return; }
+    if (!formData.calificacion) { Alert.alert('Error', 'Debes seleccionar una calificación'); return; }
 
     setSaving(true);
     try {
       if (isEdit) {
-        await api.put(`/peleas/${id}`, payload);
+        await api.put(`/peleas/${id}`, formData);
         Alert.alert('Éxito', 'Registro actualizado correctamente');
       } else {
-        await api.post('/peleas', payload);
+        await api.post('/peleas', formData);
         Alert.alert('Éxito', 'Registro guardado correctamente');
       }
       router.back();
     } catch (error: any) {
-      if (isPremiumLimitError(error)) {
-        openPremiumModalFromError(error);
-      } else {
-        Alert.alert('Error', extractErrorMessage(error));
-      }
+      if (isPremiumLimitError(error)) openPremiumModalFromError(error);
+      else Alert.alert('Error', extractErrorMessage(error));
     } finally {
       setSaving(false);
     }
@@ -244,82 +203,54 @@ export default function PeleaFormScreen() {
     );
   }
 
+  const galloSeleccionado = gallos.find((g) => g.id === formData.ave_id);
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
+        {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color="#d4a017" />
           </TouchableOpacity>
-
           <Text style={styles.title}>{isEdit ? 'Editar Pelea' : 'Nueva Pelea'}</Text>
-
-          <TouchableOpacity
-            onPress={handleSave}
-            disabled={saving}
-            style={styles.saveButton}
-          >
-            {saving ? (
-              <ActivityIndicator size="small" color="#000" />
-            ) : (
-              <Text style={styles.saveButtonText}>Guardar</Text>
-            )}
+          <TouchableOpacity onPress={handleSave} disabled={saving} style={styles.saveButton}>
+            {saving
+              ? <ActivityIndicator size="small" color="#000" />
+              : <Text style={styles.saveButtonText}>Guardar</Text>}
           </TouchableOpacity>
         </View>
 
         <ScrollView style={styles.form} contentContainerStyle={styles.formContent}>
+
+          {/* Selector de gallo */}
           <Text style={styles.label}>Gallo *</Text>
           <TouchableOpacity
             style={styles.selectButton}
-            onPress={() => setShowAveList(!showAveList)}
+            onPress={() => { setBusquedaGallo(''); setShowAveList(true); }}
           >
             <View style={styles.selectButtonContent}>
-              <Ionicons name="fitness" size={20} color="#f59e0b" />
-              <Text style={styles.selectButtonText}>
-                {formData.ave_id
-                  ? gallos.find((g) => g.id === formData.ave_id)?.codigo || 'Seleccionado'
+              <Image
+                source={
+                  galloSeleccionado?.foto_principal
+                    ? { uri: galloSeleccionado.foto_principal }
+                    : DEFAULT_GALLO_IMG
+                }
+                style={styles.selectButtonImg}
+              />
+              <Text style={[styles.selectButtonText, !galloSeleccionado && { color: '#9ca3af' }]}>
+                {galloSeleccionado
+                  ? `${galloSeleccionado.codigo}${galloSeleccionado.nombre ? ` - ${galloSeleccionado.nombre}` : ''}`
                   : 'Seleccionar gallo'}
               </Text>
             </View>
-            <Ionicons
-              name={showAveList ? 'chevron-up' : 'chevron-down'}
-              size={20}
-              color="#9ca3af"
-            />
+            <Ionicons name="chevron-down" size={20} color="#9ca3af" />
           </TouchableOpacity>
 
-          {showAveList && (
-            <View style={styles.selectList}>
-              {gallos.length === 0 ? (
-                <Text style={styles.noAvesText}>No hay gallos activos</Text>
-              ) : (
-                gallos.map((gallo) => (
-                  <TouchableOpacity
-                    key={gallo.id}
-                    style={[
-                      styles.selectItem,
-                      formData.ave_id === gallo.id && styles.selectItemActive,
-                    ]}
-                    onPress={() => {
-                      setFormData({ ...formData, ave_id: gallo.id });
-                      setShowAveList(false);
-                    }}
-                  >
-                    <Text style={styles.selectItemText}>
-                      {gallo.codigo} {gallo.nombre ? `- ${gallo.nombre}` : ''}
-                    </Text>
-                    {formData.ave_id === gallo.id && (
-                      <Ionicons name="checkmark" size={20} color="#f59e0b" />
-                    )}
-                  </TouchableOpacity>
-                ))
-              )}
-            </View>
-          )}
-
+          {/* Fecha */}
           <Text style={styles.label}>Fecha *</Text>
           <TextInput
             style={styles.input}
@@ -329,6 +260,7 @@ export default function PeleaFormScreen() {
             placeholderTextColor="#555555"
           />
 
+          {/* Lugar */}
           <Text style={styles.label}>Lugar (opcional)</Text>
           <TextInput
             style={styles.input}
@@ -338,28 +270,20 @@ export default function PeleaFormScreen() {
             placeholderTextColor="#555555"
           />
 
+          {/* Resultados */}
           <Text style={styles.label}>Resultados *</Text>
           <View style={styles.resultadoContainer}>
             <View style={[styles.resultadoButton, styles.resultadoGanoCard]}>
               <Ionicons name="trophy" size={28} color="#22c55e" />
               <Text style={styles.resultadoTitle}>GANÓ</Text>
-
               <View style={styles.counterRow}>
-                <TouchableOpacity
-                  style={styles.counterButton}
-                  onPress={() => decrease('ganadas')}
-                >
+                <TouchableOpacity style={styles.counterButton} onPress={() => decrease('ganadas')}>
                   <Ionicons name="remove" size={18} color="#000" />
                 </TouchableOpacity>
-
                 <View style={styles.counterValueBox}>
                   <Text style={styles.counterValueText}>{formData.ganadas}</Text>
                 </View>
-
-                <TouchableOpacity
-                  style={styles.counterButton}
-                  onPress={() => increase('ganadas')}
-                >
+                <TouchableOpacity style={styles.counterButton} onPress={() => increase('ganadas')}>
                   <Ionicons name="add" size={18} color="#000" />
                 </TouchableOpacity>
               </View>
@@ -368,23 +292,14 @@ export default function PeleaFormScreen() {
             <View style={[styles.resultadoButton, styles.resultadoPerdioCard]}>
               <Ionicons name="close-circle" size={28} color="#ef4444" />
               <Text style={styles.resultadoTitle}>PERDIÓ</Text>
-
               <View style={styles.counterRow}>
-                <TouchableOpacity
-                  style={styles.counterButton}
-                  onPress={() => decrease('perdidas')}
-                >
+                <TouchableOpacity style={styles.counterButton} onPress={() => decrease('perdidas')}>
                   <Ionicons name="remove" size={18} color="#000" />
                 </TouchableOpacity>
-
                 <View style={styles.counterValueBox}>
                   <Text style={styles.counterValueText}>{formData.perdidas}</Text>
                 </View>
-
-                <TouchableOpacity
-                  style={styles.counterButton}
-                  onPress={() => increase('perdidas')}
-                >
+                <TouchableOpacity style={styles.counterButton} onPress={() => increase('perdidas')}>
                   <Ionicons name="add" size={18} color="#000" />
                 </TouchableOpacity>
               </View>
@@ -393,34 +308,27 @@ export default function PeleaFormScreen() {
             <View style={[styles.resultadoButton, styles.resultadoEntabloCard]}>
               <Ionicons name="remove-circle" size={28} color="#f59e0b" />
               <Text style={styles.resultadoTitle}>ENTABLÓ</Text>
-
               <View style={styles.counterRow}>
-                <TouchableOpacity
-                  style={styles.counterButton}
-                  onPress={() => decrease('entabladas')}
-                >
+                <TouchableOpacity style={styles.counterButton} onPress={() => decrease('entabladas')}>
                   <Ionicons name="remove" size={18} color="#000" />
                 </TouchableOpacity>
-
                 <View style={styles.counterValueBox}>
                   <Text style={styles.counterValueText}>{formData.entabladas}</Text>
                 </View>
-
-                <TouchableOpacity
-                  style={styles.counterButton}
-                  onPress={() => increase('entabladas')}
-                >
+                <TouchableOpacity style={styles.counterButton} onPress={() => increase('entabladas')}>
                   <Ionicons name="add" size={18} color="#000" />
                 </TouchableOpacity>
               </View>
             </View>
           </View>
 
+          {/* Total */}
           <View style={styles.totalResultadosBox}>
             <Text style={styles.totalResultadosLabel}>Total registrado</Text>
             <Text style={styles.totalResultadosValue}>{getTotalResultados()}</Text>
           </View>
 
+          {/* Calificación */}
           <Text style={styles.label}>Calificación *</Text>
           <View style={styles.calificacionContainer}>
             {[
@@ -440,25 +348,22 @@ export default function PeleaFormScreen() {
                 ]}
                 onPress={() => setFormData({ ...formData, calificacion: cal.value })}
               >
-                <View
-                  style={[
-                    styles.calificacionDot,
-                    { backgroundColor: cal.color },
-                    formData.calificacion === cal.value && { backgroundColor: '#000' },
-                  ]}
-                />
-                <Text
-                  style={[
-                    styles.calificacionText,
-                    formData.calificacion === cal.value && styles.calificacionTextActive,
-                  ]}
-                >
+                <View style={[
+                  styles.calificacionDot,
+                  { backgroundColor: cal.color },
+                  formData.calificacion === cal.value && { backgroundColor: '#000' },
+                ]} />
+                <Text style={[
+                  styles.calificacionText,
+                  formData.calificacion === cal.value && styles.calificacionTextActive,
+                ]}>
                   {cal.label}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
 
+          {/* Notas */}
           <Text style={styles.label}>Notas</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
@@ -474,6 +379,126 @@ export default function PeleaFormScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
+      {/* ── Modal selector de gallo — baja desde arriba ── */}
+      <Modal
+        visible={showAveList}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowAveList(false)}
+      >
+        {/* Overlay — toca fuera para cerrar */}
+        <View style={styles.aveModalOverlay}>
+          {/* Panel del modal — NO es TouchableOpacity para no interferir */}
+          <SafeAreaView edges={['top']} style={styles.aveModal}>
+
+            {/* Header con X funcional */}
+            <View style={styles.aveModalHeader}>
+              <Text style={styles.aveModalTitle}>Seleccionar Gallo</Text>
+              <TouchableOpacity
+                onPress={() => setShowAveList(false)}
+                style={styles.aveModalCloseBtn}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="close" size={20} color="#1a1a1a" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Buscador */}
+            <View style={styles.aveSearchContainer}>
+              <Ionicons name="search-outline" size={16} color="#9ca3af" />
+              <TextInput
+                style={styles.aveSearchInput}
+                placeholder="Buscar por código o nombre..."
+                placeholderTextColor="#9ca3af"
+                value={busquedaGallo}
+                onChangeText={setBusquedaGallo}
+                autoCapitalize="none"
+              />
+              {busquedaGallo.length > 0 && (
+                <TouchableOpacity onPress={() => setBusquedaGallo('')}>
+                  <Ionicons name="close-circle" size={16} color="#9ca3af" />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Contador */}
+            <Text style={styles.aveCount}>
+              {gallosFiltrados.length} de {gallos.length} gallos
+            </Text>
+
+            {/* Lista compacta */}
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {gallosFiltrados.length === 0 ? (
+                <View style={styles.aveEmptyContainer}>
+                  <Ionicons name="search-outline" size={36} color="#d1d5db" />
+                  <Text style={styles.noAvesText}>
+                    {gallos.length === 0 ? 'No hay gallos activos' : 'No se encontraron gallos'}
+                  </Text>
+                </View>
+              ) : (
+                gallosFiltrados.map((gallo) => (
+                  <TouchableOpacity
+                    key={gallo.id}
+                    style={[
+                      styles.aveItem,
+                      formData.ave_id === gallo.id && styles.aveItemActive,
+                    ]}
+                    onPress={() => {
+                      setFormData({ ...formData, ave_id: gallo.id });
+                      setShowAveList(false);
+                    }}
+                  >
+                    <View style={styles.aveItemLeft}>
+                      <Image
+                        source={
+                          gallo.foto_principal
+                            ? { uri: gallo.foto_principal }
+                            : DEFAULT_GALLO_IMG
+                        }
+                        style={[
+                          styles.aveItemPhoto,
+                          formData.ave_id === gallo.id && styles.aveItemPhotoActive,
+                        ]}
+                      />
+                      <View>
+                        <Text style={[
+                          styles.aveItemCodigo,
+                          formData.ave_id === gallo.id && styles.aveItemCodigoActive,
+                        ]}>
+                          {gallo.codigo}
+                        </Text>
+                        {gallo.nombre ? (
+                          <Text style={styles.aveItemNombre}>{gallo.nombre}</Text>
+                        ) : null}
+                      </View>
+                    </View>
+                    {formData.ave_id === gallo.id && (
+                      <Ionicons name="checkmark-circle" size={20} color="#f59e0b" />
+                    )}
+                  </TouchableOpacity>
+                ))
+              )}
+              <View style={{ height: 20 }} />
+            </ScrollView>
+
+            {/* Handle inferior */}
+            <View style={styles.aveModalHandle} />
+
+          </SafeAreaView>
+
+          {/* Área transparente — toca para cerrar */}
+          <TouchableOpacity
+            style={styles.aveTapToClose}
+            activeOpacity={1}
+            onPress={() => setShowAveList(false)}
+          />
+        </View>
+      </Modal>
+
+      {/* ── Modal premium ── */}
       <Modal
         visible={showPremiumModal}
         transparent
@@ -485,21 +510,12 @@ export default function PeleaFormScreen() {
             <View style={styles.premiumIconWrap}>
               <Ionicons name="lock-closed" size={30} color="#d4a017" />
             </View>
-
             <Text style={styles.premiumTitle}>{premiumModalTitle}</Text>
             <Text style={styles.premiumMessage}>{premiumModalMessage}</Text>
-
-            <TouchableOpacity
-              style={styles.premiumPrimaryButton}
-              onPress={goToMembershipPlans}
-            >
+            <TouchableOpacity style={styles.premiumPrimaryButton} onPress={goToMembershipPlans}>
               <Text style={styles.premiumPrimaryButtonText}>Ver planes de membresía</Text>
             </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.premiumSecondaryButton}
-              onPress={() => setShowPremiumModal(false)}
-            >
+            <TouchableOpacity style={styles.premiumSecondaryButton} onPress={() => setShowPremiumModal(false)}>
               <Text style={styles.premiumSecondaryButtonText}>Cerrar</Text>
             </TouchableOpacity>
           </View>
@@ -510,15 +526,8 @@ export default function PeleaFormScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  container: { flex: 1, backgroundColor: '#f5f5f5' },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -528,41 +537,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1a1a1a',
-  },
-  saveButton: {
-    backgroundColor: '#f59e0b',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  saveButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#000',
-  },
-  form: {
-    flex: 1,
-  },
-  formContent: {
-    padding: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#9ca3af',
-    marginBottom: 8,
-    marginTop: 16,
-  },
+  backButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  title: { fontSize: 18, fontWeight: '600', color: '#1a1a1a' },
+  saveButton: { backgroundColor: '#f59e0b', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
+  saveButtonText: { fontSize: 14, fontWeight: '600', color: '#000' },
+  form: { flex: 1 },
+  formContent: { padding: 16 },
+  label: { fontSize: 14, fontWeight: '500', color: '#9ca3af', marginBottom: 8, marginTop: 16 },
   input: {
     backgroundColor: '#ffffff',
     borderRadius: 12,
@@ -572,62 +553,118 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e0e0e0',
   },
-  textArea: {
-    minHeight: 100,
-    textAlignVertical: 'top',
-  },
+  textArea: { minHeight: 100, textAlignVertical: 'top' },
   selectButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: '#ffffff',
     borderRadius: 12,
-    padding: 16,
+    padding: 12,
     borderWidth: 1,
     borderColor: '#e0e0e0',
   },
-  selectButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+  selectButtonContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  selectButtonImg: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#f3f4f6' },
+  selectButtonText: { fontSize: 16, color: '#1a1a1a' },
+
+  // ── Ave Modal ──
+  aveModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
   },
-  selectButtonText: {
-    fontSize: 16,
-    color: '#1a1a1a',
-  },
-  selectList: {
+  aveModal: {
     backgroundColor: '#ffffff',
-    borderRadius: 12,
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    maxHeight: 200,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    maxHeight: '72%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 8,
   },
-  selectItem: {
+  aveTapToClose: {
+    flex: 1,
+  },
+  aveModalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
+    paddingHorizontal: 18,
+    paddingTop: 14,
+    paddingBottom: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: '#f0f0f0',
   },
-  selectItemActive: {
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+  aveModalTitle: { fontSize: 16, fontWeight: '700', color: '#1a1a1a' },
+  aveModalCloseBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#f3f4f6',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  selectItemText: {
-    fontSize: 16,
-    color: '#1a1a1a',
+  aveSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    borderRadius: 10,
+    marginHorizontal: 14,
+    marginTop: 10,
+    marginBottom: 2,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    gap: 8,
   },
-  noAvesText: {
-    fontSize: 14,
-    color: '#555555',
-    textAlign: 'center',
-    padding: 16,
+  aveSearchInput: { flex: 1, fontSize: 14, color: '#1a1a1a', padding: 0 },
+  aveCount: {
+    fontSize: 11,
+    color: '#9ca3af',
+    marginHorizontal: 16,
+    marginTop: 5,
+    marginBottom: 2,
   },
-  resultadoContainer: {
-    flexDirection: 'column',
-    gap: 12,
+
+  // Items compactos estilo Cuido
+  aveItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f5f5f5',
+    backgroundColor: '#ffffff',
   },
+  aveItemActive: { backgroundColor: 'rgba(245, 158, 11, 0.07)' },
+  aveItemLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  aveItemPhoto: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#f3f4f6',
+    borderWidth: 1.5,
+    borderColor: '#e5e7eb',
+  },
+  aveItemPhotoActive: { borderColor: '#f59e0b' },
+  aveItemCodigo: { fontSize: 14, fontWeight: '600', color: '#1a1a1a' },
+  aveItemCodigoActive: { color: '#d97706' },
+  aveItemNombre: { fontSize: 12, color: '#6b7280', marginTop: 1 },
+  aveEmptyContainer: { alignItems: 'center', paddingVertical: 32, gap: 10 },
+  noAvesText: { fontSize: 13, color: '#9ca3af', textAlign: 'center' },
+  aveModalHandle: {
+    width: 36,
+    height: 4,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginVertical: 8,
+  },
+
+  // Resultados
+  resultadoContainer: { flexDirection: 'column', gap: 12 },
   resultadoButton: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -638,53 +675,22 @@ const styles = StyleSheet.create({
     borderColor: '#e0e0e0',
     gap: 10,
   },
-  resultadoGanoCard: {
-    borderColor: '#22c55e',
-    backgroundColor: 'rgba(69, 220, 46, 0.52)',
-  },
-  
-  resultadoPerdioCard: {
-    borderColor: '#ef4444',
-    backgroundColor: 'rgba(216, 18, 18, 0.41)',
-  },
-  
-  resultadoEntabloCard: {
-    borderColor: '#f59e0b',
-    backgroundColor: 'rgba(219, 226, 19, 0.3)',
-  },
-  resultadoTitle: {
-    fontSize: 16,
-    fontWeight: '900',
-    color: '22c55e',
-  },
-  counterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginTop: -8,
-  },
+  resultadoGanoCard: { borderColor: '#22c55e', backgroundColor: 'rgba(69, 220, 46, 0.52)' },
+  resultadoPerdioCard: { borderColor: '#ef4444', backgroundColor: 'rgba(216, 18, 18, 0.41)' },
+  resultadoEntabloCard: { borderColor: '#f59e0b', backgroundColor: 'rgba(219, 226, 19, 0.3)' },
+  resultadoTitle: { fontSize: 16, fontWeight: '900', color: '#1a1a1a' },
+  counterRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: -8 },
   counterButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 36, height: 36, borderRadius: 18,
     backgroundColor: 'rgb(255, 255, 255)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center',
   },
   counterValueBox: {
-    minWidth: 48,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
+    minWidth: 48, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12,
     backgroundColor: 'rgba(255, 255, 255, 0.75)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center',
   },
-  counterValueText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#000',
-  },
+  counterValueText: { fontSize: 15, fontWeight: '700', color: '#000' },
   totalResultadosBox: {
     backgroundColor: 'rgba(0, 9, 4, 0)',
     borderRadius: 12,
@@ -696,106 +702,42 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  totalResultadosLabel: {
-    fontSize: 18,
-    color: 'rgb(0, 9, 4)',
-    fontWeight: '600',
-  },
-  totalResultadosValue: {
-    fontSize: 20,
-    color: '#1a1a1a',
-    fontWeight: '700',
-  },
-  calificacionContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
+  totalResultadosLabel: { fontSize: 18, color: 'rgb(0, 9, 4)', fontWeight: '600' },
+  totalResultadosValue: { fontSize: 20, color: '#1a1a1a', fontWeight: '700' },
+  calificacionContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   calificacionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    gap: 8,
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12,
+    backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e0e0e0', gap: 8,
   },
-  calificacionDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  calificacionText: {
-    fontSize: 14,
-    color: '#9ca3af',
-  },
-  calificacionTextActive: {
-    color: '#000',
-    fontWeight: '600',
-  },
+  calificacionDot: { width: 10, height: 10, borderRadius: 5 },
+  calificacionText: { fontSize: 14, color: '#9ca3af' },
+  calificacionTextActive: { color: '#000', fontWeight: '600' },
+
+  // Premium Modal
   premiumModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center', alignItems: 'center', padding: 20,
   },
   premiumModal: {
-    width: '100%',
-    maxWidth: 360,
-    backgroundColor: '#ffffff',
-    borderRadius: 18,
-    padding: 24,
-    alignItems: 'center',
+    width: '100%', maxWidth: 360,
+    backgroundColor: '#ffffff', borderRadius: 18, padding: 24, alignItems: 'center',
   },
   premiumIconWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 64, height: 64, borderRadius: 32,
     backgroundColor: 'rgba(212, 160, 23, 0.14)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 14,
   },
-  premiumTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1a1a1a',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  premiumMessage: {
-    fontSize: 14,
-    lineHeight: 21,
-    color: '#555555',
-    textAlign: 'center',
-    marginBottom: 22,
-  },
+  premiumTitle: { fontSize: 20, fontWeight: '700', color: '#1a1a1a', textAlign: 'center', marginBottom: 10 },
+  premiumMessage: { fontSize: 14, lineHeight: 21, color: '#555555', textAlign: 'center', marginBottom: 22 },
   premiumPrimaryButton: {
-    width: '100%',
-    backgroundColor: '#d4a017',
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginBottom: 10,
+    width: '100%', backgroundColor: '#d4a017',
+    paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginBottom: 10,
   },
-  premiumPrimaryButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#000',
-  },
+  premiumPrimaryButtonText: { fontSize: 15, fontWeight: '700', color: '#000' },
   premiumSecondaryButton: {
-    width: '100%',
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    width: '100%', paddingVertical: 12, borderRadius: 12,
+    alignItems: 'center', backgroundColor: '#f5f5f5',
   },
-  premiumSecondaryButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#555555',
-  },
+  premiumSecondaryButtonText: { fontSize: 14, fontWeight: '600', color: '#555555' },
 });
