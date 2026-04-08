@@ -1001,9 +1001,23 @@ def send_whatsapp_text(to_number: str, message: str):
 
 # ============== AUTH ROUTES ==============
 
+def _phone_variants(telefono: str) -> list:
+    """Devuelve todas las variantes de formato para buscar en MongoDB."""
+    raw = telefono.strip()
+    normalized = normalize_phone_number(raw)
+    variants = {raw, normalized}
+    # Si el normalizado tiene código "1" de 11 dígitos (DO/US/PR), agregar también sin el "1"
+    if normalized.startswith("1") and len(normalized) == 11:
+        variants.add(normalized[1:])
+    return list(variants)
+
+def _phone_query(telefono: str) -> dict:
+    variants = _phone_variants(telefono)
+    return {"telefono": {"$in": variants}}
+
 @api_router.post("/auth/register", response_model=TokenResponse)
 async def register(user_data: UserCreate):
-    existing = await db.users.find_one({"telefono": user_data.telefono})
+    existing = await db.users.find_one(_phone_query(user_data.telefono))
     if existing:
         raise HTTPException(status_code=400, detail="Este número ya está registrado")
     
@@ -1057,7 +1071,7 @@ async def register(user_data: UserCreate):
 
 @api_router.post("/auth/login", response_model=TokenResponse)
 async def login(credentials: UserLogin):
-    user = await db.users.find_one({"telefono": credentials.telefono})
+    user = await db.users.find_one(_phone_query(credentials.telefono))
     if not user:
         raise HTTPException(status_code=401, detail="Número no registrado")
     
@@ -3102,7 +3116,7 @@ async def redeem_promo_code(data: RedeemCodeRequest, current_user: dict = Depend
 async def gift_premium(data: GiftPremiumRequest, current_user: dict = Depends(require_admin)):
     if data.dias < 1:
         raise HTTPException(status_code=400, detail="La duración debe ser al menos 1 día")
-    user = await db.users.find_one({"telefono": data.telefono})
+    user = await db.users.find_one(_phone_query(data.telefono))
     if not user:
         raise HTTPException(status_code=404, detail=f"No se encontró usuario con teléfono {data.telefono}")
     now = datetime.utcnow()
@@ -3221,7 +3235,7 @@ async def send_otp(data: SendOTPRequest):
 
     # Para recuperar PIN, verificar que el usuario existe
     if tipo == "recuperar_pin":
-        user = await db.users.find_one({"telefono": telefono})
+        user = await db.users.find_one(_phone_query(telefono))
         if not user:
             raise HTTPException(status_code=404, detail="No se encontró una cuenta con ese número")
 
@@ -3365,7 +3379,7 @@ async def recover_pin(data: RecoverPinRequest):
         await db.otp_codes.update_one({"_id": otp["_id"]}, {"$inc": {"intentos": 1}})
         raise HTTPException(status_code=400, detail="Código incorrecto")
 
-    user = await db.users.find_one({"telefono": telefono})
+    user = await db.users.find_one(_phone_query(telefono))
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
