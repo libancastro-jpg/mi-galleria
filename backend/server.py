@@ -3117,6 +3117,16 @@ async def gift_premium(data: GiftPremiumRequest, current_user: dict = Depends(re
     logger.info("[GiftPremium] Admin regaló %d días a %s — expira %s", data.dias, data.telefono, new_exp)
     updated_user = await db.users.find_one({"_id": user["_id"]})
     return {"message": f"Premium de {data.dias} días activado para {data.telefono} ✅", "premium_expires_at": new_exp, "user": build_user_response(updated_user)}
+
+@api_router.get("/admin/user/{user_id}")
+async def get_user_by_id(user_id: str, current_user: dict = Depends(require_admin)):
+    user = await db.users.find_one({"_id": ObjectId(user_id)})
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    user["_id"] = str(user["_id"])
+    user.pop("pin", None)
+    return user
+
 # ============== OTP - VERIFICACIÓN Y RECUPERACIÓN PIN ==============
 
 import secrets

@@ -494,15 +494,7 @@ export default function CuidoDetailScreen() {
                 throw lastError || new Error('No se pudo eliminar el trabajo');
               }
 
-              setCuido((prev) => {
-                if (!prev) return prev;
-                return {
-                  ...prev,
-                  actividades: prev.actividades.filter(
-                    (a) => !(a.tipo === 'trabajo' && a.numero === trabajo.numero)
-                  ),
-                };
-              });
+              await fetchCuido();
 
               Alert.alert('Éxito', 'Trabajo eliminado correctamente');
             } catch (error: any) {
@@ -558,24 +550,7 @@ export default function CuidoDetailScreen() {
 
         await api.post(url);
 
-        const nuevoTope: Actividad = {
-          id: `tope${numero}-${Date.now()}`,
-          tipo: 'tope',
-          numero,
-          fecha: actividadFecha || new Date().toISOString().split('T')[0],
-          notas: actividadNotas.trim() || undefined,
-        };
-
-        setCuido((prev) => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            actividades: [...prev.actividades, nuevoTope].sort((a, b) => {
-              if (a.tipo !== b.tipo) return a.tipo === 'tope' ? -1 : 1;
-              return a.numero - b.numero;
-            }),
-          };
-        });
+        await fetchCuido();
       } else {
         const tiempo = parseInt(actividadTiempo, 10);
 
@@ -608,33 +583,7 @@ export default function CuidoDetailScreen() {
 
         await api.post(url);
 
-        const nuevoTrabajo: Actividad = {
-          id: `trabajo${numero}-${Date.now()}`,
-          tipo: 'trabajo',
-          numero,
-          tiempo_minutos: tiempo,
-          fecha: actividadFecha || new Date().toISOString().split('T')[0],
-          notas: actividadNotas.trim() || undefined,
-          peso: actividadPeso.trim() || undefined,
-          marcaje_mes: String(marcajeMes).padStart(2, '0'),
-          marcaje_anio: marcajeAnio || undefined,
-        };
-
-        setCuido((prev) => {
-          if (!prev) return prev;
-
-          const filtradas = prev.actividades.filter(
-            (a) => !(a.tipo === 'trabajo' && a.numero === numero)
-          );
-
-          return {
-            ...prev,
-            actividades: [...filtradas, nuevoTrabajo].sort((a, b) => {
-              if (a.tipo !== b.tipo) return a.tipo === 'tope' ? -1 : 1;
-              return a.numero - b.numero;
-            }),
-          };
-        });
+        await fetchCuido();
       }
 
       resetAddModal();
