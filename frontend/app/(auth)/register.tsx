@@ -15,12 +15,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../../src/context/AuthContext';
+import { api } from '../../src/services/api';
 import PhoneInput from '../../components/PhoneInput';
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const { register } = useAuth();
   const [telefono, setTelefono] = useState('');
   const [email, setEmail] = useState('');
   const [nombre, setNombre] = useState('');
@@ -49,13 +48,16 @@ export default function RegisterScreen() {
 
     setLoading(true);
     try {
-      await register(
-        telefono.trim(),
-        pin,
-        email.trim() || undefined,
-        nombre.trim()
-      );
-      router.replace('/(tabs)');
+      await api.post('/auth/send-otp', { telefono: telefono.trim(), tipo: 'registro' });
+      router.push({
+        pathname: '/(auth)/verify-otp',
+        params: {
+          telefono: telefono.trim(),
+          pin,
+          nombre: nombre.trim(),
+          email: email.trim(),
+        },
+      });
     } catch (error: any) {
       Alert.alert('Error', error.message);
     } finally {

@@ -104,6 +104,12 @@ export default function LoginScreen() {
               )}
             </TouchableOpacity>
 
+            <Link href="/(auth)/recover-pin" asChild>
+              <TouchableOpacity style={styles.forgotBtn}>
+                <Text style={styles.forgotText}>¿Olvidaste tu PIN?</Text>
+              </TouchableOpacity>
+            </Link>
+
             <View style={styles.linkContainer}>
               <Text style={styles.linkText}>¿No tienes cuenta? </Text>
               <Link href="/(auth)/register" asChild>
@@ -208,6 +214,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   link: {
+    color: '#f59e0b',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  forgotBtn: {
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  forgotText: {
     color: '#f59e0b',
     fontSize: 14,
     fontWeight: '600',
