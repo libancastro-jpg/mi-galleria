@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/context/AuthContext';
+import PhoneInput from '../../components/PhoneInput';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -69,18 +70,10 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.form}>
-            <View style={styles.inputContainer}>
-              <Ionicons name="call-outline" size={20} color="#9ca3af" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Número de teléfono"
-                placeholderTextColor="#555555"
-                value={telefono}
-                onChangeText={setTelefono}
-                keyboardType="phone-pad"
-                autoCapitalize="none"
-              />
-            </View>
+            <PhoneInput
+              placeholder="Número de teléfono"
+              onChangeText={setTelefono}
+            />
 
             <View style={styles.inputContainer}>
               <Ionicons name="lock-closed-outline" size={20} color="#9ca3af" style={styles.inputIcon} />

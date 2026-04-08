@@ -17,7 +17,7 @@ import time
 import requests
 import base64
 import json
-from whatsapp import send_whatsapp_template  # ← NUEVO: WhatsApp
+from whatsapp import send_whatsapp_template, normalize_phone_number  # ← WhatsApp
 import random
 import string
 
@@ -291,6 +291,19 @@ class PeleaUpdate(BaseModel):
     def validar_cantidades_update(cls, v):
         if v is not None and v < 0:
             raise ValueError("Las cantidades no pueden ser negativas")
+        return v
+
+    @validator("entabladas", always=True)
+    def validar_al_menos_un_resultado_update(cls, v, values):
+        ganadas = values.get("ganadas")
+        perdidas = values.get("perdidas")
+        entabladas = v
+
+        # Solo valida cuando los tres campos se envían explícitamente
+        if ganadas is not None and perdidas is not None and entabladas is not None:
+            if ganadas == 0 and perdidas == 0 and entabladas == 0:
+                raise ValueError("Debes registrar al menos un resultado")
+
         return v
 
 
@@ -3144,7 +3157,7 @@ def send_otp_whatsapp(telefono: str, codigo: str, tipo: str = "registro"):
             f"*{codigo}*\n\n"
             f"Válido por 10 minutos. No lo compartas con nadie."
         )
-    send_whatsapp_text(telefono, mensaje)
+    send_whatsapp_text(normalize_phone_number(telefono), mensaje)
 
 
 def send_otp_sms(telefono: str, codigo: str, tipo: str = "registro"):
@@ -3162,6 +3175,7 @@ def send_otp_sms(telefono: str, codigo: str, tipo: str = "registro"):
         mensaje = f"Mi Galleria: Tu codigo para recuperar el PIN es {codigo}. Valido por 10 minutos."
 
     try:
+        clean_number = normalize_phone_number(telefono)
         response = requests.post(
             f"https://{base_url}/sms/2/text/advanced",
             headers={
@@ -3171,7 +3185,7 @@ def send_otp_sms(telefono: str, codigo: str, tipo: str = "registro"):
             json={
                 "messages": [{
                     "from": "ServiceSMS",
-                    "destinations": [{"to": f"+{telefono}"}],
+                    "destinations": [{"to": f"+{clean_number}"}],
                     "text": mensaje
                 }]
             },
@@ -3187,14 +3201,8 @@ def send_otp_sms(telefono: str, codigo: str, tipo: str = "registro"):
 
 @api_router.post("/auth/send-otp")
 async def send_otp(data: SendOTPRequest):
-    # Normalizar teléfono — quitar espacios, guiones, paréntesis y el +
-    telefono = data.telefono.strip().replace(" ", "").replace("-", "").replace("(", "").replace(")", "").replace("+", "")
-
-    # Normalizar formato para WhatsApp
-    if telefono.startswith("1") and len(telefono) == 11:
-        pass  # Ya tiene código de país: 18091234567 ✅
-    elif len(telefono) == 10:
-        telefono = "1" + telefono  # RD sin código: 8091234567 → 18091234567
+    # Normalizar teléfono — detecta y agrega código de país si falta
+    telefono = normalize_phone_number(data.telefono.strip())
 
     tipo = data.tipo
 

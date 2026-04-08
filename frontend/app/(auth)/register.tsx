@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/context/AuthContext';
+import PhoneInput from '../../components/PhoneInput';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -87,17 +88,10 @@ export default function RegisterScreen() {
           <View style={styles.form}>
 
             {/* Teléfono */}
-            <View style={styles.inputContainer}>
-              <Ionicons name="call-outline" size={20} color="#9ca3af" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Número de teléfono *"
-                placeholderTextColor="#555555"
-                value={telefono}
-                onChangeText={setTelefono}
-                keyboardType="phone-pad"
-              />
-            </View>
+            <PhoneInput
+              placeholder="Número de teléfono *"
+              onChangeText={setTelefono}
+            />
 
             {/* Nombre de Galleria — OBLIGATORIO */}
             <View style={styles.inputContainer}>
