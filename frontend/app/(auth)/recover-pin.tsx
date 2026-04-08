@@ -75,22 +75,8 @@ export default function RecoverPinScreen() {
       Alert.alert('Error', 'Ingresa el código de 6 dígitos');
       return;
     }
-    setLoading(true);
-    try {
-      await api.post('/auth/verify-otp', {
-        telefono: telefono.trim(),
-        codigo: code,
-        tipo: 'recuperar_pin',
-      });
-      setCodigoOtp(code);
-      setStep(3);
-    } catch (error: any) {
-      Alert.alert('Código incorrecto', error.message);
-      setDigits(['', '', '', '', '', '']);
-      setTimeout(() => inputRefs.current[0]?.focus(), 100);
-    } finally {
-      setLoading(false);
-    }
+    setCodigoOtp(code);
+    setStep(3);
   };
 
   const handleDigitChange = (text: string, index: number) => {
