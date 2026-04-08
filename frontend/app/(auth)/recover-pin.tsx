@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useAuth } from '../../src/context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import PhoneInput from '../../components/PhoneInput';
 import { api } from '../../src/services/api';
@@ -13,6 +14,7 @@ type Step = 1 | 2 | 3;
 
 export default function RecoverPinScreen() {
   const router = useRouter();
+  const { login } = useAuth();
 
   const [step, setStep] = useState<Step>(1);
   const [telefono, setTelefono] = useState('');
@@ -127,9 +129,14 @@ export default function RecoverPinScreen() {
         codigo: codigoOtp,
         nuevo_pin: nuevaPin,
       });
-      Alert.alert('PIN actualizado', 'Tu PIN fue cambiado exitosamente', [
-        { text: 'Iniciar sesión', onPress: () => router.replace('/(auth)/login') },
-      ]);
+      try {
+        await login(telefono.trim(), nuevaPin);
+        router.replace('/(tabs)');
+      } catch {
+        Alert.alert('PIN actualizado', 'Inicia sesión con tu nuevo PIN', [
+          { text: 'Iniciar sesión', onPress: () => router.replace('/(auth)/login') },
+        ]);
+      }
     } catch (error: any) {
       Alert.alert('Error', error.message);
     } finally {
