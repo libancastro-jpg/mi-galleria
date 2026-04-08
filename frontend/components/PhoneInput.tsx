@@ -7,8 +7,8 @@ import {
   StyleSheet,
   Modal,
   FlatList,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 interface Country {
@@ -51,16 +51,41 @@ export default function PhoneInput({ onChangeText, placeholder = 'Número de tel
   const [modalVisible, setModalVisible] = useState(false);
 
   const handleChangeText = (text: string) => {
-    const digits = text.replace(/[^0-9]/g, '').slice(0, selectedCountry.digitCount);
+    let digits = text.replace(/[^0-9]/g, '');
+    const code = selectedCountry.code;
+
+    // Strip "00" + country code (international dialing prefix)
+    if (digits.startsWith('00' + code)) {
+      digits = digits.slice(('00' + code).length);
+    }
+    // Strip country code when the remainder fits within the local digit count.
+    // This is the key fix: checking remainder length (not total length) avoids
+    // missing the case where code+local === digitCount characters total.
+    else if (digits.startsWith(code)) {
+      const afterCode = digits.slice(code.length);
+      if (afterCode.length <= selectedCountry.digitCount) {
+        digits = afterCode;
+      }
+    }
+
+    digits = digits.slice(0, selectedCountry.digitCount);
     setLocalNumber(digits);
-    onChangeText(digits ? selectedCountry.code + digits : '');
+    onChangeText(digits ? code + digits : '');
   };
 
   const handleSelectCountry = (country: Country) => {
     setSelectedCountry(country);
     setModalVisible(false);
-    // Recalculate full number with new country code
-    const trimmed = localNumber.slice(0, country.digitCount);
+
+    // Re-apply code-stripping logic against the new country's code
+    let digits = localNumber;
+    if (digits.startsWith(country.code)) {
+      const afterCode = digits.slice(country.code.length);
+      if (afterCode.length <= country.digitCount) {
+        digits = afterCode;
+      }
+    }
+    const trimmed = digits.slice(0, country.digitCount);
     setLocalNumber(trimmed);
     onChangeText(trimmed ? country.code + trimmed : '');
   };
