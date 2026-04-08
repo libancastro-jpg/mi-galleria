@@ -135,6 +135,7 @@ def send_whatsapp_template(phone_number: str, template_name: str = "bienvenida_m
         result = response.json()
         if response.status_code == 200:
             logger.info("[WhatsApp] Mensaje enviado a %s", clean_number)
+            logger.info("[WhatsApp] Respuesta Meta: %s", result)
         else:
             logger.error("[WhatsApp] Error enviando a %s: %s", clean_number, result)
         return result
