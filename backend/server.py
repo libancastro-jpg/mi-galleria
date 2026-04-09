@@ -3208,7 +3208,7 @@ def send_otp_sms(telefono: str, codigo: str, tipo: str = "registro"):
             },
             json={
                 "messages": [{
-                    "from": "ServiceSMS",
+                    "from": "12674827168",
                     "destinations": [{"to": f"+{clean_number}"}],
                     "text": mensaje
                 }]
