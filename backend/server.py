@@ -3046,10 +3046,10 @@ async def require_admin(current_user: dict = Depends(get_current_user)):
 @api_router.get("/app/version")
 async def get_app_version():
     return {
-        "latest_version": "1.0.11",
-        "minimum_version": "1.0.10",
-        "force_update": False,
-        "message": "Hay una nueva versión disponible con mejoras importantes. Actualiza para disfrutar los códigos promocionales y más funciones."
+        "latest_version": "1.0.13",
+        "minimum_version": "1.0.13",
+        "force_update": True,
+        "message": "Actualización obligatoria: verificación SMS, recuperar PIN y soporte internacional. Actualiza para continuar usando la app."
     }
 
 @api_router.post("/admin/create-promo-code")
