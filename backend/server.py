@@ -3312,6 +3312,8 @@ async def verify_otp(data: VerifyOTPRequest):
     codigo = data.codigo.strip()
     tipo = data.tipo
 
+    logger.info("[OTP Verify] Intentando verificar: telefono=%s, tipo=%s, codigo=%s", telefono, tipo, codigo[:2] + "****")
+
     otp = await db.otp_codes.find_one({
         "telefono": telefono,
         "tipo": tipo,
@@ -3320,6 +3322,8 @@ async def verify_otp(data: VerifyOTPRequest):
     })
 
     if not otp:
+        all_otps = await db.otp_codes.find({"tipo": tipo, "usado": False}).to_list(10)
+        logger.warning("[OTP Verify] No se encontró OTP para telefono=%s. OTPs activos: %s", telefono, [(o.get("telefono"), o.get("expires_at")) for o in all_otps])
         raise HTTPException(status_code=400, detail="Código inválido o expirado")
 
     intentos = otp.get("intentos", 0)
