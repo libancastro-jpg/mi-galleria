@@ -2,20 +2,24 @@
  * FirebaseRecaptchaVerifier.tsx
  *
  * Custom invisible reCAPTCHA verifier using react-native-webview only.
- * Reemplaza expo-firebase-recaptcha (que arrastraba expo-firebase-core y
- * su podspec nativo Firebase/Core).
+ * No native Firebase dependencies — only react-native-webview.
  *
- * Implementa la interfaz ApplicationVerifier de firebase/auth:
+ * Implements both the public ApplicationVerifier interface from firebase/auth:
  *   { type: string; verify(): Promise<string> }
+ * AND the internal ApplicationVerifierInternal interface that Firebase
+ * calls unconditionally in its finally block after signInWithPhoneNumber:
+ *   { _reset(): void }
  *
- * La lógica es:
- *  1. Un WebView invisible carga Firebase JS SDK v8 desde CDN y monta un
- *     RecaptchaVerifier invisible atado al dominio authDomain del proyecto.
- *  2. Cuando signInWithPhoneNumber llama a verifier.verify(), este componente
- *     dispara el reCAPTCHA dentro del WebView y devuelve el token.
- *  3. El token viaja de WebView → RN por window.ReactNativeWebView.postMessage.
+ * Without _reset(), Firebase throws:
+ *   "verifier._reset is not a function (it is undefined)"
  *
- * NO tiene ninguna dependencia nativa de Firebase — solo react-native-webview.
+ * Architecture:
+ *   1. An invisible WebView loads Firebase JS SDK v8 from CDN and mounts an
+ *      invisible RecaptchaVerifier bound to the authDomain of the project.
+ *   2. signInWithPhoneNumber calls verify() → we inject JS to trigger the
+ *      reCAPTCHA inside the WebView → token comes back via postMessage.
+ *   3. signInWithPhoneNumber then calls _reset() → we inject JS to clear and
+ *      reinitialize the RecaptchaVerifier so it's ready for the next call.
  */
 
 import React, { useRef, forwardRef, useImperativeHandle } from 'react';
@@ -23,10 +27,16 @@ import { View } from 'react-native';
 import { WebView } from 'react-native-webview';
 
 export interface FirebaseRecaptchaVerifierRef {
-  /** Siempre 'recaptcha' — requerido por la interfaz ApplicationVerifier. */
+  /** Always 'recaptcha' — required by ApplicationVerifier interface. */
   readonly type: string;
-  /** Dispara el reCAPTCHA invisible y devuelve el token. */
+  /** Triggers the invisible reCAPTCHA and resolves with the token. */
   verify(): Promise<string>;
+  /**
+   * Called by Firebase JS SDK internally after signInWithPhoneNumber
+   * (in a finally block). Must exist or Firebase throws a TypeError.
+   * Resets the verifier so it can be reused (e.g. for resend).
+   */
+  _reset(): void;
 }
 
 interface FirebaseConfig {
@@ -38,7 +48,7 @@ interface FirebaseConfig {
 
 interface Props {
   firebaseConfig: FirebaseConfig;
-  /** En true deshabilita la verificación real (solo para pruebas). */
+  /** Disable real verification for testing only. */
   appVerificationDisabledForTesting?: boolean;
 }
 
@@ -48,6 +58,17 @@ const FirebaseRecaptchaVerifier = forwardRef<FirebaseRecaptchaVerifierRef, Props
     const pendingResolve = useRef<((token: string) => void) | null>(null);
     const pendingReject = useRef<((err: Error) => void) | null>(null);
 
+    // JS to reinitialize the RecaptchaVerifier inside the WebView.
+    // Called both on page load and from _reset() so the verifier is always fresh.
+    const RESET_SCRIPT = `
+      (function() {
+        if (typeof window.initRecaptcha === 'function') {
+          window.initRecaptcha();
+        }
+      })();
+      true;
+    `;
+
     useImperativeHandle(ref, () => ({
       type: 'recaptcha',
 
@@ -56,7 +77,6 @@ const FirebaseRecaptchaVerifier = forwardRef<FirebaseRecaptchaVerifierRef, Props
           pendingResolve.current = resolve;
           pendingReject.current = reject;
 
-          // Dispara el reCAPTCHA invisible dentro del WebView
           webviewRef.current?.injectJavaScript(`
             (function() {
               if (window.recaptchaVerifier) {
@@ -81,10 +101,22 @@ const FirebaseRecaptchaVerifier = forwardRef<FirebaseRecaptchaVerifierRef, Props
           `);
         });
       },
+
+      /**
+       * Firebase calls this unconditionally in its internal finally block.
+       * We clear the pending callbacks and reinitialize the RecaptchaVerifier
+       * so it's ready for the next call (e.g. resend OTP).
+       */
+      _reset(): void {
+        pendingResolve.current = null;
+        pendingReject.current = null;
+        webviewRef.current?.injectJavaScript(RESET_SCRIPT);
+      },
     }));
 
-    // HTML inline: carga Firebase JS SDK v8 desde CDN (no nativo),
-    // monta el RecaptchaVerifier invisible y notifica cuando está listo.
+    // The WebView content. Uses Firebase JS SDK v8 compat (CDN) to create an
+    // invisible RecaptchaVerifier. window.initRecaptcha() is exposed globally
+    // so _reset() can call it again via injectJavaScript.
     const html = `
 <!DOCTYPE html>
 <html>
@@ -95,7 +127,17 @@ const FirebaseRecaptchaVerifier = forwardRef<FirebaseRecaptchaVerifierRef, Props
   <script>
     firebase.initializeApp(${JSON.stringify(firebaseConfig)});
 
-    function onPageLoad() {
+    window.initRecaptcha = function() {
+      // Clear the previous verifier if it exists
+      if (window.recaptchaVerifier) {
+        try { window.recaptchaVerifier.clear(); } catch(e) {}
+        window.recaptchaVerifier = null;
+      }
+
+      // Clear the DOM container so RecaptchaVerifier can inject fresh markup
+      var container = document.getElementById('recaptcha-container');
+      if (container) { container.innerHTML = ''; }
+
       try {
         firebase.auth().settings.appVerificationDisabledForTesting = ${appVerificationDisabledForTesting};
 
@@ -103,19 +145,14 @@ const FirebaseRecaptchaVerifier = forwardRef<FirebaseRecaptchaVerifierRef, Props
           'recaptcha-container',
           {
             size: 'invisible',
-            callback: function(token) {
-              window.ReactNativeWebView.postMessage(
-                JSON.stringify({ type: 'verify', token: token })
-              );
-            },
             'expired-callback': function() {
               window.ReactNativeWebView.postMessage(
-                JSON.stringify({ type: 'error', message: 'reCAPTCHA expired' })
+                JSON.stringify({ type: 'expired' })
               );
             },
             'error-callback': function() {
               window.ReactNativeWebView.postMessage(
-                JSON.stringify({ type: 'error', message: 'reCAPTCHA error' })
+                JSON.stringify({ type: 'error', message: 'reCAPTCHA widget error' })
               );
             }
           }
@@ -135,6 +172,10 @@ const FirebaseRecaptchaVerifier = forwardRef<FirebaseRecaptchaVerifierRef, Props
           JSON.stringify({ type: 'error', message: err.message || 'init error' })
         );
       }
+    };
+
+    function onPageLoad() {
+      window.initRecaptcha();
     }
   </script>
 </head>
@@ -146,23 +187,37 @@ const FirebaseRecaptchaVerifier = forwardRef<FirebaseRecaptchaVerifierRef, Props
     const handleMessage = (event: { nativeEvent: { data: string } }) => {
       try {
         const data = JSON.parse(event.nativeEvent.data);
-        if (data.type === 'verify') {
-          pendingResolve.current?.(data.token);
-          pendingResolve.current = null;
-          pendingReject.current = null;
-        } else if (data.type === 'error') {
-          pendingReject.current?.(new Error(data.message ?? 'reCAPTCHA error'));
-          pendingResolve.current = null;
-          pendingReject.current = null;
+        switch (data.type) {
+          case 'verify':
+            if (pendingResolve.current) {
+              pendingResolve.current(data.token);
+              pendingResolve.current = null;
+              pendingReject.current = null;
+            }
+            break;
+          case 'error':
+            if (pendingReject.current) {
+              pendingReject.current(new Error(data.message ?? 'reCAPTCHA error'));
+              pendingResolve.current = null;
+              pendingReject.current = null;
+            }
+            break;
+          case 'expired':
+            if (pendingReject.current) {
+              pendingReject.current(new Error('El reCAPTCHA expiró. Inténtalo de nuevo.'));
+              pendingResolve.current = null;
+              pendingReject.current = null;
+            }
+            break;
+          // 'load' — verifier is ready, nothing to do
         }
-        // 'load' — ignorado, solo indica que el verifier está listo
       } catch {
-        // JSON parse error, ignorar
+        // JSON parse error, ignore
       }
     };
 
     return (
-      // Dimensiones cero: invisible para el usuario
+      // Zero dimensions: completely invisible to the user
       <View style={{ width: 0, height: 0, overflow: 'hidden' }}>
         <WebView
           ref={webviewRef}
