@@ -6,7 +6,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
 import { useAuth } from '../../src/context/AuthContext';
+import { firebaseConfig } from '../../src/config/firebase';
 import {
   getOtpSession,
   clearOtpSession,
@@ -17,6 +19,7 @@ import {
 
 export default function VerifyOtpScreen() {
   const router = useRouter();
+  const recaptchaVerifierRef = useRef<FirebaseRecaptchaVerifierModal>(null);
   const { telefono, pin, nombre, email } = useLocalSearchParams<{
     telefono: string;
     pin: string;
@@ -105,7 +108,7 @@ export default function VerifyOtpScreen() {
   const handleResend = async () => {
     if (!canResend) return;
     try {
-      await sendVerificationCode(toE164(telefono!));
+      await sendVerificationCode(toE164(telefono!), recaptchaVerifierRef.current!);
       setResendTimer(60);
       setCanResend(false);
       Alert.alert('Código enviado', 'Revisa tu SMS');
@@ -120,6 +123,12 @@ export default function VerifyOtpScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <FirebaseRecaptchaVerifierModal
+        ref={recaptchaVerifierRef}
+        firebaseConfig={firebaseConfig}
+        attemptInvisibleVerification
+      />
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}

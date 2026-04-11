@@ -1,25 +1,30 @@
 /**
  * otpService.ts
  *
- * Firebase Phone Auth — único proveedor de OTP en esta app.
+ * Firebase Phone Auth usando el Firebase JS SDK (no código nativo).
+ * Funciona con Expo Go y con dev/production builds sin pod install.
  *
- * La `ConfirmationResult` de Firebase no se puede serializar en los params de
- * Expo Router, por lo que se guarda en una variable de módulo de corta vida.
- * El flujo completo (enviar → verificar) siempre sucede dentro de la misma sesión,
- * así que esto es seguro.
+ * La ConfirmationResult no se puede serializar en params de Expo Router,
+ * por lo que se guarda en una variable de módulo de corta vida.
  */
 
-import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
+import {
+  signInWithPhoneNumber,
+  ConfirmationResult,
+  UserCredential,
+  ApplicationVerifier,
+} from 'firebase/auth';
+import { firebaseAuth } from '../config/firebase';
 
 // ─── Session storage (módulo-level, corta vida) ────────────────────────────────
 
-let _session: FirebaseAuthTypes.ConfirmationResult | null = null;
+let _session: ConfirmationResult | null = null;
 
-export function setOtpSession(s: FirebaseAuthTypes.ConfirmationResult): void {
+export function setOtpSession(s: ConfirmationResult): void {
   _session = s;
 }
 
-export function getOtpSession(): FirebaseAuthTypes.ConfirmationResult | null {
+export function getOtpSession(): ConfirmationResult | null {
   return _session;
 }
 
@@ -80,19 +85,18 @@ function resolveFirebaseError(error: unknown): string {
 // ─── API pública ───────────────────────────────────────────────────────────────
 
 /**
- * Envía un SMS de verificación al número dado via Firebase Phone Auth.
+ * Envía un SMS de verificación via Firebase Phone Auth (JS SDK).
  *
- * @param phoneE164  Número en formato E.164, e.g. "+18095551234".
- *                   Usa `toE164()` para convertir desde el formato del PhoneInput.
- * @returns          La ConfirmationResult. También la almacena en el módulo
- *                   para que `verify-otp.tsx` la recupere con `getOtpSession()`.
- * @throws           Error con mensaje en español si falla.
+ * @param phoneE164         Número en formato E.164, e.g. "+18095551234".
+ * @param recaptchaVerifier Ref de FirebaseRecaptchaVerifierModal (requerido por el JS SDK).
+ *                          Pasa `recaptchaVerifierRef.current!` desde el componente.
  */
 export async function sendVerificationCode(
-  phoneE164: string
-): Promise<FirebaseAuthTypes.ConfirmationResult> {
+  phoneE164: string,
+  recaptchaVerifier: ApplicationVerifier
+): Promise<ConfirmationResult> {
   try {
-    const session = await auth().signInWithPhoneNumber(phoneE164);
+    const session = await signInWithPhoneNumber(firebaseAuth, phoneE164, recaptchaVerifier);
     setOtpSession(session);
     return session;
   } catch (error) {
@@ -103,15 +107,14 @@ export async function sendVerificationCode(
 /**
  * Confirma el código OTP ingresado por el usuario.
  *
- * @param session  La ConfirmationResult (de `sendVerificationCode` o `getOtpSession()`).
+ * @param session  ConfirmationResult (de sendVerificationCode o getOtpSession()).
  * @param code     El código de 6 dígitos.
- * @returns        El UserCredential de Firebase (contiene `user.uid`, `user.getIdToken()`, etc.)
- * @throws         Error con mensaje en español si el código es incorrecto o expiró.
+ * @returns        UserCredential de Firebase (contiene user.getIdToken()).
  */
 export async function confirmVerificationCode(
-  session: FirebaseAuthTypes.ConfirmationResult,
+  session: ConfirmationResult,
   code: string
-): Promise<FirebaseAuthTypes.UserCredential> {
+): Promise<UserCredential> {
   try {
     const credential = await session.confirm(code);
     if (!credential) {

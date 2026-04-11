@@ -7,8 +7,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
+import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
 import PhoneInput from '../../components/PhoneInput';
 import { api } from '../../src/services/api';
+import { firebaseConfig } from '../../src/config/firebase';
 import {
   sendVerificationCode,
   confirmVerificationCode,
@@ -22,6 +24,7 @@ type Step = 1 | 2 | 3;
 export default function RecoverPinScreen() {
   const router = useRouter();
   const { login } = useAuth();
+  const recaptchaVerifierRef = useRef<FirebaseRecaptchaVerifierModal>(null);
 
   const [step, setStep] = useState<Step>(1);
   const [telefono, setTelefono] = useState('');
@@ -71,7 +74,7 @@ export default function RecoverPinScreen() {
       // Pre-check: el número debe tener una cuenta registrada
       await api.post('/auth/check-phone-registered', { telefono: telefono.trim() });
       // Enviar OTP vía Firebase Phone Auth
-      await sendVerificationCode(toE164(telefono.trim()));
+      await sendVerificationCode(toE164(telefono.trim()), recaptchaVerifierRef.current!);
       setStep(2);
     } catch (error: any) {
       Alert.alert('Error', error.message);
@@ -135,7 +138,7 @@ export default function RecoverPinScreen() {
   const handleResend = async () => {
     if (!canResend) return;
     try {
-      await sendVerificationCode(toE164(telefono.trim()));
+      await sendVerificationCode(toE164(telefono.trim()), recaptchaVerifierRef.current!);
       setResendTimer(60);
       setCanResend(false);
       Alert.alert('Código enviado', 'Revisa tu SMS');
@@ -183,6 +186,12 @@ export default function RecoverPinScreen() {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.container}>
+      <FirebaseRecaptchaVerifierModal
+        ref={recaptchaVerifierRef}
+        firebaseConfig={firebaseConfig}
+        attemptInvisibleVerification
+      />
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
@@ -225,7 +234,7 @@ export default function RecoverPinScreen() {
               </View>
               <Text style={styles.stepTitle}>Ingresa tu teléfono</Text>
               <Text style={styles.stepSubtitle}>
-                Te enviaremos un código de verificación por SMS o WhatsApp
+                Te enviaremos un código de verificación por SMS
               </Text>
 
               <PhoneInput

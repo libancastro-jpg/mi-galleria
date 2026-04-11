@@ -11,7 +11,6 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.migalleria.app",
-      "googleServicesFile": "./GoogleService-Info.plist",
       "buildNumber": "18",
       "infoPlist": {
         "NSCameraUsageDescription": "Tomar fotos de tus aves para identificarlas fácilmente",
@@ -21,7 +20,6 @@
       }
     },
     "android": {
-      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -42,8 +40,6 @@
     },
     "plugins": [
       "expo-router",
-      "@react-native-firebase/app",
-      "./plugins/withModularHeaders",
       [
         "expo-splash-screen",
         {

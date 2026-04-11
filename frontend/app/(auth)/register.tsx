@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -15,11 +15,15 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
+import { firebaseConfig } from '../../src/config/firebase';
 import { sendVerificationCode, toE164 } from '../../src/services/otpService';
 import PhoneInput from '../../components/PhoneInput';
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const recaptchaVerifierRef = useRef<FirebaseRecaptchaVerifierModal>(null);
+
   const [telefono, setTelefono] = useState('');
   const [email, setEmail] = useState('');
   const [nombre, setNombre] = useState('');
@@ -48,7 +52,7 @@ export default function RegisterScreen() {
 
     setLoading(true);
     try {
-      await sendVerificationCode(toE164(telefono.trim()));
+      await sendVerificationCode(toE164(telefono.trim()), recaptchaVerifierRef.current!);
       router.push({
         pathname: '/(auth)/verify-otp',
         params: {
@@ -67,6 +71,12 @@ export default function RegisterScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <FirebaseRecaptchaVerifierModal
+        ref={recaptchaVerifierRef}
+        firebaseConfig={firebaseConfig}
+        attemptInvisibleVerification
+      />
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
