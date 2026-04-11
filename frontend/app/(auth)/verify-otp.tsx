@@ -30,7 +30,7 @@ export default function VerifyOtpScreen() {
 
   const [digits, setDigits] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
-  const [resendTimer, setResendTimer] = useState(60);
+  const [resendTimer, setResendTimer] = useState(120);
   const [canResend, setCanResend] = useState(false);
   const inputRefs = useRef<(TextInput | null)[]>([]);
 
@@ -94,7 +94,7 @@ export default function VerifyOtpScreen() {
     if (digit && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
-    if (digit && newDigits.every(d => d !== '')) {
+    if (digit && newDigits.every(d => d !== '') && !loading) {
       handleVerify(newDigits.join(''));
     }
   };
@@ -109,7 +109,7 @@ export default function VerifyOtpScreen() {
     if (!canResend) return;
     try {
       await sendVerificationCode(toE164(telefono!), recaptchaVerifierRef.current!);
-      setResendTimer(60);
+      setResendTimer(120);
       setCanResend(false);
       Alert.alert('Código enviado', 'Revisa tu SMS');
     } catch (error: any) {

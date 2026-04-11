@@ -43,7 +43,7 @@ export default function RecoverPinScreen() {
   // Start timer when entering step 2
   useEffect(() => {
     if (step !== 2) return;
-    setResendTimer(60);
+    setResendTimer(120);
     setCanResend(false);
     setDigits(['', '', '', '', '', '']);
     const interval = setInterval(() => {
@@ -124,7 +124,7 @@ export default function RecoverPinScreen() {
     if (digit && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
-    if (digit && newDigits.every(d => d !== '')) {
+    if (digit && newDigits.every(d => d !== '') && !loading) {
       handleVerifyOtp(newDigits.join(''));
     }
   };
@@ -139,7 +139,7 @@ export default function RecoverPinScreen() {
     if (!canResend) return;
     try {
       await sendVerificationCode(toE164(telefono.trim()), recaptchaVerifierRef.current!);
-      setResendTimer(60);
+      setResendTimer(120);
       setCanResend(false);
       Alert.alert('Código enviado', 'Revisa tu SMS');
     } catch (error: any) {

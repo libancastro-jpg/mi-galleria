@@ -4,38 +4,28 @@
  * Custom invisible reCAPTCHA verifier using react-native-webview only.
  * No native Firebase dependencies — only react-native-webview.
  *
- * Implements both the public ApplicationVerifier interface from firebase/auth:
- *   { type: string; verify(): Promise<string> }
- * AND the internal ApplicationVerifierInternal interface that Firebase
- * calls unconditionally in its finally block after signInWithPhoneNumber:
- *   { _reset(): void }
+ * Implements:
+ *   - ApplicationVerifier (public Firebase interface): { type, verify() }
+ *   - ApplicationVerifierInternal (internal Firebase interface): { _reset() }
  *
- * Without _reset(), Firebase throws:
- *   "verifier._reset is not a function (it is undefined)"
+ * _reset() strategy: increment a React key to force-unmount and remount the
+ * WebView. This is the same approach expo-firebase-recaptcha uses for its
+ * invisible verifier (invisibleKey state). It guarantees a clean DOM with no
+ * "reCAPTCHA has already been rendered in this element" errors on resend.
  *
- * Architecture:
- *   1. An invisible WebView loads Firebase JS SDK v8 from CDN and mounts an
- *      invisible RecaptchaVerifier bound to the authDomain of the project.
- *   2. signInWithPhoneNumber calls verify() → we inject JS to trigger the
- *      reCAPTCHA inside the WebView → token comes back via postMessage.
- *   3. signInWithPhoneNumber then calls _reset() → we inject JS to clear and
- *      reinitialize the RecaptchaVerifier so it's ready for the next call.
+ * Firebase calls _reset() automatically in a finally block after every
+ * signInWithPhoneNumber call, so by the time the user can click Resend
+ * (120 seconds later), the WebView is already fully re-initialized.
  */
 
-import React, { useRef, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useRef, forwardRef, useImperativeHandle } from 'react';
 import { View } from 'react-native';
 import { WebView } from 'react-native-webview';
 
 export interface FirebaseRecaptchaVerifierRef {
-  /** Always 'recaptcha' — required by ApplicationVerifier interface. */
   readonly type: string;
-  /** Triggers the invisible reCAPTCHA and resolves with the token. */
   verify(): Promise<string>;
-  /**
-   * Called by Firebase JS SDK internally after signInWithPhoneNumber
-   * (in a finally block). Must exist or Firebase throws a TypeError.
-   * Resets the verifier so it can be reused (e.g. for resend).
-   */
+  /** Called by Firebase JS SDK internally after signInWithPhoneNumber. */
   _reset(): void;
 }
 
@@ -48,7 +38,6 @@ interface FirebaseConfig {
 
 interface Props {
   firebaseConfig: FirebaseConfig;
-  /** Disable real verification for testing only. */
   appVerificationDisabledForTesting?: boolean;
 }
 
@@ -57,17 +46,8 @@ const FirebaseRecaptchaVerifier = forwardRef<FirebaseRecaptchaVerifierRef, Props
     const webviewRef = useRef<WebView>(null);
     const pendingResolve = useRef<((token: string) => void) | null>(null);
     const pendingReject = useRef<((err: Error) => void) | null>(null);
-
-    // JS to reinitialize the RecaptchaVerifier inside the WebView.
-    // Called both on page load and from _reset() so the verifier is always fresh.
-    const RESET_SCRIPT = `
-      (function() {
-        if (typeof window.initRecaptcha === 'function') {
-          window.initRecaptcha();
-        }
-      })();
-      true;
-    `;
+    // Incrementing this key unmounts+remounts the WebView with a fresh DOM.
+    const [webviewKey, setWebviewKey] = useState(0);
 
     useImperativeHandle(ref, () => ({
       type: 'recaptcha',
@@ -102,21 +82,15 @@ const FirebaseRecaptchaVerifier = forwardRef<FirebaseRecaptchaVerifierRef, Props
         });
       },
 
-      /**
-       * Firebase calls this unconditionally in its internal finally block.
-       * We clear the pending callbacks and reinitialize the RecaptchaVerifier
-       * so it's ready for the next call (e.g. resend OTP).
-       */
       _reset(): void {
+        // Clear any pending promise callbacks
         pendingResolve.current = null;
         pendingReject.current = null;
-        webviewRef.current?.injectJavaScript(RESET_SCRIPT);
+        // Force WebView remount — gives a completely clean DOM on next verify()
+        setWebviewKey(k => k + 1);
       },
     }));
 
-    // The WebView content. Uses Firebase JS SDK v8 compat (CDN) to create an
-    // invisible RecaptchaVerifier. window.initRecaptcha() is exposed globally
-    // so _reset() can call it again via injectJavaScript.
     const html = `
 <!DOCTYPE html>
 <html>
@@ -127,17 +101,7 @@ const FirebaseRecaptchaVerifier = forwardRef<FirebaseRecaptchaVerifierRef, Props
   <script>
     firebase.initializeApp(${JSON.stringify(firebaseConfig)});
 
-    window.initRecaptcha = function() {
-      // Clear the previous verifier if it exists
-      if (window.recaptchaVerifier) {
-        try { window.recaptchaVerifier.clear(); } catch(e) {}
-        window.recaptchaVerifier = null;
-      }
-
-      // Clear the DOM container so RecaptchaVerifier can inject fresh markup
-      var container = document.getElementById('recaptcha-container');
-      if (container) { container.innerHTML = ''; }
-
+    function onPageLoad() {
       try {
         firebase.auth().settings.appVerificationDisabledForTesting = ${appVerificationDisabledForTesting};
 
@@ -172,10 +136,6 @@ const FirebaseRecaptchaVerifier = forwardRef<FirebaseRecaptchaVerifierRef, Props
           JSON.stringify({ type: 'error', message: err.message || 'init error' })
         );
       }
-    };
-
-    function onPageLoad() {
-      window.initRecaptcha();
     }
   </script>
 </head>
@@ -209,7 +169,6 @@ const FirebaseRecaptchaVerifier = forwardRef<FirebaseRecaptchaVerifierRef, Props
               pendingReject.current = null;
             }
             break;
-          // 'load' — verifier is ready, nothing to do
         }
       } catch {
         // JSON parse error, ignore
@@ -217,9 +176,9 @@ const FirebaseRecaptchaVerifier = forwardRef<FirebaseRecaptchaVerifierRef, Props
     };
 
     return (
-      // Zero dimensions: completely invisible to the user
       <View style={{ width: 0, height: 0, overflow: 'hidden' }}>
         <WebView
+          key={webviewKey}
           ref={webviewRef}
           style={{ width: 1, height: 1 }}
           source={{
