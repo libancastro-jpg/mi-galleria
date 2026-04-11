@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
-import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
+import FirebaseRecaptchaVerifier, { FirebaseRecaptchaVerifierRef } from '../../src/components/FirebaseRecaptchaVerifier';
 import PhoneInput from '../../components/PhoneInput';
 import { api } from '../../src/services/api';
 import { firebaseConfig } from '../../src/config/firebase';
@@ -24,7 +24,7 @@ type Step = 1 | 2 | 3;
 export default function RecoverPinScreen() {
   const router = useRouter();
   const { login } = useAuth();
-  const recaptchaVerifierRef = useRef<FirebaseRecaptchaVerifierModal>(null);
+  const recaptchaVerifierRef = useRef<FirebaseRecaptchaVerifierRef>(null);
 
   const [step, setStep] = useState<Step>(1);
   const [telefono, setTelefono] = useState('');
@@ -186,10 +186,9 @@ export default function RecoverPinScreen() {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.container}>
-      <FirebaseRecaptchaVerifierModal
+      <FirebaseRecaptchaVerifier
         ref={recaptchaVerifierRef}
         firebaseConfig={firebaseConfig}
-        attemptInvisibleVerification
       />
 
       <KeyboardAvoidingView

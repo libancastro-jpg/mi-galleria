@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
+import FirebaseRecaptchaVerifier, { FirebaseRecaptchaVerifierRef } from '../../src/components/FirebaseRecaptchaVerifier';
 import { useAuth } from '../../src/context/AuthContext';
 import { firebaseConfig } from '../../src/config/firebase';
 import {
@@ -19,7 +19,7 @@ import {
 
 export default function VerifyOtpScreen() {
   const router = useRouter();
-  const recaptchaVerifierRef = useRef<FirebaseRecaptchaVerifierModal>(null);
+  const recaptchaVerifierRef = useRef<FirebaseRecaptchaVerifierRef>(null);
   const { telefono, pin, nombre, email } = useLocalSearchParams<{
     telefono: string;
     pin: string;
@@ -123,10 +123,9 @@ export default function VerifyOtpScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <FirebaseRecaptchaVerifierModal
+      <FirebaseRecaptchaVerifier
         ref={recaptchaVerifierRef}
         firebaseConfig={firebaseConfig}
-        attemptInvisibleVerification
       />
 
       <KeyboardAvoidingView
