@@ -7,7 +7,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/context/AuthContext';
-import { api } from '../../src/services/api';
+import {
+  getOtpSession,
+  clearOtpSession,
+  sendVerificationCode,
+  confirmVerificationCode,
+  toE164,
+} from '../../src/services/otpService';
 
 export default function VerifyOtpScreen() {
   const router = useRouter();
@@ -50,10 +56,23 @@ export default function VerifyOtpScreen() {
       Alert.alert('Error', 'Ingresa el código de 6 dígitos');
       return;
     }
+
+    const session = getOtpSession();
+    if (!session) {
+      Alert.alert(
+        'Sesión expirada',
+        'La sesión de verificación expiró. Regresa e inicia el registro de nuevo.',
+        [{ text: 'Regresar', onPress: () => router.back() }]
+      );
+      return;
+    }
+
     setLoading(true);
     try {
-      await api.post('/auth/verify-otp', { telefono, codigo: code, tipo: 'registro' });
-      await register(telefono!, pin!, email || undefined, nombre!);
+      const credential = await confirmVerificationCode(session, code);
+      const idToken = await credential.user.getIdToken();
+      await register(idToken, pin!, email || undefined, nombre!);
+      clearOtpSession();
       router.replace('/(tabs)');
     } catch (error: any) {
       Alert.alert('Código incorrecto', error.message);
@@ -86,12 +105,12 @@ export default function VerifyOtpScreen() {
   const handleResend = async () => {
     if (!canResend) return;
     try {
-      await api.post('/auth/send-otp', { telefono, tipo: 'registro' });
+      await sendVerificationCode(toE164(telefono!));
       setResendTimer(60);
       setCanResend(false);
-      Alert.alert('Código enviado', 'Revisa tu SMS o WhatsApp');
+      Alert.alert('Código enviado', 'Revisa tu SMS');
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      Alert.alert('Error al reenviar', error.message);
     }
   };
 

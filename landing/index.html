@@ -110,6 +110,22 @@
       0%,100%{opacity:1}
       50%{opacity:.45}
     }
+    @keyframes phoneVibrate {
+      0% { transform: translate(0, 0) rotate(0deg); }
+      10% { transform: translate(-2px, 1px) rotate(-0.5deg); }
+      20% { transform: translate(2px, -1px) rotate(0.5deg); }
+      30% { transform: translate(-1px, 2px) rotate(-0.3deg); }
+      40% { transform: translate(1px, -1px) rotate(0.3deg); }
+      50% { transform: translate(-1px, 1px) rotate(-0.2deg); }
+      60% { transform: translate(1px, 0px) rotate(0.2deg); }
+      70% { transform: translate(-1px, -1px) rotate(0deg); }
+      80% { transform: translate(0px, 1px) rotate(-0.1deg); }
+      90% { transform: translate(0px, -1px) rotate(0.1deg); }
+      100% { transform: translate(0, 0) rotate(0deg); }
+    }
+    .phone-main.vibrating {
+      animation: phoneVibrate 0.4s ease-in-out;
+    }
 
     /* NAV */
     #navbar{
@@ -137,8 +153,8 @@
       gap:10px;
     }
     .brand-mark{
-      width:40px;
-      height:40px;
+      width:46px;
+      height:46px;
       border-radius:50%;
       background:var(--gold);
       display:grid;
@@ -147,9 +163,10 @@
       flex-shrink:0;
     }
     .brand-mark img{
-      width:20px;
-      height:20px;
+      width:51px;
+      height:51px;
       object-fit:contain;
+      object-position:center;
     }
     .brand-name{
       font-size:18px;
@@ -905,12 +922,16 @@
       }
       .hamburger{display:flex}
       .brand-mark{
-        width:34px;
-        height:34px;
+        width:42px;
+        height:42px;
+        overflow:visible;
       }
       .brand-mark img{
-        width:17px;
-        height:17px;
+        width:38px;
+        height:38px;
+        object-fit:contain;
+        object-position:center;
+        display:block;
       }
       .brand-name{
         font-size:14px;
@@ -1066,18 +1087,28 @@
         overflow:visible;
       }
 
+      .phone-left,
+      .phone-right,
+      .hero-stat-card,
+      .pedestal{
+        display:none !important;
+      }
+
       .hero-glow{
-        width:250px;
-        height:250px;
+        width:200px;
+        height:200px;
         right:auto;
         left:50%;
         transform:translate(-50%, -50%);
+        opacity:0.6;
       }
 
       .hero-stack{
-        max-width:206px;
+        max-width:160px;
         width:100%;
         animation:none;
+        align-items:center;
+        justify-content:center;
       }
 
       .phone-main{
@@ -1092,55 +1123,6 @@
         height:10px;
       }
 
-      .phone-left{
-        width:76px;
-        height:152px;
-        left:-2px;
-        bottom:18px;
-        opacity:.48;
-        transform:rotate(-8deg);
-      }
-
-      .phone-right{
-        width:80px;
-        height:160px;
-        right:-2px;
-        top:20px;
-        opacity:.54;
-        transform:rotate(8deg);
-      }
-
-      .hero-stat-card{
-        padding:4px 5px;
-        border-radius:10px;
-        max-width:58px;
-      }
-
-      .hero-stat-card small{
-        font-size:5px;
-        margin-bottom:2px;
-      }
-
-      .hero-stat-card strong{
-        font-size:6.6px;
-        line-height:1.08;
-      }
-
-      .hero-stat-1{
-        left:-6px;
-        top:34px;
-      }
-
-      .hero-stat-2{
-        right:-6px;
-        bottom:38px;
-      }
-
-      .pedestal{
-        width:150px;
-        height:30px;
-        bottom:6px;
-      }
 
 
       .slide{
@@ -1288,7 +1270,13 @@
       }
 
       .hero-stack{
-        max-width:182px;
+        max-width:140px;
+      }
+
+      .hero-glow{
+        width:170px;
+        height:170px;
+        opacity:0.5;
       }
 
       .phone-main{
@@ -1297,47 +1285,6 @@
         border-radius:22px;
       }
 
-      .phone-left{
-        width:68px;
-        height:136px;
-        left:-1px;
-        bottom:16px;
-        opacity:.44;
-      }
-
-      .phone-right{
-        width:72px;
-        height:144px;
-        right:-1px;
-        top:18px;
-        opacity:.50;
-      }
-
-      .hero-stat-card{
-        padding:4px 5px;
-        border-radius:9px;
-        max-width:52px;
-      }
-
-      .hero-stat-card small{
-        font-size:4.8px;
-      }
-
-      .hero-stat-card strong{
-        font-size:6px;
-        line-height:1.06;
-      }
-
-      .hero-stat-1,
-      .hero-stat-2{
-        display:none;
-      }
-
-      .pedestal{
-        width:138px;
-        height:26px;
-        bottom:4px;
-      }
 
       .features-grid{
         grid-template-columns:repeat(2, minmax(0,1fr));
@@ -1492,6 +1439,52 @@
         font-size:10px;
         padding:9px 8px;
       }
+  
+
+    .whatsapp-float{
+      position:fixed;
+      right:18px;
+      bottom:18px;
+      width:58px;
+      height:58px;
+      border-radius:50%;
+      display:grid;
+      place-items:center;
+      background:#25D366;
+      color:#FFFFFF;
+      border:1px solid rgba(0,0,0,.08);
+      box-shadow:0 14px 30px rgba(0,0,0,.18);
+      z-index:1200;
+      transition:transform .2s ease, box-shadow .2s ease, background .2s ease;
+    }
+    .whatsapp-float:hover{
+      transform:translateY(-3px) scale(1.03);
+      background:#20c55a;
+      box-shadow:0 18px 36px rgba(0,0,0,.22);
+    }
+    .whatsapp-float svg{
+      width:28px;
+      height:28px;
+      fill:currentColor;
+    }
+    .whatsapp-float:focus-visible{
+      outline:3px solid rgba(37,211,102,.28);
+      outline-offset:3px;
+    }
+
+    @media (max-width: 760px){
+      .whatsapp-float{
+        right:14px;
+        bottom:14px;
+        width:54px;
+        height:54px;
+      }
+      .whatsapp-float svg{
+        width:26px;
+        height:26px;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -1964,9 +1957,18 @@
     let heroIndex = 0;
 
     function showHeroShot(index) {
+      const phoneMain = document.querySelector('.phone-main');
       heroShots.forEach((shot, i) => {
         shot.classList.toggle('active', i === index);
       });
+      if (phoneMain) {
+        phoneMain.classList.remove('vibrating');
+        void phoneMain.offsetWidth;
+        phoneMain.classList.add('vibrating');
+        phoneMain.addEventListener('animationend', () => {
+          phoneMain.classList.remove('vibrating');
+        }, { once: true });
+      }
     }
 
     if (heroShots.length > 1) {
@@ -2068,5 +2070,20 @@
 
     document.querySelectorAll('.stat-num[data-target]').forEach(el => statObserver.observe(el));
   </script>
+
+
+  <a
+    href="https://wa.me/18094523342?text=Hola%2C%20quiero%20informaci%C3%B3n%20sobre%20Mi%20Galleria."
+    class="whatsapp-float"
+    target="_blank"
+    rel="noopener noreferrer"
+    aria-label="Chatear por WhatsApp con Mi Galleria"
+    title="WhatsApp"
+  >
+    <svg viewBox="0 0 32 32" aria-hidden="true">
+      <path d="M19.11 17.21c-.29-.15-1.71-.84-1.97-.94-.26-.1-.45-.15-.64.15-.19.29-.74.94-.91 1.13-.17.19-.34.22-.63.08-.29-.15-1.24-.46-2.36-1.46-.87-.78-1.45-1.74-1.62-2.03-.17-.29-.02-.44.13-.59.13-.13.29-.34.44-.51.15-.17.19-.29.29-.49.1-.19.05-.37-.02-.52-.08-.15-.64-1.55-.88-2.12-.23-.56-.47-.49-.64-.5h-.55c-.19 0-.49.07-.74.37-.26.29-.99.97-.99 2.37s1.01 2.75 1.15 2.94c.15.19 1.98 3.03 4.79 4.25.67.29 1.2.46 1.61.59.68.22 1.29.19 1.78.11.54-.08 1.71-.7 1.95-1.37.24-.67.24-1.24.17-1.36-.07-.12-.26-.19-.55-.34M16.03 4.01c-6.61 0-11.98 5.37-11.98 11.98 0 2.11.55 4.18 1.6 6L4 28l6.17-1.62a11.9 11.9 0 0 0 5.86 1.53h.01c6.61 0 11.98-5.37 11.98-11.98 0-3.2-1.25-6.2-3.51-8.46a11.89 11.89 0 0 0-8.48-3.46m0 21.88h-.01a9.94 9.94 0 0 1-5.07-1.39l-.36-.21-3.66.96.98-3.57-.23-.37a9.94 9.94 0 0 1-1.53-5.32c0-5.48 4.46-9.94 9.95-9.94 2.65 0 5.14 1.03 7.01 2.91a9.86 9.86 0 0 1 2.91 7.03c0 5.48-4.46 9.94-9.94 9.94"/>
+    </svg>
+  </a>
+
 </body>
 </html>

@@ -18,6 +18,7 @@ import requests
 import base64
 import json
 from whatsapp import send_whatsapp_template, normalize_phone_number  # ← WhatsApp
+from cryptography import x509
 import random
 import string
 
@@ -48,6 +49,10 @@ APPLE_ISSUER_ID = os.environ.get("APPLE_ISSUER_ID")
 APPLE_KEY_ID = os.environ.get("APPLE_KEY_ID")
 APPLE_BUNDLE_ID = os.environ.get("APPLE_BUNDLE_ID")
 APPLE_PRIVATE_KEY_PATH = os.environ.get("APPLE_PRIVATE_KEY_PATH")
+
+FIREBASE_PROJECT_ID = os.environ.get("FIREBASE_PROJECT_ID", "migalleria-b3fa8")
+# Mutable cache dict to avoid global keyword reassignment in functions
+_firebase_cache: dict = {"keys": {}, "expiry": 0.0}
 
 # Número personal para recibir notificaciones de mensajes entrantes
 ADMIN_WHATSAPP_NUMBER = "18299805618"
@@ -82,6 +87,22 @@ class UserCreate(BaseModel):
 class UserLogin(BaseModel):
     telefono: str
     pin: str
+
+class UserRegisterFirebase(BaseModel):
+    """Registro completado tras verificación Firebase Phone Auth."""
+    firebase_id_token: str
+    pin: str
+    nombre: Optional[str] = None
+    email: Optional[str] = None
+
+class ResetPinFirebaseRequest(BaseModel):
+    """Reset de PIN tras verificación Firebase Phone Auth."""
+    firebase_id_token: str
+    nuevo_pin: str
+
+class PhoneCheckRequest(BaseModel):
+    """Verificar si un teléfono tiene cuenta antes de iniciar OTP."""
+    telefono: str
 
 class UserResponse(BaseModel):
     id: str
@@ -413,6 +434,95 @@ def create_token(user_id: str) -> str:
     expire = datetime.utcnow() + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
     payload = {"sub": user_id, "exp": expire}
     return jwt.encode(payload, JWT_SECRET, algorithm=ALGORITHM)
+
+# ── Firebase ID Token verification (no SDK, uses PyJWT + cryptography) ────────
+
+def _get_firebase_public_keys() -> dict:
+    """Fetch and cache Google's Firebase public signing keys (x509 PEM certs)."""
+    now = time.time()
+    if now < _firebase_cache["expiry"] and _firebase_cache["keys"]:
+        return _firebase_cache["keys"]
+
+    try:
+        resp = requests.get(
+            "https://www.googleapis.com/robot/v1/metadata/x509/"
+            "securetoken@system.gserviceaccount.com",
+            timeout=5,
+        )
+        resp.raise_for_status()
+
+        max_age = 3600
+        for part in resp.headers.get("Cache-Control", "").split(","):
+            p = part.strip()
+            if p.startswith("max-age="):
+                try:
+                    max_age = int(p.split("=")[1])
+                except Exception:
+                    pass
+
+        _firebase_cache["keys"] = resp.json()
+        _firebase_cache["expiry"] = now + max_age
+        return _firebase_cache["keys"]
+    except Exception as exc:
+        logger.error("[Firebase] Error obteniendo public keys: %s", exc)
+        raise HTTPException(
+            status_code=503,
+            detail="No se pudo verificar la identidad. Intenta de nuevo.",
+        )
+
+
+def verify_firebase_id_token(id_token: str) -> dict:
+    """
+    Verifica un Firebase Phone Auth ID token usando las llaves públicas de Google.
+    Devuelve los claims del JWT (contiene 'phone_number', 'sub'/uid, 'exp', etc.).
+    Lanza HTTPException si el token es inválido, expirado o no es de este proyecto.
+    """
+    try:
+        header = jwt.get_unverified_header(id_token)
+        kid = header.get("kid")
+        if not kid:
+            raise HTTPException(status_code=401, detail="Token de verificación inválido.")
+
+        public_keys = _get_firebase_public_keys()
+        if kid not in public_keys:
+            # Keys may have rotated — clear cache and retry once
+            _firebase_cache["expiry"] = 0
+            public_keys = _get_firebase_public_keys()
+            if kid not in public_keys:
+                raise HTTPException(status_code=401, detail="Token de verificación inválido.")
+
+        cert_pem = public_keys[kid].encode("utf-8")
+        cert = x509.load_pem_x509_certificate(cert_pem)
+        public_key = cert.public_key()
+
+        claims = jwt.decode(
+            id_token,
+            public_key,
+            algorithms=["RS256"],
+            audience=FIREBASE_PROJECT_ID,
+            issuer=f"https://securetoken.google.com/{FIREBASE_PROJECT_ID}",
+        )
+        return claims
+
+    except jwt.exceptions.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=401,
+            detail="El código de verificación ha expirado. Solicita uno nuevo.",
+        )
+    except jwt.exceptions.InvalidAudienceError:
+        raise HTTPException(
+            status_code=401,
+            detail="Token de verificación inválido para este proyecto.",
+        )
+    except jwt.exceptions.PyJWTError:
+        raise HTTPException(status_code=401, detail="Token de verificación inválido.")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("[Firebase] Error verificando token: %s", exc)
+        raise HTTPException(status_code=401, detail="Error al verificar identidad.")
+
+# ─────────────────────────────────────────────────────────────────────────────
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     if not credentials:
@@ -1016,19 +1126,41 @@ def _phone_query(telefono: str) -> dict:
     return {"telefono": {"$in": variants}}
 
 @api_router.post("/auth/register", response_model=TokenResponse)
-async def register(user_data: UserCreate):
-    existing = await db.users.find_one(_phone_query(user_data.telefono))
+async def register(user_data: UserRegisterFirebase):
+    """
+    Registro final llamado desde el frontend DESPUÉS de que Firebase Phone Auth
+    verificó el número. Recibe el Firebase ID token, lo verifica en el backend,
+    extrae el número de teléfono y crea la cuenta con telefono_verificado=True.
+    """
+    # 1. Verify Firebase ID token — extracts phone_number from claims
+    claims = verify_firebase_id_token(user_data.firebase_id_token)
+
+    phone_e164 = claims.get("phone_number")
+    if not phone_e164:
+        raise HTTPException(
+            status_code=400,
+            detail="El token no contiene número de teléfono verificado.",
+        )
+
+    # 2. Normalize to match existing storage format (digits only, no '+')
+    telefono = normalize_phone_number(phone_e164)
+
+    # 3. Check for duplicate
+    existing = await db.users.find_one(_phone_query(telefono))
     if existing:
-        raise HTTPException(status_code=400, detail="Este número ya está registrado")
-    
+        raise HTTPException(status_code=400, detail="Este número ya está registrado.")
+
+    # 4. Validate PIN
     if not user_data.pin.isdigit() or len(user_data.pin) < 4 or len(user_data.pin) > 6:
-        raise HTTPException(status_code=400, detail="El PIN debe ser de 4 a 6 dígitos")
-    
+        raise HTTPException(status_code=400, detail="El PIN debe ser de 4 a 6 dígitos.")
+
+    # 5. Create user with telefono_verificado=True
     user_doc = {
-        "telefono": user_data.telefono,
+        "telefono": telefono,
         "email": user_data.email,
         "nombre": user_data.nombre,
         "pin": hash_pin(user_data.pin),
+        "telefono_verificado": True,
         "plan": "gratis",
         "records_used": 0,
         "premium_expires_at": None,
@@ -1038,35 +1170,33 @@ async def register(user_data: UserCreate):
         "subscription_last_transaction_id": None,
         "subscription_purchase_token": None,
         "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow()
+        "updated_at": datetime.utcnow(),
     }
-    
+
     result = await db.users.insert_one(user_doc)
     user_id = str(result.inserted_id)
     token = create_token(user_id)
 
-    # ============== WHATSAPP - Enviar bienvenida al nuevo usuario ==============
+    # 6. Send WhatsApp welcome (non-blocking)
     try:
-        if user_data.telefono:
-            send_whatsapp_template(user_data.telefono, template_name="bienvenida_migalleria")
-            await db.users.update_one(
-                {"_id": result.inserted_id},
-                {"$set": {"whatsapp_welcome_sent": True}}
-            )
-            logger.info("[WhatsApp] Bienvenida enviada a nuevo usuario: %s", user_data.telefono)
-    except Exception as e:
-        logger.error("[WhatsApp] Error enviando bienvenida a %s: %s", user_data.telefono, e)
-    # ============== FIN WHATSAPP ==============
+        send_whatsapp_template(telefono, template_name="bienvenida_migalleria")
+        await db.users.update_one(
+            {"_id": result.inserted_id},
+            {"$set": {"whatsapp_welcome_sent": True}},
+        )
+        logger.info("[WhatsApp] Bienvenida enviada a %s", telefono)
+    except Exception as exc:
+        logger.error("[WhatsApp] Error enviando bienvenida a %s: %s", telefono, exc)
 
     return TokenResponse(
         access_token=token,
         user=UserResponse(
             id=user_id,
-            telefono=user_data.telefono,
+            telefono=telefono,
             email=user_data.email,
             nombre=user_data.nombre,
-            created_at=user_doc["created_at"]
-        )
+            created_at=user_doc["created_at"],
+        ),
     )
 
 @api_router.post("/auth/login", response_model=TokenResponse)
@@ -1074,17 +1204,82 @@ async def login(credentials: UserLogin):
     user = await db.users.find_one(_phone_query(credentials.telefono))
     if not user:
         raise HTTPException(status_code=401, detail="Número no registrado")
-    
+
+    # Existing users without the field default to True (verified via old flow).
+    # Only new users that never completed Firebase OTP would have False,
+    # but since registration is now atomic (OTP first, then account), this
+    # guard is purely defensive.
+    if not user.get("telefono_verificado", True):
+        raise HTTPException(
+            status_code=403,
+            detail="Número no verificado. Completa el registro para continuar.",
+        )
+
     if not verify_pin(credentials.pin, user["pin"]):
         raise HTTPException(status_code=401, detail="PIN incorrecto")
-    
+
     user_id = str(user["_id"])
     token = create_token(user_id)
-    
+
     return TokenResponse(
         access_token=token,
-        user=build_user_response(user)
+        user=build_user_response(user),
     )
+
+@api_router.post("/auth/reset-pin-by-firebase")
+async def reset_pin_by_firebase(data: ResetPinFirebaseRequest):
+    """
+    Resetea el PIN de un usuario existente.
+    Requiere un Firebase ID token válido (obtenido tras verificar OTP en el frontend).
+    El número de teléfono se extrae directamente del token — no se acepta del cliente.
+    """
+    claims = verify_firebase_id_token(data.firebase_id_token)
+
+    phone_e164 = claims.get("phone_number")
+    if not phone_e164:
+        raise HTTPException(
+            status_code=400,
+            detail="El token no contiene número de teléfono verificado.",
+        )
+
+    if not data.nuevo_pin.isdigit() or len(data.nuevo_pin) < 4 or len(data.nuevo_pin) > 6:
+        raise HTTPException(status_code=400, detail="El PIN debe ser de 4 a 6 dígitos.")
+
+    telefono = normalize_phone_number(phone_e164)
+    user = await db.users.find_one(_phone_query(telefono))
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail="No se encontró una cuenta con ese número.",
+        )
+
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$set": {"pin": hash_pin(data.nuevo_pin), "updated_at": datetime.utcnow()}},
+    )
+
+    logger.info("[Firebase] PIN reseteado para %s", telefono)
+    return {"message": "PIN actualizado correctamente"}
+
+
+@api_router.post("/auth/check-phone-registered")
+async def check_phone_registered(data: PhoneCheckRequest):
+    """
+    Verifica si un número de teléfono tiene cuenta registrada.
+    Llamado antes de enviar el OTP de recuperación de PIN para dar feedback inmediato.
+    """
+    telefono = normalize_phone_number(data.telefono.strip())
+    if not telefono:
+        raise HTTPException(status_code=400, detail="Teléfono requerido.")
+
+    user = await db.users.find_one(_phone_query(telefono))
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail="No se encontró una cuenta con ese número.",
+        )
+    return {"registered": True}
+
 
 @api_router.get("/auth/me", response_model=UserResponse)
 async def get_me(current_user: dict = Depends(get_current_user)):

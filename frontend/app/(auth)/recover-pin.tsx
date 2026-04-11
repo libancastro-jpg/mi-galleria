@@ -9,6 +9,13 @@ import { useAuth } from '../../src/context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import PhoneInput from '../../components/PhoneInput';
 import { api } from '../../src/services/api';
+import {
+  sendVerificationCode,
+  confirmVerificationCode,
+  getOtpSession,
+  clearOtpSession,
+  toE164,
+} from '../../src/services/otpService';
 
 type Step = 1 | 2 | 3;
 
@@ -18,7 +25,7 @@ export default function RecoverPinScreen() {
 
   const [step, setStep] = useState<Step>(1);
   const [telefono, setTelefono] = useState('');
-  const [codigoOtp, setCodigoOtp] = useState('');
+  const [firebaseIdToken, setFirebaseIdToken] = useState('');
   const [nuevaPin, setNuevaPin] = useState('');
   const [confirmarPin, setConfirmarPin] = useState('');
   const [showPin, setShowPin] = useState(false);
@@ -53,7 +60,7 @@ export default function RecoverPinScreen() {
     };
   }, [step]);
 
-  // ── Step 1: enviar OTP ──────────────────────────────────────────────────────
+  // ── Step 1: verificar cuenta + enviar OTP vía Firebase ────────────────────
   const handleSendOtp = async () => {
     if (!telefono.trim()) {
       Alert.alert('Error', 'Ingresa tu número de teléfono');
@@ -61,7 +68,10 @@ export default function RecoverPinScreen() {
     }
     setLoading(true);
     try {
-      await api.post('/auth/send-otp', { telefono: telefono.trim(), tipo: 'recuperar_pin' });
+      // Pre-check: el número debe tener una cuenta registrada
+      await api.post('/auth/check-phone-registered', { telefono: telefono.trim() });
+      // Enviar OTP vía Firebase Phone Auth
+      await sendVerificationCode(toE164(telefono.trim()));
       setStep(2);
     } catch (error: any) {
       Alert.alert('Error', error.message);
@@ -70,15 +80,37 @@ export default function RecoverPinScreen() {
     }
   };
 
-  // ── Step 2: verificar OTP ──────────────────────────────────────────────────
+  // ── Step 2: confirmar OTP con Firebase ────────────────────────────────────
   const handleVerifyOtp = async (codeOverride?: string) => {
     const code = codeOverride ?? digits.join('');
     if (code.length !== 6) {
       Alert.alert('Error', 'Ingresa el código de 6 dígitos');
       return;
     }
-    setCodigoOtp(code);
-    setStep(3);
+
+    const session = getOtpSession();
+    if (!session) {
+      Alert.alert(
+        'Sesión expirada',
+        'La sesión expiró. Regresa e ingresa tu número de nuevo.',
+        [{ text: 'Regresar', onPress: () => setStep(1) }]
+      );
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const credential = await confirmVerificationCode(session, code);
+      const idToken = await credential.user.getIdToken();
+      setFirebaseIdToken(idToken);
+      setStep(3);
+    } catch (error: any) {
+      Alert.alert('Código incorrecto', error.message);
+      setDigits(['', '', '', '', '', '']);
+      setTimeout(() => inputRefs.current[0]?.focus(), 100);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDigitChange = (text: string, index: number) => {
@@ -103,16 +135,16 @@ export default function RecoverPinScreen() {
   const handleResend = async () => {
     if (!canResend) return;
     try {
-      await api.post('/auth/send-otp', { telefono: telefono.trim(), tipo: 'recuperar_pin' });
+      await sendVerificationCode(toE164(telefono.trim()));
       setResendTimer(60);
       setCanResend(false);
-      Alert.alert('Código enviado', 'Revisa tu SMS o WhatsApp');
+      Alert.alert('Código enviado', 'Revisa tu SMS');
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      Alert.alert('Error al reenviar', error.message);
     }
   };
 
-  // ── Step 3: cambiar PIN ────────────────────────────────────────────────────
+  // ── Step 3: cambiar PIN con el ID token de Firebase ───────────────────────
   const handleChangePin = async () => {
     if (!nuevaPin || nuevaPin.length < 4) {
       Alert.alert('Error', 'El PIN debe tener al menos 4 dígitos');
@@ -124,11 +156,11 @@ export default function RecoverPinScreen() {
     }
     setLoading(true);
     try {
-      await api.post('/auth/recover-pin', {
-        telefono: telefono.trim(),
-        codigo: codigoOtp,
+      await api.post('/auth/reset-pin-by-firebase', {
+        firebase_id_token: firebaseIdToken,
         nuevo_pin: nuevaPin,
       });
+      clearOtpSession();
       try {
         await login(telefono.trim(), nuevaPin);
         router.replace('/(tabs)');

@@ -29,7 +29,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (telefono: string, pin: string) => Promise<void>;
   register: (
-    telefono: string,
+    firebaseIdToken: string,
     pin: string,
     email?: string,
     nombre?: string
@@ -185,9 +185,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const register = useCallback(
-    async (telefono: string, pin: string, email?: string, nombre?: string) => {
+    async (firebaseIdToken: string, pin: string, email?: string, nombre?: string) => {
       const response = await api.post('/auth/register', {
-        telefono,
+        firebase_id_token: firebaseIdToken,
         pin,
         email,
         nombre,

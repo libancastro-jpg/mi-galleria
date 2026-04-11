@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { api } from '../../src/services/api';
+import { sendVerificationCode, toE164 } from '../../src/services/otpService';
 import PhoneInput from '../../components/PhoneInput';
 
 export default function RegisterScreen() {
@@ -48,7 +48,7 @@ export default function RegisterScreen() {
 
     setLoading(true);
     try {
-      await api.post('/auth/send-otp', { telefono: telefono.trim(), tipo: 'registro' });
+      await sendVerificationCode(toE164(telefono.trim()));
       router.push({
         pathname: '/(auth)/verify-otp',
         params: {
@@ -59,7 +59,7 @@ export default function RegisterScreen() {
         },
       });
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      Alert.alert('Error al enviar código', error.message);
     } finally {
       setLoading(false);
     }
